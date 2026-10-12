@@ -1,3 +1,15 @@
+import { CONFIG, P, F, N } from './core/config.js';
+import { state } from './core/state.js';
+import { loadCoreStorage } from './core/storage.js';
+import { pageWindow, pageStorage, vw, vh, visibleElement } from './utils/dom.js';
+import { wait } from './utils/async.js';
+import { buyNowStep, parseFutbinPrice } from './utils/format.js';
+import { inTransfers, topLimit } from './ea/page.js';
+import { searchAutoBuyOffers, buyAutoOffer } from './ea/market.js';
+import { getCoinBalance } from './ea/services.js';
+import { fetchFutbinPlayerId } from './futbin/playerLookup.js';
+import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './futbin/loader.js';
+
 /*
  * ============================================================================
  *  FutRUSH — DOSYA HARİTASI (yeni özellik eklerken buraya bak)
@@ -31,147 +43,6 @@
 
 (function () {
   'use strict';
-
-  // ==========================================================================
-  // 1. CONFIG
-  // ==========================================================================
-  const CONFIG = {
-    // Özellikleri aç/kapat (bozulan bir şeyi hızlıca devre dışı bırakmak için)
-    features: {
-      fitContent: true,       // alt sayfalarda içeriği panelin soluna sığdır
-      settingsButton: true,   // sol menüdeki FutRUSH (Ayarlar) butonu
-      searchButton: true,     // Reset / Search yanındaki FutRUSH butonu
-      logoButton: true        // Consumables yanındaki logo (SNIPE panelini açan tek buton)
-    },
-
-    // SNIPE paneli
-    panel: {
-      id: 'fc-snipe-panel',
-      storeKey: 'fc-snipe-panel-geom',
-      widthRatio: 0.63,       // panel genişliği = kart bloğunun %63'ü
-      gapRatio: 0.027,        // kartlarla arası = kart bloğunun %2.7'si
-      sideMargin: 16,
-      edge: 8,                // pencere kenarlarına / üst çubuğa bırakılan boşluk
-      bg: 'rgba(21, 29, 41, .7)',                 // #151D29, %70 opaklık
-      border: '1px solid rgba(255,255,255,.18)',
-      radius: '6px',
-      buttonText: 'SNIPE'
-    },
-
-    // Alt sayfalarda içeriği panelin soluna sığdırma
-    fit: {
-      leftMargin: 8,          // sol menü ile içerik arası
-      gap: 12,                // içerik ile panel arası
-      minScale: 0.5,
-      expandY: true,          // ölçekleme yerine yüksekliği GENİŞLET (yazılar bozulmaz)
-      maxExpandY: 3,          // yükseklik en fazla bu kadar katına çıkar (güvenlik sınırı)
-      debug: false            // true: konsola ölçüm bilgisi yazar
-    },
-
-    // FutRUSH (Ayarlar) butonu ve penceresi
-    nav: {
-      id: 'futrush-nav',
-      modalId: 'futrush-settings',
-      defaultIcon: 26         // diğer menü ikonlarının boyutu okunamazsa kullanılır (px)
-    },
-
-    // Consumables yanındaki logo: SNIPE paneli SADECE bu logoya basınca açılır
-    logoButton: {
-      className: 'futrush-logo-btn',
-      size: 40,                         // px (40x40)
-      gap: 10,                          // Consumables ile logo arası (px)
-      anchorPattern: /consumables/i,    // sekmeyi yazısından tanır (dil değişirse buraya ekle)
-      title: 'FutRUSH Snipe'
-    },
-
-    // Reset / Search yanındaki FutRUSH butonu
-    searchButton: {
-      className: 'futrush-search-btn',
-      label: 'Ekle FutRUSH',
-      resetPattern: /reset|sıfırla/i,   // Reset butonunu yazısından tanır (dil değişirse buraya ekle)
-      debug: false                      // true: konsola ölçüm bilgisi yazar
-    },
-
-    // FutBIN oyuncu listesi entegrasyonu (URL ve HTML seçicileri burada tutulur)
-    futbin: {
-      baseUrl: 'https://www.futbin.com/27/players',
-      apiBaseUrl: 'https://www.futbin.org/futbin/api/27/getFilteredPlayers',
-      platform: 'console',
-      version: '',
-      maxPages: 20,
-      pageDelay: 350,
-      ratingParam: 'player_rating',
-      pageParam: 'page',
-      sortParam: 'sort',
-      priceRangeParam: 'ps_price',
-      pcPriceRangeParam: 'pc_price',
-      priceRange: '200-15000000',
-      orderParam: 'order',
-      selectors: {
-        rows: 'tr.player-row',
-        nameLink: 'a.table-player-name[href*="/player/"], a[href*="/player/"]',
-        name: 'td.table-name',
-        rating: 'td.table-rating',
-        ratingFallback: '[class*="rating"]',
-        consolePrice: 'td.platform-ps-only .price, td.platform-ps-only',
-        pcPrice: 'td.platform-pc-only .price, td.platform-pc-only',
-        image: "img[src*='/players/']",
-        pageLinks: 'a[href*="page="]',
-        emptyResultContainer: 'tbody',
-        idPattern: /\/player\/(\d+)/i
-      }
-    },
-
-    // Zamanlama
-    timing: {
-      tailDelay: 400          // geçiş animasyonları bittikten sonra bir kez daha ölç (ms)
-    }
-  };
-
-  const P = CONFIG.panel;
-  const F = CONFIG.fit;
-  const N = CONFIG.nav;
-
-  // ==========================================================================
-  // 2. STATE  (bölümler arası ortak durum)
-  // ==========================================================================
-  const state = {
-    geom: null,        // panelin pencere oranı olarak son ölçüsü {l, t, w, h}
-    visible: true,     // son tıklanan ana menü Transfers mi (sekme okunamazsa yedek bilgi)
-    panelOpen: false,  // SNIPE paneli logoyla açıldı mı
-    panelExpanded: false, // SNIPE düğmesinden sekmeler açıldı mı
-    activePanelTab: 'targets',
-    snipeSettings: { repeat: 0, waitSeconds: 0, autoSell: false, maxPlayers: 1, speed: 0 },
-    targetFilter: { kind: 'cheap', ratings: [], count: 5 },
-    targets: [],
-    savedTargetLists: [],
-    selectedSavedTargetListId: null,
-    botRunning: false,
-    botToken: 0,
-    botStatus: '',
-    botLogs: [],
-    targetLoading: false,
-    targetStatus: null,
-    filterDraft: null,
-    logoPresent: false, // Consumables yanındaki logo şu an sayfada mı
-    liveScroll: 0      // hub kaydırılmışsa panelin kartlarla birlikte kayması için
-  };
-
-  // ==========================================================================
-  // 3. UTILS
-  // ==========================================================================
-  const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-  const pageStorage = () => pageWindow.localStorage;
-  const vw = () => document.documentElement.clientWidth;
-  const vh = () => pageWindow.innerHeight;
-
-  // Ana menüde şu an Transfers seçili mi? (seçili sekme okunamazsa son tıklamaya bakar)
-  function inTransfers() {
-    const items = Array.from(document.querySelectorAll('.ut-tab-bar-item'));
-    const selected = items.find((i) => /\bselected\b/.test(i.className));
-    if (selected) return /transfer/i.test(selected.className + ' ' + selected.textContent);
-    return state.visible;
-  }
 
   // ==========================================================================
   // 4. PANEL  (body'de durur, sayfa geçişlerinde silinmez)
@@ -379,19 +250,10 @@
       renderPanelTabs();
     });
     document.body.appendChild(panel);
+    setFutbinPanel(panel);
 
     // Son ölçüyü hatırla (pencere oranı olarak)
-    try { state.geom = JSON.parse(pageStorage().getItem(P.storeKey)); } catch (e) {}
-    try {
-      const savedTargetFilter = JSON.parse(pageStorage().getItem('futrush-saved-target-filter'));
-      if (savedTargetFilter && Array.isArray(savedTargetFilter.ratings)) {
-        state.targetFilter = {
-          kind: savedTargetFilter.kind === 'custom' ? 'custom' : 'cheap',
-          ratings: savedTargetFilter.ratings.slice(0, 1).map(Number).filter(Number.isFinite),
-          count: Math.max(1, Number(savedTargetFilter.count) || 5)
-        };
-      }
-    } catch (e) {}
+    loadCoreStorage();
     try {
       const savedTargets = JSON.parse(pageStorage().getItem('futrush-targets'));
       if (Array.isArray(savedTargets)) {
@@ -546,62 +408,6 @@
     }
   }
 
-  function normalizePlayerName(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  }
-
-  function fetchFutbinPlayerId(target) {
-    return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'function') {
-        reject(new Error('FutBIN oyuncu eşleştirmesi için userscript izni bulunamadı.'));
-        return;
-      }
-      const url = 'https://www.futbin.org/futbin/api/searchPlayersByName?playername=' + encodeURIComponent(String(target.name || '').trim());
-      GM_xmlhttpRequest({
-        method: 'GET', url, timeout: 15000,
-        headers: { 'Accept': 'application/json, text/plain, */*' },
-        onload: (response) => {
-          if (response.status < 200 || response.status >= 300) {
-            reject(new Error('FutBIN oyuncu eşleştirme isteği başarısız (HTTP ' + response.status + ').'));
-            return;
-          }
-          try {
-            const payload = JSON.parse(response.responseText || '');
-            if (!payload || !Array.isArray(payload.data)) throw new Error('FutBIN API data listesi bulunamadı.');
-            const wantedName = normalizePlayerName(target.name);
-            const wantedFutbinId = String(target.futbinId || '');
-            const candidates = payload.data
-              .filter((row) => row && (Number(row.resource_id) > 0 || Number(row.playerid) > 0))
-              .map((row) => {
-                const names = [row.playername, row.common_name].map(normalizePlayerName).filter(Boolean);
-                const exactFutbinId = wantedFutbinId && String(row.ID || row.id || '') === wantedFutbinId;
-                const exactName = names.includes(wantedName);
-                const partialName = wantedName.length >= 3 && names.some((name) => name.includes(wantedName) || wantedName.includes(name));
-                const ratingMatches = !target.rating || Number(row.rating) === Number(target.rating);
-                const score = exactFutbinId ? 1000 : exactName && ratingMatches ? 100 : exactName ? 80 : partialName && ratingMatches ? 40 : 0;
-                return { row, score };
-              })
-              .filter((entry) => entry.score > 0)
-              .sort((a, b) => b.score - a.score);
-            const candidate = candidates[0]?.row;
-            const eaId = Number(candidate?.playerid) || ((Number(candidate?.resource_id) || 0) & 0xffffff);
-            if (!eaId) {
-              console.warn('[FutRUSH] FutBIN eşleşme yanıtı:', { name: target.name, rating: target.rating, futbinId: target.futbinId, rows: payload.data.slice(0, 8) });
-              const detail = target.futbinId
-                ? ' FutBIN kart kimliği ' + target.futbinId + ' ve oyuncu adı eşleşmedi.'
-                : ' Oyuncu adı: ' + String(target.name || '(boş)') + (target.rating ? ', reyting: ' + target.rating : '') + '.';
-              throw new Error('FutBIN yanıtında eşleşen EA oyuncu kimliği bulunamadı.' + detail);
-            }
-            if (!target.rating && Number(candidate.rating) > 0) target.rating = Number(candidate.rating);
-            resolve(eaId);
-          } catch (error) { reject(error); }
-        },
-        onerror: () => reject(new Error('FutBIN oyuncu eşleştirme bağlantısı kurulamadı.')),
-        ontimeout: () => reject(new Error('FutBIN oyuncu eşleştirme isteği zaman aşımına uğradı.'))
-      });
-    });
-  }
-
   async function resolveTargetEaId(target) {
     if (Number(target.eaId) > 0) {
       target.eaId = Number(target.eaId) & 0xffffff;
@@ -611,77 +417,6 @@
     target.eaId = eaId;
     saveTargets();
     return eaId;
-  }
-
-  function observeEaRequest(observable, timeoutMs) {
-    return new Promise((resolve) => {
-      if (!observable || typeof observable.observe !== 'function') {
-        resolve({ success: false, invalid: true, error: 'EA isteği gözlemlenemedi.' });
-        return;
-      }
-      const scope = {};
-      let finished = false;
-      let timer = 0;
-      let senderRef = observable;
-      const finish = (response) => {
-        if (finished) return;
-        finished = true;
-        if (timer) pageWindow.clearTimeout(timer);
-        try { (senderRef || observable).unobserve(scope); } catch (e) {}
-        resolve(response || { success: false });
-      };
-      timer = pageWindow.setTimeout(() => finish({ success: false, timeout: true }), timeoutMs || 15000);
-      try { observable.observe(scope, (sender, response) => { senderRef = sender || observable; finish(response); }); }
-      catch (error) { finish({ success: false, error: error.message || String(error) }); }
-    });
-  }
-
-  function makeAutoBuyCriteria(eaId, maxBuy) {
-    const Criteria = pageWindow.UTSearchCriteriaDTO;
-    if (typeof Criteria !== 'function') throw new Error('EA arama ölçütleri hazır değil. Web App’i yenileyip tekrar deneyin.');
-    const criteria = new Criteria();
-    criteria.type = 'player';
-    criteria.maskedDefId = Number(eaId) & 0xffffff;
-    criteria.maxBuy = Number(maxBuy);
-    criteria.offset = 0;
-    criteria.count = 21;
-    return criteria;
-  }
-
-  async function searchAutoBuyOffers(target, eaId, token) {
-    const services = pageWindow.services;
-    const service = services && services.Item;
-    if (!service || typeof service.searchTransferMarket !== 'function') throw new Error('EA Transfer Market arama servisi bulunamadı.');
-    if (typeof service.clearTransferMarketCache === 'function') {
-      try { service.clearTransferMarketCache(); } catch (e) {}
-    }
-    const maxBuy = Math.max(1, Math.floor(Number(target.buyNow) || 0));
-    const criteria = makeAutoBuyCriteria(eaId, maxBuy);
-    const response = await observeEaRequest(service.searchTransferMarket(criteria, 1), 18000);
-    if (token !== state.botToken || !state.botRunning) return { stopped: true, offers: [] };
-    if (!response.success) {
-      const detail = response.error?.message || response.error || (response.timeout ? 'zaman aşımı' : 'EA isteği başarısız');
-      throw new Error('EA pazar araması başarısız: ' + detail);
-    }
-    const items = Array.from(response.data?.items || []);
-    const offers = items.map((item) => {
-      let auction = null;
-      try { auction = item.getAuctionData?.() || item._auction || null; } catch (e) {}
-      const tradeId = Number(auction?.tradeId) || 0;
-      const price = Number(auction?.buyNowPrice) || 0;
-      const itemBaseId = (Number(item?.definitionId) || 0) & 0xffffff;
-      const rating = Number(item?.rating) || 0;
-      if (!auction || !tradeId || auction.tradeOwner || itemBaseId !== Number(eaId) || !price || price > maxBuy || (target.rating && rating !== Number(target.rating))) return null;
-      return { item, auction, price, rating, tradeId };
-    }).filter(Boolean).sort((a, b) => a.price - b.price || (Number(b.auction.expires) || 0) - (Number(a.auction.expires) || 0));
-    return { stopped: false, offers };
-  }
-
-  async function buyAutoOffer(offer) {
-    const service = pageWindow.services?.Item;
-    if (!service || typeof service.bid !== 'function') throw new Error('EA satın alma servisi bulunamadı.');
-    const observable = service.bid(offer.item, offer.price);
-    return observeEaRequest(observable, 15000);
   }
 
   function stopAutoBuyer(reason) {
@@ -746,7 +481,7 @@
               addBotLog(target.name + ': Buy Now sınırında uygun ilan bulunamadı.', 'info');
             } else {
               attemptedTrades.add(offer.tradeId);
-              const balance = Number(pageWindow.services?.User?.getUser?.()?.coins?.amount) || 0;
+              const balance = getCoinBalance();
               if (balance && offer.price > balance) {
                 throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
               }
@@ -878,14 +613,6 @@
     });
     saveTargets();
     return restored;
-  }
-
-  function buyNowStep(price) {
-    if (price <= 1000) return 50;
-    if (price <= 10000) return 100;
-    if (price <= 50000) return 250;
-    if (price <= 100000) return 500;
-    return 1000;
   }
 
   // Yeni oyuncuları mevcut hedef listesine ekle; listeyi sıfırlama davranışı ileride burada değiştirilebilir.
@@ -1029,241 +756,6 @@
       openTargetSaveDialog();
     });
     content.querySelector('[data-filter-mode="load"]').addEventListener('click', () => openFilterModal('load'));
-  }
-
-  function buildFutbinUrl(rating, page) {
-    const cfg = CONFIG.futbin;
-    const url = new URL(cfg.baseUrl);
-    const isPc = cfg.platform === 'pc';
-    const priceParam = isPc ? cfg.pcPriceRangeParam : cfg.priceRangeParam;
-    url.searchParams.set(cfg.ratingParam, rating + '-' + rating);
-    url.searchParams.set('platform', isPc ? 'PC' : 'PS');
-    if (cfg.version) url.searchParams.set('version', cfg.version);
-    if (page > 1) url.searchParams.set(cfg.pageParam, String(page));
-    else url.searchParams.delete(cfg.pageParam);
-    url.searchParams.set(priceParam, cfg.priceRange);
-    url.searchParams.set(cfg.sortParam, priceParam);
-    url.searchParams.set(cfg.orderParam, 'asc');
-    return url.toString();
-  }
-
-  function requestFutbinPage(url) {
-    return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'function') {
-        reject(new Error('FutBIN isteği için GM_xmlhttpRequest kullanılamıyor. Userscript izinlerini kontrol edin.'));
-        return;
-      }
-      GM_xmlhttpRequest({
-        method: 'GET',
-        url,
-        timeout: 25000,
-        headers: { 'Accept': 'text/html,application/xhtml+xml' },
-        onload: (response) => resolve(response),
-        onerror: () => reject(new Error('FutBIN bağlantısı kurulamadı. Ağ bağlantınızı kontrol edin.')),
-        ontimeout: () => reject(new Error('FutBIN yanıtı zaman aşımına uğradı.')),
-        onabort: () => reject(new Error('FutBIN isteği iptal edildi.'))
-      });
-    });
-  }
-
-  function buildFutbinApiUrl(rating, page) {
-    const cfg = CONFIG.futbin;
-    const isPc = cfg.platform === 'pc';
-    const url = new URL(cfg.apiBaseUrl);
-    url.searchParams.set('platform', isPc ? 'PC' : 'PS');
-    url.searchParams.set('page', String(page));
-    url.searchParams.set('rating', rating + '-' + rating);
-    url.searchParams.set(isPc ? 'pcprice' : 'ps4price', cfg.priceRange);
-    url.searchParams.set('sort', isPc ? 'pc_price' : 'ps_price');
-    url.searchParams.set('order', 'asc');
-    if (cfg.version) url.searchParams.set('version', cfg.version);
-    return url.toString();
-  }
-
-  function parseFutbinApiPlayers(body, requestedRating) {
-    let payload;
-    try { payload = JSON.parse(body); } catch (error) {
-      throw new Error('FutBIN API yanıtı JSON olarak çözümlenemedi.');
-    }
-    if (!payload || !Array.isArray(payload.data)) {
-      throw new Error('FutBIN API oyuncu listesi bulunamadı (data alanı değişmiş olabilir).');
-    }
-    const priceField = CONFIG.futbin.platform === 'pc' ? 'pc_LCPrice' : 'ps_LCPrice';
-    const players = payload.data.map((row) => {
-      const rating = Number(row.rating) || 0;
-      const price = Number(row[priceField]) || 0;
-      const name = String(row.playername || row.common_name || '').trim().replace(/\s+/g, ' ');
-      if (!name || rating !== requestedRating || !Number.isFinite(price) || price <= 0) return null;
-      return { name, rating, price, futbinId: row.ID == null ? null : String(row.ID) };
-    }).filter(Boolean);
-    players.pageRowCount = payload.data.length;
-    return players;
-  }
-
-  function requestFutbinApi(url) {
-    return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'function') {
-        reject(new Error('FutBIN isteği için GM_xmlhttpRequest kullanılamıyor.'));
-        return;
-      }
-      GM_xmlhttpRequest({
-        method: 'GET', url, timeout: 20000,
-        headers: { 'Accept': 'application/json, text/plain, */*' },
-        onload: resolve,
-        onerror: () => reject(new Error('FutBIN API bağlantısı kurulamadı.')),
-        ontimeout: () => reject(new Error('FutBIN API yanıtı zaman aşımına uğradı.'))
-      });
-    });
-  }
-
-  async function loadFromFutbinApi(rating, count) {
-    const found = new Map();
-    for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count; page++) {
-      if (page > 1) await wait(CONFIG.futbin.pageDelay);
-      const url = buildFutbinApiUrl(rating, page);
-      const response = await requestFutbinApi(url);
-      if (response.status === 403 || response.status === 429 || response.status === 503) {
-        console.error('[FutRUSH] FutBIN API isteği engellendi:', response.status, url, (response.responseText || '').slice(0, 500));
-        const error = new Error('FutBIN isteği engellendi (' + response.status + '). Bir süre sonra tekrar deneyin.');
-        error.blocked = true;
-        throw error;
-      }
-      if (response.status < 200 || response.status >= 300) throw new Error('FutBIN API yanıt vermedi (HTTP ' + response.status + ').');
-      const players = parseFutbinApiPlayers(response.responseText || '', rating);
-      players.forEach((player) => {
-        const key = player.futbinId ? 'id:' + player.futbinId : 'name:' + player.name.toLocaleLowerCase() + ':' + player.rating;
-        if (!found.has(key)) found.set(key, player);
-      });
-      if (!players.pageRowCount) break;
-    }
-    return Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
-  }
-
-  function parseFutbinPrice(text) {
-    const value = String(text || '').replace(/[\u00a0\u202f\u2009]/g, '\u00a0').trim().toUpperCase();
-    const match = value.match(/(\d{1,3}(?:[.,\u00a0]\d{3})+|\d+(?:[.,]\d{1,2})?)\s?([KM])?(?![A-Z])/);
-    if (!match) return 0;
-    const grouped = /^\d{1,3}(?:[.,\u00a0]\d{3})+$/.test(match[1]);
-    const amount = grouped ? parseInt(match[1].replace(/[^\d]/g, ''), 10) : parseFloat(match[1].replace(',', '.'));
-    const scale = { K: 1000, M: 1000000 }[match[2] || ''] || 1;
-    const price = Math.round(amount * scale);
-    return Number.isFinite(price) ? price : 0;
-  }
-
-  // FutBIN'in kart satırlarını tek noktada çözümle; DOM değişirse hata mesajı seçiciyi belirtir.
-  function parseFutbinPlayers(html, requestedRating) {
-    const cfg = CONFIG.futbin;
-    const selectors = cfg.selectors;
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const pageText = (doc.body?.textContent || '').slice(0, 4000);
-    const hasPlayerRows = doc.querySelector(selectors.rows) !== null;
-    const blockedPattern = /<title>\s*just a moment|cf-browser-verification|cf_chl_opt|cf-chl-|challenge-platform\/h\/|id=["']challenge-(?:form|running|body-text|stage)["']|enable javascript and cookies to continue|oops, there was an error - 403|attention required/i;
-    if (!hasPlayerRows && (blockedPattern.test(html) || /just a moment|attention required/i.test(pageText))) {
-      const error = new Error('FutBIN isteği engellendi (Cloudflare). Bir süre sonra tekrar deneyin.');
-      error.blocked = true;
-      throw error;
-    }
-    const rows = Array.from(doc.querySelectorAll(selectors.rows));
-    if (!rows.length) {
-      if (doc.querySelector(selectors.emptyResultContainer)) {
-        const emptyResult = [];
-        emptyResult.pageRowCount = 0;
-        return emptyResult;
-      }
-      throw new Error('FutBIN oyuncu satırları bulunamadı; rows seçicisini kontrol edin: ' + selectors.rows);
-    }
-
-    const priceSelector = cfg.platform === 'pc' ? selectors.pcPrice : selectors.consolePrice;
-    let lastPage = 0;
-    doc.querySelectorAll(selectors.pageLinks).forEach((link) => {
-      try { lastPage = Math.max(lastPage, Number(new URL(link.href, cfg.baseUrl).searchParams.get(cfg.pageParam)) || 0); } catch (e) {}
-    });
-    const players = rows.map((row) => {
-      const link = row.querySelector(selectors.nameLink);
-      const nameNode = link || row.querySelector(selectors.name);
-      const name = (nameNode?.textContent || nameNode?.getAttribute('data-player-name') || '').trim().replace(/\s+/g, ' ');
-      if (!name) return null;
-
-      const ratingNode = row.querySelector(selectors.rating);
-      const ratingText = ratingNode?.textContent || row.querySelector(selectors.ratingFallback)?.textContent || '';
-      const ratingMatch = String(ratingText).match(/\b(\d{2})\b/);
-      const rating = ratingMatch ? Number(ratingMatch[1]) : 0;
-      if (rating !== requestedRating) return null;
-
-      const priceNode = row.querySelector(priceSelector);
-      const price = parseFutbinPrice(priceNode?.textContent || '');
-      if (!price) return null;
-      const href = link?.getAttribute('href') || '';
-      const idMatch = href.match(selectors.idPattern);
-      const image = row.querySelector(selectors.image);
-      return { name, rating, price, futbinId: idMatch ? idMatch[1] : null, eaId: image?.getAttribute('src') || null };
-    }).filter(Boolean);
-    players.pageRowCount = rows.length;
-    players.lastPage = lastPage;
-    return players;
-  }
-
-  function wait(ms) {
-    return new Promise((resolve) => pageWindow.setTimeout(resolve, ms));
-  }
-
-  async function loadCheapestTargets(rating, count) {
-    if (state.targetLoading) return;
-    state.targetLoading = true;
-    state.targetStatus = null;
-    const content = panel.querySelector('.fc-snipe-tab-content');
-    if (content && state.activePanelTab === 'targets') renderTargetContent(content);
-    const found = new Map();
-    try {
-      let lastPage = CONFIG.futbin.maxPages;
-      for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count && page <= lastPage; page++) {
-        if (page > 1) await wait(CONFIG.futbin.pageDelay);
-        const url = buildFutbinUrl(rating, page);
-        let response;
-        try { response = await requestFutbinPage(url); } catch (error) {
-          console.error('[FutRUSH] FutBIN isteği başarısız:', url, error);
-          throw error;
-        }
-        const body = response.responseText || '';
-        if (response.status === 403 || response.status === 429 || response.status === 503 || /cloudflare|cf-chl|just a moment|attention required/i.test(body.slice(0, 4000))) {
-          console.warn('[FutRUSH] FutBIN sayfası engellendi; MagicBuyer uyumlu liste API yedeği deneniyor:', response.status, url);
-          const apiPlayers = await loadFromFutbinApi(rating, count);
-          if (!apiPlayers.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-          const apiAdded = mergeTargetPlayers(apiPlayers);
-          state.targetStatus = { type: 'success', message: apiAdded ? apiAdded + ' oyuncu hedef listesine eklendi (FutBIN yedek kaynağı).' : 'Bulunan oyuncular zaten hedef listesinde.' };
-          return;
-        }
-        if (response.status < 200 || response.status >= 300) {
-          console.error('[FutRUSH] FutBIN HTTP hatası:', response.status, url);
-          throw new Error('FutBIN yanıt vermedi (HTTP ' + response.status + ').');
-        }
-        let players;
-        try { players = parseFutbinPlayers(body, rating); } catch (error) {
-          console.error('[FutRUSH] FutBIN HTML ayrıştırılamadı:', url, error);
-          throw error;
-        }
-        players.forEach((player) => {
-          const key = player.futbinId ? 'id:' + player.futbinId : 'name:' + player.name.toLocaleLowerCase() + ':' + player.rating;
-          if (!found.has(key)) found.set(key, player);
-        });
-        if (players.lastPage) lastPage = Math.min(CONFIG.futbin.maxPages, players.lastPage);
-        if (players.pageRowCount === 0) break;
-      }
-      const cheapest = Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
-      if (!cheapest.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-      const added = mergeTargetPlayers(cheapest);
-      state.targetStatus = {
-        type: 'success',
-        message: added ? added + ' oyuncu hedef listesine eklendi.' : 'Bulunan oyuncular zaten hedef listesinde.'
-      };
-    } catch (error) {
-      state.targetStatus = { type: 'error', message: error.message || 'FutBIN oyuncuları yüklenemedi.' };
-      if (error.blocked) console.error('[FutRUSH] FutBIN engelleme ayrıntısı:', error);
-    } finally {
-      state.targetLoading = false;
-      const currentContent = panel.querySelector('.fc-snipe-tab-content');
-      if (currentContent && state.activePanelTab === 'targets') renderTargetContent(currentContent);
-    }
   }
 
   function openFilterModal(mode) {
@@ -1422,18 +914,6 @@
 
   // Üstteki tüm tam genişlikli çubukların (ut-navigation-bar-view, ea-filter-bar-view: Players/Managers/
   // Club Items/Consumables sekmeleri vb.) en alt kenarı: panel bunların altına girmesin
-  function topLimit() {
-    let limit = 0;
-    document.querySelectorAll('[class*="bar-view"]').forEach((el) => {
-      const q = el.getBoundingClientRect();
-      const isTopBar = q.width > 600 && q.height > 20 && q.height < 200 && q.top < vh() * 0.35;
-      if (isTopBar) limit = Math.max(limit, q.bottom);
-    });
-    if (limit > 0) return limit + P.edge;
-    const area = document.querySelector('.ut-navigation-container-view--content');
-    return area ? area.getBoundingClientRect().top + P.edge : 0;
-  }
-
   // Panel yalnızca: logoyla açıldıysa + logo sayfadaysa + Transfers içindeysek görünür
   function panelShown() {
     return CONFIG.features.logoButton && state.panelOpen && state.logoPresent && inTransfers();
@@ -1898,16 +1378,6 @@
     return panel.querySelector('.fc-snipe-tab-content');
   }
 
-  function visibleElement(element) {
-    if (!element || !element.isConnected) return false;
-    const rect = element.getBoundingClientRect();
-    if (!rect.width || !rect.height) return false;
-    try {
-      const style = pageWindow.getComputedStyle(element);
-      return style.display !== 'none' && style.visibility !== 'hidden';
-    } catch (e) { return true; }
-  }
-
   function selectedPinnedPlayer() {
     const pinned = Array.from(document.querySelectorAll('.ut-pinned-list')).find(visibleElement);
     const rows = pinned ? Array.from(pinned.querySelectorAll('li.listFUTItem, .listFUTItem')).filter(visibleElement) : [];
@@ -2086,6 +1556,7 @@
   // ==========================================================================
   // 12. START  (yeni özellik eklerken init satırını buraya ekle)
   // ==========================================================================
+  configureFutbinLoader({ renderTargetContent, mergeTargetPlayers });
   initPanel();
   if (CONFIG.features.settingsButton) initSettings();
   if (CONFIG.features.logoButton) initLogoButton();
