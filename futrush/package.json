@@ -1,0 +1,20 @@
+{
+  "name": "futrush",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FutRUSH userscript (modüler kaynak, tek dosyaya derlenir)",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --dev --watch",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "jsdom": "^25.0.0",
+    "vitest": "^2.0.0"
+  }
+}

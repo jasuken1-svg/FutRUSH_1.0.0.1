@@ -1,0 +1,14 @@
+// ==UserScript==
+// @name         FutRUSH
+// @namespace    local.futrush
+// @version      2.0.0
+// @description  FutRUSH - Transfers ekranına SNIPE paneli ve sol menüye FutRUSH (Ayarlar) butonu ekler (sadece arayüz)
+// @match        https://www.ea.com/*/ea-sports-fc/ultimate-team/web-app/*
+// @match        https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*
+// @run-at       document-idle
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      futbin.com
+// @connect      www.futbin.com
+// @connect      futbin.org
+// ==/UserScript==
