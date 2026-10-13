@@ -10,7 +10,7 @@ Satır numaraları `legacy/futrush_v21.js` içindir (src/main.js'te header çık
 | 399-450 | initPanel içindeki localStorage okuma (geom, filter, targets, saved lists) | core/storage.js + targets/targetStore.js |
 | 804-806 | saveTargets | targets/targetStore.js |
 | 2058-2083 | sync, schedule | core/scheduler.js |
-| 2087-2100 | initEvents | core/events-dom.js (DOM dinleyicileri; event bus ayrı: core/events.js) |
+| 2087-2100 | initEvents | core/domEvents.js (DOM dinleyicileri; event bus ayrı: core/events.js) |
 | 2102-2109 | START | main.js |
 | (yeni) | logger, events (bus), registry | core/logger.js, core/events.js, core/registry.js |
 
@@ -93,11 +93,16 @@ Satır numaraları `legacy/futrush_v21.js` içindir (src/main.js'te header çık
 | 1483-1574 | resetFitted, fitContent | layout/fitContent.js |
 | 1578-1630 | syncFromHub | layout/hubSync.js |
 
+Sync modülleri kayıt sırasıyla çalışır: hubSync, logoButton, panel, searchButton,
+fitContent, navButton. Registry kaydı bu sırayı korurken `initOrder`, START
+sırasını (panel, settings, logo, search) korur. `layout/fitContent.js`, panel ve
+`panelShown` değerlerini `ui/panel/panel.js` içinden yalnızca okur.
+
 ## Bilinen döngüsel bağımlılıklar (event bus ile çözülecek)
 - addBotLog / setBotStatus -> renderBotLogs, DOM (bot -> ui)
 - loadCheapestTargets, saveTargetSnapshot, addPinnedPlayerToTargets -> renderTargetContent (targets/futbin -> ui)
 - showTargetsAfterQuickAdd -> renderPanelTabs (pinnedPlayer -> ui)
 - logo click -> sync() (ui -> scheduler)
 - renderPanelTabContent -> startAutoBuyer / stopAutoBuyer (ui -> bot; yön doğru, event gerekmez)
-- syncFromHub -> schedule (layout -> scheduler; ResizeObserver callback'i olarak enjekte edilmeli)
-- fitContent -> panel, panelShown (layout -> ui/panel; ortak okuma için state üzerinden)
+- syncFromHub -> schedule (layout -> scheduler; ResizeObserver callback'i olarak enjekte edilir)
+- fitContent -> panel, panelShown (layout -> ui/panel; yalnızca okuma)
