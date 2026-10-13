@@ -3,6 +3,7 @@
 
 import { CONFIG } from './core/config.js';
 import { state } from './core/state.js';
+import { loadCoreStorage } from './core/storage.js';
 import { initAll, registry } from './core/registry.js';
 import { sync, schedule } from './core/scheduler.js';
 import { initDomEvents } from './core/domEvents.js';
@@ -26,6 +27,7 @@ registry.register(navButtonModule);
 registerPanelEvents();
 registerSaveDialogEvents();
 registerFilterModalEvents();
+loadCoreStorage();
 initAll();
 initDomEvents();
 sync();

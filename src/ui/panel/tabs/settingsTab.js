@@ -1,7 +1,8 @@
 // Bot ayarlarini ve calisma durumunu panelin ayarlar sekmesinde cizer.
-// Bagimliliklar: core/state ve bot/autoBuyer.
+// Bagimliliklar: core/state, core/storage ve bot/autoBuyer.
 
 import { state } from '../../../core/state.js';
+import { saveSnipeSettings } from '../../../core/storage.js';
 import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
 
 export function renderPanelSettings(content) {
@@ -25,21 +26,28 @@ content.querySelectorAll('.fr-range').forEach((input) => {
     input.style.setProperty('--fr-progress', progress + '%');
   };
   updateRange();
-  input.addEventListener('input', () => {
-  const key = input.dataset.setting;
-  s[key] = Number(input.value);
-  const displayValue = key === 'waitSeconds' ? s[key] + ' sn' : key === 'speed' ? (speedLabels[s.speed] || '') : String(s[key]);
-  content.querySelector('[data-value="' + key + '"]').textContent = displayValue;
-  updateRange();
+  const updateSetting = () => {
+    const key = input.dataset.setting;
+    s[key] = Number(input.value);
+    const displayValue = key === 'waitSeconds' ? s[key] + ' sn' : key === 'speed' ? (speedLabels[s.speed] || '') : String(s[key]);
+    content.querySelector('[data-value="' + key + '"]').textContent = displayValue;
+    updateRange();
+  };
+  input.addEventListener('input', updateSetting);
+  input.addEventListener('change', () => {
+    updateSetting();
+    saveSnipeSettings();
   });
 });
 content.querySelector('.fr-toggle').addEventListener('click', (event) => {
   s.autoSell = !s.autoSell;
   event.currentTarget.setAttribute('aria-checked', String(s.autoSell));
+  saveSnipeSettings();
 });
 content.querySelectorAll('[data-count]').forEach((button) => button.addEventListener('click', () => {
   s.maxPlayers = Math.max(1, s.maxPlayers + Number(button.dataset.count));
   content.querySelector('[data-value="maxPlayers"]').textContent = String(s.maxPlayers);
+  saveSnipeSettings();
 }));
 content.querySelector('.fr-bot-status').textContent = state.botStatus;
 content.querySelector('.fr-start').addEventListener('click', () => {
