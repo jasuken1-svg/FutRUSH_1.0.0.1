@@ -1,3 +1,6 @@
+// Hedef listelerini adlandirarak kaydeden modal ve olay baglantisini saglar.
+// Bagimliliklar: core/events, targets/targetOps ve modal CSS'i.
+
 import { emit, on } from '../../core/events.js';
 import { saveTargetSnapshot } from '../../targets/targetOps.js';
 import { saveDialogCss } from './saveDialog.css.js';

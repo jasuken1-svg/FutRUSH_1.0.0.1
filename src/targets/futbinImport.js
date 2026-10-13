@@ -1,3 +1,6 @@
+// FutBIN oyuncularini yukler, hedef listesine birlestirir ve UI durumunu yayinlar.
+// Bagimliliklar: core/state/events, futbin/loader ve targets/targetOps.
+
 import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { mergeTargetPlayers } from './targetOps.js';

@@ -1,3 +1,6 @@
+// SNIPE panelinin tema ve bilesen stillerini CSS metni olarak tanimlar.
+// Bagimlilik: yok.
+
 import { P } from '../../core/config.js';
 
 export const panelCss = `

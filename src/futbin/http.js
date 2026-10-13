@@ -1,3 +1,6 @@
+// FutBIN HTML ve API kaynaklarina tarayici uyumlu HTTP istekleri gonderir.
+// Bagimliliklar: core/config ve sayfa HTTP API'leri.
+
 export function requestFutbinPage(url) {
   return new Promise((resolve, reject) => {
     if (typeof GM_xmlhttpRequest !== 'function') {

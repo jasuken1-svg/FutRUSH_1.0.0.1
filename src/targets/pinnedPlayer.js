@@ -1,3 +1,6 @@
+// EA'de sabitlenmis oyuncuyu ve Buy Now fiyatini okuyup hedeflere ekler.
+// Bagimliliklar: core/state/events, utils/dom/format, targets/targetOps ve targetStore.
+
 import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { visibleElement } from '../utils/dom.js';

@@ -1,3 +1,6 @@
+// Uygulama modullerini kaydeder, olaylari baglar ve ilk init/sync dongusunu baslatir.
+// Bagimliliklar: tum ozellik modulleri ile core/config, registry ve scheduler.
+
 import { CONFIG } from './core/config.js';
 import { state } from './core/state.js';
 import { initAll, registry } from './core/registry.js';

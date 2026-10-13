@@ -1,3 +1,6 @@
+// Hedef, bot logu ve bot durumu olaylarini acik panel gorunumlerine yansitir.
+// Bagimliliklar: core/events/state, ui/panel ve panel sekme cizicileri.
+
 import { on } from '../../core/events.js';
 import { state } from '../../core/state.js';
 import { panel } from './panel.js';

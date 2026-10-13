@@ -1,3 +1,6 @@
+// CONFIG degerlerinden FutBIN liste ve API URL'lerini olusturur.
+// Bagimlilik: core/config.
+
 import { CONFIG } from '../core/config.js';
 
 export function buildFutbinUrl(rating, page) {

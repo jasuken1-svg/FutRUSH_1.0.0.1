@@ -1,3 +1,6 @@
+// Ozellik modullerini kaydeder, init/sync/destroy dongulerini ve hata sinirini yonetir.
+// Bagimliliklar: core/config ve core/logger.
+
 import { CONFIG } from './config.js';
 import * as logger from './logger.js';
 

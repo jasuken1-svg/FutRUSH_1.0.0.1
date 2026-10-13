@@ -1,3 +1,6 @@
+// EA sayfasindaki DOM, pencere ve navigasyon degisikliklerinde yeniden senkronizasyon ister.
+// Bagimliliklar: core/state, core/scheduler ve utils/dom.
+
 import { state } from './state.js';
 import { schedule } from './scheduler.js';
 import { pageWindow } from '../utils/dom.js';

@@ -1,3 +1,6 @@
+// EA Transfer Market arama olcutlerini kurar, ilan arar ve alim istegi gonderir.
+// Bagimliliklar: core/state, ea/observe ve utils/dom.
+
 import { state } from '../core/state.js';
 import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';

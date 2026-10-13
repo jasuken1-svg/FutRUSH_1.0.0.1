@@ -1,3 +1,6 @@
+// Hedef oyuncu kartlarini, fiyat kontrollerini ve liste eylemlerini cizer.
+// Bagimliliklar: core/state/events, utils/format ve targets/targetStore.
+
 import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
 import { buyNowStep } from '../../../utils/format.js';

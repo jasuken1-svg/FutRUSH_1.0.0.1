@@ -1,3 +1,6 @@
+// Uygulama loglarini seviyeye gore konsola yonlendirir.
+// Bagimlilik: tarayici konsolu.
+
 const levels = { debug: 10, info: 20, warn: 30, error: 40 };
 let threshold = levels.info;
 

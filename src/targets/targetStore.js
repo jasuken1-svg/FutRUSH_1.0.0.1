@@ -1,3 +1,6 @@
+// Canli hedefleri ve kayitli hedef listelerini localStorage ile state arasinda tasir.
+// Bagimliliklar: core/state ve utils/dom.
+
 import { state } from '../core/state.js';
 import { pageStorage } from '../utils/dom.js';
 

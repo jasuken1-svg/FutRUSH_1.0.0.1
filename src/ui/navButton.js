@@ -1,3 +1,6 @@
+// Sol navigasyona FutRUSH ayar dugmesini ve ayarlar modalini yerlestirir.
+// Bagimliliklar: core/config, EA sayfa secicileri ve ui/icons.
+
 import { N } from '../core/config.js';
 import { ICON_SVG } from './icons.js';
 

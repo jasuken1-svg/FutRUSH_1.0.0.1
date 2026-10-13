@@ -1,3 +1,6 @@
+// Bot durumu ve loglarini ortak state'e yazar, degisiklik olaylarini yayinlar.
+// Bagimliliklar: core/state ve core/events.
+
 import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 

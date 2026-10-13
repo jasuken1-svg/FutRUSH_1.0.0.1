@@ -1,3 +1,6 @@
+// FutBIN oyuncu listesi HTML'ini oyuncu ve sayfalama verilerine ayrıştırır.
+// Bagimliliklar: DOMParser ve utils/format.
+
 import { CONFIG } from '../core/config.js';
 import { parseFutbinPrice } from '../utils/format.js';
 

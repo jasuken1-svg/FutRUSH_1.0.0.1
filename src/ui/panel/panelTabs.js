@@ -1,3 +1,6 @@
+// Panel sekmelerini cizer ve secili sekmenin icerik cizicisini cagirir.
+// Bagimliliklar: core/state, bot/autoBuyer ve ui/panel tab modulleri.
+
 import { state } from '../../core/state.js';
 import { renderPanelSettings } from './tabs/settingsTab.js';
 import { renderBotLogs } from './tabs/logsTab.js';

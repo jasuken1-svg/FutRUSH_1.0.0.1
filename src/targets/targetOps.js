@@ -1,3 +1,6 @@
+// Hedef oyunculari birlestirir, EA kimliklerini cozer ve kayitli listeleri yonetir.
+// Bagimliliklar: core/state/events, futbin/playerLookup ve targets/targetStore.
+
 import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { fetchFutbinPlayerId } from '../futbin/playerLookup.js';

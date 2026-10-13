@@ -1,3 +1,6 @@
+// Hub kartlarini olcer, panel geometrisini kaydeder ve boyut gozlemini yonetir.
+// Bagimliliklar: core/config, core/state, utils/dom ve enjekte edilen scheduler callback'i.
+
 import { P } from '../core/config.js';
 import { state } from '../core/state.js';
 import { pageStorage, vw, vh } from '../utils/dom.js';

@@ -1,3 +1,6 @@
+// EA servis isteklerinin tamamlanma, hata ve zaman asimi durumlarini gozlemler.
+// Bagimlilik: EA sayfasinin Observable/Promise davranisi.
+
 import { pageWindow } from '../utils/dom.js';
 
 export function observeEaRequest(observable, timeoutMs) {

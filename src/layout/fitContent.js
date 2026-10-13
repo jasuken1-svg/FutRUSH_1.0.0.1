@@ -1,3 +1,6 @@
+// EA hub disindaki icerigi panel yanina sigdirir ve onceki olcekleri geri alir.
+// Bagimliliklar: core/state/config ve panel yerlesim bilgisi.
+
 import { F } from '../core/config.js';
 import { state } from '../core/state.js';
 import { vw } from '../utils/dom.js';

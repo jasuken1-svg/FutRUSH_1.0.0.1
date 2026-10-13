@@ -1,3 +1,6 @@
+// Panel geometrisini ve kayitli hedef filtresini localStorage'dan state'e yukler.
+// Bagimliliklar: core/config, core/state ve utils/dom.
+
 import { P } from './config.js';
 import { state } from './state.js';
 import { pageStorage } from '../utils/dom.js';

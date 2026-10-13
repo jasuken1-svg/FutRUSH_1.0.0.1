@@ -1,3 +1,6 @@
+// Bot log kayitlarini panelin log sekmesinde goruntuler.
+// Bagimlilik: core/state.
+
 import { state } from '../../../core/state.js';
 
 export function renderBotLogs(content) {

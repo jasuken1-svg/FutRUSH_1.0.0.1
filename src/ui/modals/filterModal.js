@@ -1,3 +1,6 @@
+// Oyuncu hedef filtresi ve kayitli liste secimi icin modal arayuzunu yonetir.
+// Bagimliliklar: core/events/state/storage, targets islemleri ve modal CSS'i.
+
 import { on } from '../../core/events.js';
 import { state } from '../../core/state.js';
 import { importCheapestTargets } from '../../targets/futbinImport.js';

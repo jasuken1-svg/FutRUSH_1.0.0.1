@@ -1,3 +1,6 @@
+// FutBIN HTML/API kaynaklarindan en ucuz oyunculari sayfalayarak yukler.
+// Bagimliliklar: core/config, utils/async, futbin/urls, http ve parser modulleri.
+
 import { CONFIG } from '../core/config.js';
 import { wait } from '../utils/async.js';
 import { buildFutbinApiUrl, buildFutbinUrl } from './urls.js';

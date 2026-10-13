@@ -1,3 +1,6 @@
+// FutBIN oyuncu API yanitini hedef oyuncu kayitlarina donusturur.
+// Bagimlilik: yalnizca JSON/metin ayrıştırma ve utils/format.
+
 import { CONFIG } from '../core/config.js';
 
 export function parseFutbinApiPlayers(body, requestedRating) {

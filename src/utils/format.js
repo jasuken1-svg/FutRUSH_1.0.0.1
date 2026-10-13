@@ -1,3 +1,6 @@
+// FutBIN fiyatlarini ayrıştırir ve Buy Now fiyat adimini hesaplar.
+// Bagimlilik: yalnizca standart JavaScript sayi/metin API'leri.
+
 export function parsePrice(text) {
   const value = String(text || '').replace(/[\u00a0\u202f\u2009]/g, '\u00a0').trim().toUpperCase();
   const match = value.match(/(\d{1,3}(?:[.,\u00a0]\d{3})+|\d+(?:[.,]\d{1,2})?)\s?([KM])?(?![A-Z])/);

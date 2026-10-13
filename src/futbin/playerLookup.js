@@ -1,3 +1,6 @@
+// FutBIN oyuncu bilgilerini kullanarak EA oyuncu kimligini cozer.
+// Bagimliliklar: FutBIN HTTP/parser modulleri ve utils/strings.
+
 import { normalizePlayerName } from '../utils/strings.js';
 
 export function fetchFutbinPlayerId(target) {

@@ -1,3 +1,6 @@
+// UI, hedefler ve bot tarafindan paylasilan calisma zamani durumunu tutar.
+// Bagimlilik: yalnizca veri tanimlari.
+
 export const state = {
   geom: null,        // panelin pencere oranı olarak son ölçüsü {l, t, w, h}
   visible: true,     // son tıklanan ana menü Transfers mi (sekme okunamazsa yedek bilgi)

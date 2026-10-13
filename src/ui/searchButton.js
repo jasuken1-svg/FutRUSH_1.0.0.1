@@ -1,3 +1,6 @@
+// Reset/Search satirina FutRUSH dugmesi ekler ve hedefe hizli oyuncu alir.
+// Bagimliliklar: core/config/state, ui/icons ve targets/pinnedPlayer.
+
 import { CONFIG } from '../core/config.js';
 import { state } from '../core/state.js';
 import { addPinnedPlayerToTargets } from '../targets/pinnedPlayer.js';

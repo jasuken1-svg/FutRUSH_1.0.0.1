@@ -1,3 +1,6 @@
+// Bot ayarlarini ve calisma durumunu panelin ayarlar sekmesinde cizer.
+// Bagimliliklar: core/state ve bot/autoBuyer.
+
 import { state } from '../../../core/state.js';
 import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
 

@@ -1,3 +1,6 @@
+// EA Transfers sayfasinin secili sekmesini ve ust gezinme alanini algilar.
+// Bagimliliklar: core/state, core/config ve utils/dom.
+
 import { P } from '../core/config.js';
 import { state } from '../core/state.js';
 import { vh } from '../utils/dom.js';

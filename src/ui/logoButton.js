@@ -1,3 +1,6 @@
+// Consumables yanina logo dugmesini ekler ve tiklamada panel senkronizasyonu ister.
+// Bagimliliklar: core/config/events ve ui/icons.
+
 import { CONFIG } from '../core/config.js';
 import { state } from '../core/state.js';
 import { emit } from '../core/events.js';

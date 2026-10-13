@@ -1,3 +1,6 @@
+// Transfer Market alımlarını yönetir; EA pazar servisleri, hedefler ve bot durumunu kullanır.
+// Bağımlılıklar: ea/market, ea/services, targets/targetOps ve bot/botLog.
+
 import { state } from '../core/state.js';
 import { pageWindow } from '../utils/dom.js';
 import { wait } from '../utils/async.js';

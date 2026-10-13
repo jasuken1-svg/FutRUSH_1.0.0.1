@@ -1,3 +1,6 @@
+// EA hub durumunu olcer ve kayitli modulleri sirayla senkronize eder.
+// Bagimliliklar: core/config, core/events ve core/registry.
+
 import { CONFIG } from './config.js';
 import { on } from './events.js';
 import { syncAll } from './registry.js';

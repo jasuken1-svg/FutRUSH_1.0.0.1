@@ -1,3 +1,6 @@
+// SNIPE panelini olusturur, aciklik durumunu ve kayitli geometrisini uygular.
+// Bagimliliklar: core/config/state/storage, ea/page, utils/dom ve panel CSS'i.
+
 import { CONFIG, P } from '../../core/config.js';
 import { state } from '../../core/state.js';
 import { loadCoreStorage } from '../../core/storage.js';

@@ -1,3 +1,6 @@
+// Moduller arasi isimli olaylari kaydeder, yayinlar ve abonelikten cikis saglar.
+// Bagimlilik: yalnizca JavaScript Map/Set.
+
 const listeners = new Map();
 
 export function on(eventName, listener) {

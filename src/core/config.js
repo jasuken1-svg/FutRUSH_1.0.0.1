@@ -1,3 +1,6 @@
+// Ozellik bayraklari, UI secicileri, panel yerlesimi ve FutBIN parametrelerini tanimlar.
+// Bagimlilik: yalnizca uygulama genelinde tuketilen sabit degerler.
+
 export const CONFIG = {
   // Özellikleri aç/kapat (bozulan bir şeyi hızlıca devre dışı bırakmak için)
   features: {
