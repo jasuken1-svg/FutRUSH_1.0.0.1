@@ -31,7 +31,7 @@ async function loadFromFutbinApi(rating, count) {
   return Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
 }
 
-export async function fetchCheapestPlayers(rating, count) {
+async function loadFromFutbinPage(rating, count) {
   const found = new Map();
   let lastPage = CONFIG.futbin.maxPages;
   for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count && page <= lastPage; page++) {
@@ -44,10 +44,11 @@ export async function fetchCheapestPlayers(rating, count) {
     }
     const body = response.responseText || '';
     if (response.status === 403 || response.status === 429 || response.status === 503 || /cloudflare|cf-chl|just a moment|attention required/i.test(body.slice(0, 4000))) {
-      console.warn('[FutRUSH] FutBIN sayfası engellendi; MagicBuyer uyumlu liste API yedeği deneniyor:', response.status, url);
-      const players = await loadFromFutbinApi(rating, count);
-      if (!players.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-      return { players, source: 'api' };
+      const error = new Error('FutBIN sayfası engellendi (' + response.status + ').');
+      error.blocked = true;
+      error.status = response.status;
+      error.url = url;
+      throw error;
     }
     if (response.status < 200 || response.status >= 300) {
       console.error('[FutRUSH] FutBIN HTTP hatası:', response.status, url);
@@ -67,5 +68,47 @@ export async function fetchCheapestPlayers(rating, count) {
   }
   const players = Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
   if (!players.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-  return { players, source: 'html' };
+  return players;
+}
+
+function noPlayersError() {
+  return new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
+}
+
+export async function fetchCheapestPlayers(rating, count) {
+  if (CONFIG.futbin.preferApi) {
+    let apiError;
+    try {
+      const players = await loadFromFutbinApi(rating, count);
+      if (!players.length) throw noPlayersError();
+      return { players, source: 'api', fallback: false };
+    } catch (error) {
+      apiError = error;
+      console.warn('[FutRUSH] FutBIN API başarısız; sayfa yedeği deneniyor:', error);
+    }
+
+    try {
+      const players = await loadFromFutbinPage(rating, count);
+      return { players, source: 'html', fallback: true };
+    } catch (pageError) {
+      pageError.blocked = Boolean(apiError.blocked && pageError.blocked);
+      throw pageError;
+    }
+  }
+
+  try {
+    const players = await loadFromFutbinPage(rating, count);
+    return { players, source: 'html', fallback: false };
+  } catch (pageError) {
+    if (!pageError.blocked) throw pageError;
+    console.warn('[FutRUSH] FutBIN sayfası engellendi; MagicBuyer uyumlu liste API yedeği deneniyor:', pageError.status, pageError.url);
+    try {
+      const players = await loadFromFutbinApi(rating, count);
+      if (!players.length) throw noPlayersError();
+      return { players, source: 'api', fallback: true };
+    } catch (apiError) {
+      apiError.blocked = Boolean(pageError.blocked && apiError.blocked);
+      throw apiError;
+    }
+  }
 }

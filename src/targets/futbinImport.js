@@ -14,7 +14,7 @@ export async function importCheapestTargets(rating, count) {
   try {
     const result = await fetchCheapestPlayers(rating, count);
     const added = mergeTargetPlayers(result.players);
-    const fallbackNote = result.source === 'api' ? ' (FutBIN yedek kaynağı)' : '';
+    const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
     state.targetStatus = {
       type: 'success',
       message: added ? added + ' oyuncu hedef listesine eklendi' + fallbackNote + '.' : 'Bulunan oyuncular zaten hedef listesinde.'

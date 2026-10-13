@@ -64,6 +64,7 @@ export const CONFIG = {
     apiBaseUrl: 'https://www.futbin.org/futbin/api/27/getFilteredPlayers',
     platform: 'console',
     version: '',
+    preferApi: true,
     maxPages: 20,
     pageDelay: 350,
     ratingParam: 'player_rating',
