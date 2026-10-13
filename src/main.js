@@ -1,15 +1,15 @@
 import { CONFIG, P, F, N } from './core/config.js';
 import { state } from './core/state.js';
 import { on as onEvent } from './core/events.js';
-import { loadCoreStorage } from './core/storage.js';
 import { pageWindow, pageStorage, vw, vh } from './utils/dom.js';
-import { buyNowStep } from './utils/format.js';
-import { inTransfers, topLimit } from './ea/page.js';
-import { startAutoBuyer, stopAutoBuyer } from './bot/autoBuyer.js';
+import { inTransfers } from './ea/page.js';
 import { importCheapestTargets } from './targets/futbinImport.js';
-import { loadTargetStorage, saveTargets } from './targets/targetStore.js';
 import { restoreSavedTargets, saveTargetSnapshot } from './targets/targetOps.js';
 import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
+import { panel, initPanel, panelShown, applyGeom } from './ui/panel/panel.js';
+import { renderPanelTabs } from './ui/panel/panelTabs.js';
+import { renderTargetContent } from './ui/panel/tabs/targetsTab.js';
+import { registerPanelEvents } from './ui/panel/panelEvents.js';
 
 /*
  * ============================================================================
@@ -45,311 +45,7 @@ import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
 (function () {
   'use strict';
 
-  // ==========================================================================
-  // 4. PANEL  (body'de durur, sayfa geçişlerinde silinmez)
-  // ==========================================================================
-  let panel = null;
-
-  function initPanel() {
-    const style = document.createElement('style');
-    style.textContent = `
-    #${P.id} {
-      position: fixed;
-      z-index: 5;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      border-radius: ${P.radius};
-      background: ${P.bg};
-      border: ${P.border};
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-    #${P.id} .fc-snipe-btn {
-      padding: 12px 30px;
-      font-size: 20px;
-      font-weight: 600;
-      color: #e8f4f6;
-      background: transparent;
-      border: 2px solid rgba(255,255,255,.55);
-      border-radius: 12px;
-      cursor: pointer;
-    }
-    #${P.id}.fc-snipe-expanded {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: flex-start;
-      padding: 12px;
-    }
-    #${P.id} .fc-snipe-tabs {
-      display: flex;
-      flex: 0 0 auto;
-      gap: 8px;
-      width: 100%;
-      border-bottom: 1px solid rgba(255,255,255,.2);
-    }
-    #${P.id} .fc-snipe-tab {
-      flex: 1 1 0;
-      min-width: 0;
-      padding: 10px 8px;
-      color: #c8d7df;
-      background: transparent;
-      border: 0;
-      border-bottom: 2px solid transparent;
-      font: inherit;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    #${P.id} .fc-snipe-tab[aria-selected="true"] {
-      color: #fff;
-      border-bottom-color: #00e5ff;
-    }
-    #${P.id} .fc-snipe-tab-content {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      padding: 10px 4px 4px;
-      color: #e8f4f6;
-    }
-    #${P.id} .fr-settings-view {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-height: 100%;
-      font-family: inherit;
-      font-size: 12px;
-    }
-    #${P.id} .fr-setting-row {
-      padding: 9px 11px;
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 8px;
-      background: rgba(4,12,22,.3);
-    }
-    #${P.id} .fr-setting-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 7px;
-      color: #e8f4f6;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    #${P.id} .fr-setting-value { color: #00e5ff; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-range {
-      display: block;
-      width: 100%;
-      height: 4px;
-      margin: 5px 0;
-      appearance: none;
-      border-radius: 99px;
-      background: linear-gradient(to right, #00e5ff var(--fr-progress, 0%), rgba(255,255,255,.22) var(--fr-progress, 0%));
-      outline: none;
-      cursor: pointer;
-      transition: background .16s ease;
-    }
-    #${P.id} .fr-range::-webkit-slider-thumb {
-      width: 13px; height: 13px; appearance: none; border: 2px solid #eaffff; border-radius: 50%;
-      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: grab;
-    }
-    #${P.id} .fr-range::-moz-range-thumb {
-      width: 10px; height: 10px; border: 2px solid #eaffff; border-radius: 50%;
-      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: grab;
-    }
-    #${P.id} .fr-toggle {
-      position: relative;
-      width: 36px;
-      height: 20px;
-      padding: 0;
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 999px;
-      background: rgba(255,255,255,.16);
-      cursor: pointer;
-      transition: background .2s ease, border-color .2s ease;
-    }
-    #${P.id} .fr-toggle::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #d8e4e8;
-      transition: transform .2s ease;
-    }
-    #${P.id} .fr-toggle[aria-checked="true"] { background: #00aabb; border-color: #00e5ff; }
-    #${P.id} .fr-toggle[aria-checked="true"]::after { transform: translateX(16px); background: #fff; }
-    #${P.id} .fr-counter { display: flex; align-items: center; gap: 12px; }
-    #${P.id} .fr-counter button {
-      width: 27px; height: 27px; padding: 0; border: 1px solid rgba(255,255,255,.22);
-      border-radius: 6px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 18px; cursor: pointer;
-      transition: background .16s ease, transform .16s ease;
-    }
-    #${P.id} .fr-counter button:active { transform: scale(.92); background: rgba(0,229,255,.2); }
-    #${P.id} .fr-counter-value { min-width: 22px; text-align: center; color: #00e5ff; font-size: 15px; font-weight: 700; }
-    #${P.id} .fr-speed-options { display: flex; gap: 6px; }
-    #${P.id} .fr-speed-option {
-      flex: 1; padding: 6px 4px; border: 1px solid rgba(255,255,255,.16); border-radius: 6px;
-      color: #aebfc8; background: rgba(255,255,255,.05); font: inherit; cursor: pointer; transition: .18s ease;
-    }
-    #${P.id} .fr-speed-option[aria-pressed="true"] { color: #07131b; border-color: #00e5ff; background: #00e5ff; font-weight: 700; }
-    #${P.id} .fr-start {
-      display: flex; align-items: center; justify-content: center; gap: 9px;
-      width: 100%; min-height: 38px; margin-top: auto; padding: 8px 12px;
-      border: 1px solid rgba(0,229,255,.65); border-radius: 8px; color: #eafcff;
-      background: linear-gradient(100deg, rgba(0,153,190,.34), rgba(116,52,192,.3));
-      font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .03em; cursor: pointer;
-      transition: filter .2s ease, box-shadow .2s ease;
-    }
-    #${P.id} .fr-start:hover { filter: brightness(1.2); box-shadow: 0 0 14px rgba(0,229,255,.2); }
-    #${P.id} .fr-start svg { width: 18px; height: 22px; flex: 0 0 auto; }
-    #${P.id} .fr-target-view { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 7px; }
-    #${P.id} .fr-target-summary { flex: 0 0 auto; color: #c8d7df; font-size: 12px; line-height: 1.5; }
-    #${P.id} .fr-target-status { flex: 0 0 auto; min-height: 0; color: #d9e8ee; font-size: 11px; }
-    #${P.id} .fr-target-status[data-type="error"] { color: #ff8790; }
-    #${P.id} .fr-target-status[data-type="success"] { color: #8de8b5; }
-    #${P.id} .fr-target-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 3px 2px 1px; }
-    #${P.id} .fr-target-empty { margin: auto; color: #90a2ad; font-size: 12px; text-align: center; }
-    #${P.id} .fr-target-card { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(4,12,22,.48); }
-    #${P.id} .fr-target-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    #${P.id} .fr-target-name { overflow: hidden; color: #ffd447; font-size: 13px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; }
-    #${P.id} .fr-target-rating { flex: 0 0 auto; margin-left: 5px; color: #c8d7df; font-size: 10px; font-weight: 600; }
-    #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
-    #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-    #${P.id} .fr-target-control-title { margin-bottom: 3px; color: #aebfc8; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-    #${P.id} .fr-target-counter button { width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 15px; line-height: 1; cursor: pointer; }
-    #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }
-    #${P.id} .fr-target-counter-value { min-width: 24px; color: #00e5ff; font-size: 12px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-target-icons { display: flex; gap: 5px; margin-top: 6px; color: #7f929d; }
-    #${P.id} .fr-target-icon { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid rgba(255,255,255,.13); border-radius: 3px; font-size: 9px; line-height: 1; opacity: .65; }
-    #${P.id} .fr-target-actions { display: flex; flex: 0 0 auto; gap: 8px; padding-top: 2px; }
-    #${P.id} .fr-target-action {
-      flex: 1; min-height: 34px; border: 1px solid transparent; border-radius: 7px;
-      color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
-      transition: filter .18s ease, transform .18s ease;
-    }
-    #${P.id} .fr-target-action:hover { filter: brightness(1.15); }
-    #${P.id} .fr-target-action:active { transform: scale(.97); }
-    #${P.id} .fr-target-save { background: linear-gradient(135deg, #0879dc, #13b5f4); border-color: rgba(115,214,255,.6); }
-    #${P.id} .fr-target-load { background: linear-gradient(135deg, #bd2537, #f04452); border-color: rgba(255,150,155,.6); }
-    #${P.id} .fr-bot-status { min-height: 14px; color: #aebfc8; font-size: 10px; text-align: center; }
-    #${P.id} .fr-log-list { display: flex; flex-direction: column; gap: 5px; max-height: 100%; overflow: auto; color: #c8d7df; font-size: 11px; }
-    #${P.id} .fr-log-row { padding: 6px 8px; border-left: 2px solid rgba(0,229,255,.5); background: rgba(4,12,22,.3); }
-    #${P.id} .fr-log-row[data-type="error"] { border-left-color: #ff5261; color: #ff9ca4; }
-    #${P.id} .fr-log-row[data-type="success"] { border-left-color: #51d88a; color: #a6efc1; }
-  `;
-    document.head.appendChild(style);
-
-    panel = document.createElement('div');
-    panel.id = P.id;
-    panel.innerHTML = '<button class="fc-snipe-btn" type="button">' + P.buttonText + '</button>';
-    panel.querySelector('.fc-snipe-btn').addEventListener('click', () => {
-      state.panelExpanded = true;
-      renderPanelTabs();
-    });
-    document.body.appendChild(panel);
-
-    // Son ölçüyü hatırla (pencere oranı olarak)
-    loadCoreStorage();
-    loadTargetStorage();
-  }
-
-  function renderPanelTabs() {
-    const tabs = [
-      { id: 'targets', label: 'Oyuncu Hedefleri' },
-      { id: 'settings', label: 'Ayarlar' },
-      { id: 'logs', label: 'Loglar' }
-    ];
-    panel.classList.add('fc-snipe-expanded');
-    panel.innerHTML = '<div class="fc-snipe-tabs" role="tablist" aria-label="SNIPE sekmeleri">' +
-      tabs.map((tab) => '<button class="fc-snipe-tab" type="button" role="tab" data-tab="' + tab.id + '" aria-selected="' + (state.activePanelTab === tab.id) + '">' + tab.label + '</button>').join('') +
-      '</div><div class="fc-snipe-tab-content" role="tabpanel" aria-live="polite"></div>';
-    const content = panel.querySelector('.fc-snipe-tab-content');
-    renderPanelTabContent(content);
-    panel.querySelectorAll('.fc-snipe-tab').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.activePanelTab = button.dataset.tab;
-        panel.querySelectorAll('.fc-snipe-tab').forEach((tab) => tab.setAttribute('aria-selected', String(tab === button)));
-        renderPanelTabContent(content);
-      });
-    });
-  }
-
-  function renderPanelTabContent(content) {
-    if (state.activePanelTab === 'targets') {
-      renderTargetContent(content);
-      return;
-    }
-    if (state.activePanelTab !== 'settings') {
-      renderBotLogs(content);
-      return;
-    }
-    const s = state.snipeSettings;
-    const speedLabels = { 0: 'Yavaş', 1: 'Orta', 2: 'Hızlı', 3: 'Çok hızlı' };
-    content.innerHTML =
-      '<div class="fr-settings-view">' +
-        '<div class="fr-setting-row"><div class="fr-setting-head"><span>Oyuncu listesi tekrarı</span><span class="fr-setting-value" data-value="repeat">' + s.repeat + '</span></div><input class="fr-range" data-setting="repeat" type="range" min="0" max="50" step="1" value="' + s.repeat + '" aria-label="Oyuncu listesi kaç kez tekrarlanacak"></div>' +
-        '<div class="fr-setting-row"><div class="fr-setting-head"><span>Bekleme süresi (arama bitince)</span><span class="fr-setting-value" data-value="waitSeconds">' + s.waitSeconds + ' sn</span></div><input class="fr-range" data-setting="waitSeconds" type="range" min="0" max="120" step="1" value="' + s.waitSeconds + '" aria-label="Arama bitince beklenecek süre"></div>' +
-        '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
-        '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
-        '<div class="fr-setting-row"><div class="fr-setting-head"><span>Arama hızı</span><span class="fr-setting-value" data-value="speed">' + (speedLabels[s.speed] || '') + '</span></div><input class="fr-range" data-setting="speed" type="range" min="0" max="3" step="1" value="' + s.speed + '" aria-label="Arama hızı 0 ile 3 arasında"></div>' +
-        '<button class="fr-start" type="button"><svg viewBox="0 0 24 32" aria-hidden="true"><path d="M14 1 3 18h7l-1 13 12-19h-8z" fill="currentColor" stroke="rgba(255,255,255,.8)" stroke-width="1" stroke-linejoin="round"/></svg><span>' + (state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH') + '</span></button><div class="fr-bot-status" aria-live="polite"></div>' +
-      '</div>';
-
-    content.querySelectorAll('.fr-range').forEach((input) => {
-      const updateRange = () => {
-        const min = Number(input.min);
-        const max = Number(input.max);
-        const progress = ((Number(input.value) - min) / (max - min)) * 100;
-        input.style.setProperty('--fr-progress', progress + '%');
-      };
-      updateRange();
-      input.addEventListener('input', () => {
-      const key = input.dataset.setting;
-      s[key] = Number(input.value);
-      const displayValue = key === 'waitSeconds' ? s[key] + ' sn' : key === 'speed' ? (speedLabels[s.speed] || '') : String(s[key]);
-      content.querySelector('[data-value="' + key + '"]').textContent = displayValue;
-      updateRange();
-      });
-    });
-    content.querySelector('.fr-toggle').addEventListener('click', (event) => {
-      s.autoSell = !s.autoSell;
-      event.currentTarget.setAttribute('aria-checked', String(s.autoSell));
-    });
-    content.querySelectorAll('[data-count]').forEach((button) => button.addEventListener('click', () => {
-      s.maxPlayers = Math.max(1, s.maxPlayers + Number(button.dataset.count));
-      content.querySelector('[data-value="maxPlayers"]').textContent = String(s.maxPlayers);
-    }));
-    content.querySelector('.fr-bot-status').textContent = state.botStatus;
-    content.querySelector('.fr-start').addEventListener('click', () => {
-      if (state.botRunning) stopAutoBuyer('Kullanıcı tarafından durduruldu.');
-      else startAutoBuyer();
-    });
-  }
-
-  function renderBotLogs(content) {
-    content.innerHTML = '<div class="fr-log-list" role="log" aria-live="polite"></div>';
-    const list = content.querySelector('.fr-log-list');
-    if (!state.botLogs.length) {
-      const empty = document.createElement('div');
-      empty.className = 'fr-target-empty';
-      empty.textContent = 'Henüz FutRUSH işlem kaydı yok.';
-      list.appendChild(empty);
-      return;
-    }
-    state.botLogs.forEach((entry) => {
-      const row = document.createElement('div');
-      row.className = 'fr-log-row';
-      row.dataset.type = entry.type;
-      row.textContent = new Date(entry.at).toLocaleTimeString('tr-TR') + ' · ' + entry.message;
-      list.appendChild(row);
-    });
-  }
-
-  function openTargetSaveDialog() {
+function openTargetSaveDialog() {
     document.querySelector('.fr-target-save-overlay')?.remove();
     const overlay = document.createElement('div');
     overlay.className = 'fr-target-save-overlay';
@@ -388,120 +84,7 @@ import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
     input.focus();
   }
 
-  function renderTargetContent(content) {
-    const target = state.targetFilter;
-    const ratings = target.ratings.length ? target.ratings.join(', ') : 'Seçilmedi';
-    const kindLabel = target.kind === 'custom' ? 'Özel' : 'En ucuz';
-    content.innerHTML =
-      '<div class="fr-target-view"><div class="fr-target-summary"></div><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
-      '<div class="fr-target-actions"><button class="fr-target-action fr-target-save" type="button" data-filter-mode="save">Kaydet</button><button class="fr-target-action fr-target-load" type="button" data-filter-mode="load">Yükle</button></div></div>';
-    const summary = content.querySelector('.fr-target-summary');
-    summary.textContent = 'Filtre: ' + kindLabel + '  ·  Reyting: ' + ratings + '  ·  En ucuz sayısı: ' + target.count;
-    const status = content.querySelector('.fr-target-status');
-    if (state.targetLoading) {
-      status.textContent = 'FutBIN oyuncuları yükleniyor...';
-      status.dataset.type = 'loading';
-    } else if (state.targetStatus) {
-      status.textContent = state.targetStatus.message;
-      status.dataset.type = state.targetStatus.type;
-    } else {
-      status.hidden = true;
-    }
-
-    const list = content.querySelector('.fr-target-list');
-    if (!state.targets.length) {
-      const empty = document.createElement('div');
-      empty.className = 'fr-target-empty';
-      empty.textContent = 'Henüz oyuncu hedefi yok.';
-      list.appendChild(empty);
-    }
-    state.targets.forEach((player, index) => {
-      const card = document.createElement('div');
-      card.className = 'fr-target-card';
-      card.setAttribute('role', 'listitem');
-      const head = document.createElement('div');
-      head.className = 'fr-target-card-head';
-      const name = document.createElement('div');
-      name.className = 'fr-target-name';
-      name.textContent = player.name;
-      const rating = document.createElement('span');
-      rating.className = 'fr-target-rating';
-      rating.textContent = player.rating ? String(player.rating) : '—';
-      name.appendChild(rating);
-      const remove = document.createElement('button');
-      remove.className = 'fr-target-remove';
-      remove.type = 'button';
-      remove.textContent = '×';
-      remove.setAttribute('aria-label', player.name + ' hedefini sil');
-      remove.addEventListener('click', () => {
-        state.targets.splice(index, 1);
-        saveTargets();
-        renderTargetContent(content);
-      });
-      head.append(name, remove);
-      card.appendChild(head);
-
-      const controls = document.createElement('div');
-      controls.className = 'fr-target-controls';
-      [
-        { key: 'searches', label: 'Searches', step: 1, min: 1 },
-        { key: 'buyNow', label: 'Buy Now', step: buyNowStep(player.buyNow), min: 1 }
-      ].forEach((control) => {
-        const group = document.createElement('div');
-        const title = document.createElement('div');
-        title.className = 'fr-target-control-title';
-        title.textContent = control.label;
-        const counter = document.createElement('div');
-        counter.className = 'fr-target-counter';
-        const minus = document.createElement('button');
-        minus.type = 'button';
-        minus.textContent = '−';
-        minus.setAttribute('aria-label', control.label + ' azalt');
-        const value = document.createElement('span');
-        value.className = 'fr-target-counter-value';
-        value.textContent = control.key === 'buyNow' ? Number(player.buyNow).toLocaleString('tr-TR') : String(player.searches);
-        const plus = document.createElement('button');
-        plus.type = 'button';
-        plus.textContent = '+';
-        plus.setAttribute('aria-label', control.label + ' artır');
-        const change = (direction) => {
-          const step = control.key === 'buyNow' ? buyNowStep(player.buyNow) : control.step;
-          player[control.key] = Math.max(control.min, Number(player[control.key]) + direction * step);
-          saveTargets();
-          renderTargetContent(content);
-        };
-        minus.addEventListener('click', () => change(-1));
-        plus.addEventListener('click', () => change(1));
-        counter.append(minus, value, plus);
-        group.append(title, counter);
-        controls.appendChild(group);
-      });
-      card.appendChild(controls);
-
-      const icons = document.createElement('div');
-      icons.className = 'fr-target-icons';
-      ['FUT', '▧', '⌖', '⚽', '◎', '≋', '♣', '✦'].forEach((label, iconIndex) => {
-        const icon = document.createElement('span');
-        icon.className = 'fr-target-icon';
-        icon.textContent = label;
-        icon.title = ['FUT', 'Kart tipi', 'Pozisyon', 'Ayakkabı', 'Ülke', 'Lig', 'Kulüp', 'Nadirlik'][iconIndex];
-        icons.appendChild(icon);
-      });
-      card.appendChild(icons);
-      list.appendChild(card);
-    });
-    content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {
-      if (!state.targets.length) {
-        state.targetStatus = { type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' };
-        renderTargetContent(content);
-        return;
-      }
-      openTargetSaveDialog();
-    });
-    content.querySelector('[data-filter-mode="load"]').addEventListener('click', () => openFilterModal('load'));
-  }
-
-  function openFilterModal(mode) {
+function openFilterModal(mode) {
     document.querySelector('.fr-filter-overlay')?.remove();
     state.filterDraft = { kind: state.targetFilter.kind, ratings: state.targetFilter.ratings.slice(0, 1), count: state.targetFilter.count };
     const overlay = document.createElement('div');
@@ -653,34 +236,6 @@ import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
         if (targetContent && state.activePanelTab === 'targets') renderTargetContent(targetContent);
       }
     });
-  }
-
-  // Üstteki tüm tam genişlikli çubukların (ut-navigation-bar-view, ea-filter-bar-view: Players/Managers/
-  // Club Items/Consumables sekmeleri vb.) en alt kenarı: panel bunların altına girmesin
-  // Panel yalnızca: logoyla açıldıysa + logo sayfadaysa + Transfers içindeysek görünür
-  function panelShown() {
-    return CONFIG.features.logoButton && state.panelOpen && state.logoPresent && inTransfers();
-  }
-
-  function applyGeom() {
-    const geom = state.geom;
-    if (!geom) { panel.style.display = 'none'; return; }
-    const left = geom.l * vw();
-    const top0 = geom.t * vh() - state.liveScroll;
-    const w0 = geom.w * vw();
-    const h0 = geom.h * vh();
-
-    // başlık çubuğunun altında kal, pencere dışına taşma
-    const top = Math.max(top0, topLimit());
-    const h = Math.max(0, Math.min(h0, vh() - P.edge - top));
-    const w = Math.max(0, Math.min(w0, vw() - P.edge - left));
-
-    panel.style.left = Math.round(left) + 'px';
-    panel.style.top = Math.round(top) + 'px';
-    panel.style.width = Math.round(w) + 'px';
-    panel.style.height = Math.round(h) + 'px';
-    panel.style.display = panelShown() ? 'flex' : 'none';
-    if (!state.panelExpanded) panel.classList.remove('fc-snipe-expanded');
   }
 
   // ==========================================================================
@@ -1117,7 +672,7 @@ import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
     if (!state.panelExpanded || state.activePanelTab !== 'targets') {
       state.panelExpanded = true;
       state.activePanelTab = 'targets';
-      renderPanelTabs();
+      renderPanelTabs(panel);
     }
     return panel.querySelector('.fc-snipe-tab-content');
   }
@@ -1223,29 +778,15 @@ import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
     pageWindow.addEventListener('scroll', schedule, true);
   }
 
-  function initTemporaryEventListeners() {
-    onEvent('targets:changed', () => {
-      const content = panel?.querySelector('.fc-snipe-tab-content');
-      if (content && state.activePanelTab === 'targets') renderTargetContent(content);
-    });
-    onEvent('log:added', () => {
-      const content = panel?.querySelector('.fc-snipe-tab-content');
-      if (content && state.activePanelTab === 'logs') renderBotLogs(content);
-    });
-    onEvent('bot:status', () => {
-      const content = panel?.querySelector('.fc-snipe-tab-content');
-      if (content && state.activePanelTab === 'settings') {
-        const status = content.querySelector('.fr-bot-status');
-        const button = content.querySelector('.fr-start span');
-        if (status) status.textContent = state.botStatus;
-        if (button) button.textContent = state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH';
-      }
-    });
+    function initTemporaryEventListeners() {
+    onEvent('ui:open-filter-modal', ({ mode }) => openFilterModal(mode));
+    onEvent('ui:open-save-dialog', () => openTargetSaveDialog());
   }
 
   // ==========================================================================
   // 12. START  (yeni özellik eklerken init satırını buraya ekle)
   // ==========================================================================
+  registerPanelEvents();
   initTemporaryEventListeners();
   initPanel();
   if (CONFIG.features.settingsButton) initSettings();
