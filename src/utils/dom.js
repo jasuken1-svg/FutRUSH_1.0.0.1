@@ -13,5 +13,8 @@ export function visibleElement(element) {
   try {
     const style = pageWindow.getComputedStyle(element);
     return style.display !== 'none' && style.visibility !== 'hidden';
-  } catch (e) { return true; }
+  } catch (e) {
+    // EA DOM stili geçici olarak okunamazsa görünür kabul et; seçili öğeyi kaybetme.
+    return true;
+  }
 }

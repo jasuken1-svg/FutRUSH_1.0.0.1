@@ -113,7 +113,9 @@ export function placeNav() {
       const pw = parseFloat(ps.width), ph = parseFloat(ps.height);
       const v = Math.max(isFinite(pw) ? pw : 0, isFinite(ph) ? ph : 0);
       if (v >= 14 && v <= 48) iconSize = Math.round(v);
-    } catch (e) {}
+    } catch (e) {
+      // Pseudo-element stili okunamazsa varsayılan ikon boyutunu kullan.
+    }
     const pad = Math.max(2, Math.round((labelTop - iconSize) / 2));
 
     const lastBottom = others.reduce((m, i) => Math.max(m, i.getBoundingClientRect().bottom), q.top);

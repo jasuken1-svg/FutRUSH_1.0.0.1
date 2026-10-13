@@ -3,9 +3,14 @@
 
 import { state } from '../core/state.js';
 import { pageStorage } from '../utils/dom.js';
+import { warn, warnOnce } from '../core/logger.js';
 
 export function saveTargets() {
-  try { pageStorage().setItem('futrush-targets', JSON.stringify(state.targets)); } catch (e) {}
+  try {
+    pageStorage().setItem('futrush-targets', JSON.stringify(state.targets));
+  } catch (e) {
+    warnOnce('storage-write:futrush-targets', '[FutRUSH:targetStore]', 'Aktif hedefler localStorage’a kaydedilemedi.', 'futrush-targets', String(e?.message || e));
+  }
 }
 
 export function saveSavedTargetLists(lists) {
@@ -53,7 +58,9 @@ export function loadTargetStorage() {
   try {
     const savedTargets = JSON.parse(pageStorage().getItem('futrush-targets'));
     if (Array.isArray(savedTargets)) state.targets = savedTargets.map((item) => normalizeTarget(item, 'live')).filter(Boolean);
-  } catch (e) {}
+  } catch (e) {
+    warn('[FutRUSH:targetStore]', 'Aktif hedefler localStorage’dan okunamadı.', 'futrush-targets', String(e?.message || e));
+  }
 
   try {
     const savedCustomData = JSON.parse(pageStorage().getItem('futrush-saved-targets'));
@@ -73,5 +80,7 @@ export function loadTargetStorage() {
       }
     }
     if (state.savedTargetLists.length) state.selectedSavedTargetListId = state.savedTargetLists[0].id;
-  } catch (e) {}
+  } catch (e) {
+    warn('[FutRUSH:targetStore]', 'Kayıtlı hedef listeleri localStorage’dan okunamadı.', 'futrush-saved-targets', String(e?.message || e));
+  }
 }

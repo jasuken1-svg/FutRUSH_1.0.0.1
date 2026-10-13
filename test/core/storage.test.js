@@ -1,12 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const storage = new Map();
+const { warnMock, errorMock } = vi.hoisted(() => ({
+  warnMock: vi.fn(),
+  errorMock: vi.fn()
+}));
 
 vi.mock('../../src/utils/dom.js', () => ({
   pageStorage: () => ({
     getItem: (key) => storage.get(key) ?? null,
     setItem: (key, value) => storage.set(key, value)
   })
+}));
+
+vi.mock('../../src/core/logger.js', () => ({
+  warn: warnMock,
+  error: errorMock
 }));
 
 import { loadSnipeSettings, saveSnipeSettings } from '../../src/core/storage.js';
@@ -28,6 +37,8 @@ function loadRecord(record) {
 afterEach(() => {
   storage.clear();
   Object.assign(state.snipeSettings, defaults);
+  warnMock.mockClear();
+  errorMock.mockClear();
 });
 
 describe('snipe settings storage', () => {
@@ -42,6 +53,12 @@ describe('snipe settings storage', () => {
     loadSnipeSettings();
 
     expect(state.snipeSettings).toEqual(defaults);
+    expect(warnMock).toHaveBeenCalledWith(
+      '[FutRUSH:storage]',
+      'SNIPE ayarları JSON olarak okunamadı.',
+      'futrush-snipe-settings',
+      expect.stringContaining('JSON')
+    );
   });
 
   it('uses all defaults when the saved value is null', () => {

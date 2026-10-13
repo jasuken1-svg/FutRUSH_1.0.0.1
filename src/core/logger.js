@@ -3,6 +3,7 @@
 
 const levels = { debug: 10, info: 20, warn: 30, error: 40 };
 let threshold = levels.info;
+const warnedKeys = new Set();
 
 export function setLogLevel(level) {
   if (!Object.prototype.hasOwnProperty.call(levels, level)) throw new Error('Unknown log level: ' + level);
@@ -20,3 +21,9 @@ export const debug = (...args) => log('debug', ...args);
 export const info = (...args) => log('info', ...args);
 export const warn = (...args) => log('warn', ...args);
 export const error = (...args) => log('error', ...args);
+
+export function warnOnce(key, ...args) {
+  if (warnedKeys.has(key)) return;
+  warnedKeys.add(key);
+  warn(...args);
+}

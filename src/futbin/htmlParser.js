@@ -3,6 +3,7 @@
 
 import { CONFIG } from '../core/config.js';
 import { parseFutbinPrice } from '../utils/format.js';
+import { warnOnce } from '../core/logger.js';
 
 export function parseFutbinPlayers(html, requestedRating) {
   const cfg = CONFIG.futbin;
@@ -29,7 +30,11 @@ export function parseFutbinPlayers(html, requestedRating) {
   const priceSelector = cfg.platform === 'pc' ? selectors.pcPrice : selectors.consolePrice;
   let lastPage = 0;
   doc.querySelectorAll(selectors.pageLinks).forEach((link) => {
-    try { lastPage = Math.max(lastPage, Number(new URL(link.href, cfg.baseUrl).searchParams.get(cfg.pageParam)) || 0); } catch (e) {}
+    try {
+      lastPage = Math.max(lastPage, Number(new URL(link.href, cfg.baseUrl).searchParams.get(cfg.pageParam)) || 0);
+    } catch (e) {
+      warnOnce('futbin-pagination-url', '[FutRUSH:futbin]', 'FutBIN sayfalama bağlantısı çözümlenemedi.', 'pagination-link', String(e?.message || e));
+    }
   });
   const players = rows.map((row) => {
     const link = row.querySelector(selectors.nameLink);

@@ -2,6 +2,7 @@
 // Bagimlilik: EA sayfasinin Observable/Promise davranisi.
 
 import { pageWindow } from '../utils/dom.js';
+import { debug } from '../core/logger.js';
 
 export function observeEaRequest(observable, timeoutMs) {
   return new Promise((resolve) => {
@@ -17,7 +18,9 @@ export function observeEaRequest(observable, timeoutMs) {
       if (finished) return;
       finished = true;
       if (timer) pageWindow.clearTimeout(timer);
-      try { (senderRef || observable).unobserve(scope); } catch (e) {}
+      try { (senderRef || observable).unobserve(scope); } catch (e) {
+        debug('[FutRUSH:ea]', 'EA istek gözlemi temizlenemedi.', String(e?.message || e));
+      }
       resolve(response || { success: false });
     };
     timer = pageWindow.setTimeout(() => finish({ success: false, timeout: true }), timeoutMs || 15000);

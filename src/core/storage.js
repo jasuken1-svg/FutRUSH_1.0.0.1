@@ -5,6 +5,7 @@ import { P } from './config.js';
 import { state } from './state.js';
 import { pageStorage } from '../utils/dom.js';
 import { error as logError } from './logger.js';
+import { warn as logWarn } from './logger.js';
 
 const SNIPE_SETTINGS_KEY = 'futrush-snipe-settings';
 const SNIPE_SETTINGS_DEFAULTS = {
@@ -47,6 +48,7 @@ export function loadSnipeSettings() {
   try {
     savedSettings = JSON.parse(serializedSettings);
   } catch (e) {
+    logWarn('[FutRUSH:storage]', 'SNIPE ayarları JSON olarak okunamadı.', SNIPE_SETTINGS_KEY, String(e?.message || e));
     savedSettings = null;
   }
 
@@ -75,7 +77,9 @@ export function loadSnipeSettings() {
 }
 
 export function loadCoreStorage() {
-  try { state.geom = JSON.parse(pageStorage().getItem(P.storeKey)); } catch (e) {}
+  try { state.geom = JSON.parse(pageStorage().getItem(P.storeKey)); } catch (e) {
+    logWarn('[FutRUSH:storage]', 'Panel geometrisi localStorage’dan okunamadı.', P.storeKey, String(e?.message || e));
+  }
   try {
     const savedTargetFilter = JSON.parse(pageStorage().getItem('futrush-saved-target-filter'));
     if (savedTargetFilter && Array.isArray(savedTargetFilter.ratings)) {
@@ -85,6 +89,8 @@ export function loadCoreStorage() {
         count: Math.max(1, Number(savedTargetFilter.count) || 5)
       };
     }
-  } catch (e) {}
+  } catch (e) {
+    logWarn('[FutRUSH:storage]', 'Kayıtlı hedef filtresi localStorage’dan okunamadı.', 'futrush-saved-target-filter', String(e?.message || e));
+  }
   loadSnipeSettings();
 }

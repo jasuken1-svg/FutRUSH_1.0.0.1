@@ -4,6 +4,7 @@
 import { state } from '../core/state.js';
 import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';
+import { debug, warnOnce } from '../core/logger.js';
 
 export function makeAutoBuyCriteria(eaId, maxBuy) {
   const Criteria = pageWindow.UTSearchCriteriaDTO;
@@ -22,7 +23,9 @@ export async function searchAutoBuyOffers(target, eaId, token) {
   const service = services && services.Item;
   if (!service || typeof service.searchTransferMarket !== 'function') throw new Error('EA Transfer Market arama servisi bulunamadı.');
   if (typeof service.clearTransferMarketCache === 'function') {
-    try { service.clearTransferMarketCache(); } catch (e) {}
+    try { service.clearTransferMarketCache(); } catch (e) {
+      debug('[FutRUSH:ea]', 'EA Transfer Market önbelleği temizlenemedi.', String(e?.message || e));
+    }
   }
   const maxBuy = Math.max(1, Math.floor(Number(target.buyNow) || 0));
   const criteria = makeAutoBuyCriteria(eaId, maxBuy);
@@ -35,7 +38,9 @@ export async function searchAutoBuyOffers(target, eaId, token) {
   const items = Array.from(response.data?.items || []);
   const offers = items.map((item) => {
     let auction = null;
-    try { auction = item.getAuctionData?.() || item._auction || null; } catch (e) {}
+    try { auction = item.getAuctionData?.() || item._auction || null; } catch (e) {
+      warnOnce('ea-auction-data-shape', '[FutRUSH:ea]', 'EA ilan auction verisi okunamadı.', 'auction', String(e?.message || e));
+    }
     const tradeId = Number(auction?.tradeId) || 0;
     const price = Number(auction?.buyNowPrice) || 0;
     const itemBaseId = (Number(item?.definitionId) || 0) & 0xffffff;

@@ -4,6 +4,7 @@
 import { P } from '../core/config.js';
 import { state } from '../core/state.js';
 import { pageStorage, vw, vh } from '../utils/dom.js';
+import { warnOnce } from '../core/logger.js';
 
 let ro = null;
 let observedContainer = null;
@@ -54,7 +55,11 @@ export function syncFromHub(marketTile, onResize) {
     w: panelW / vw(),
     h: (b - t) / vh()
   };
-  try { pageStorage().setItem(P.storeKey, JSON.stringify(state.geom)); } catch (e) {}
+  try {
+    pageStorage().setItem(P.storeKey, JSON.stringify(state.geom));
+  } catch (e) {
+    warnOnce('storage-write:' + P.storeKey, '[FutRUSH:hubSync]', 'Panel geometrisi localStorage’a kaydedilemedi.', P.storeKey, String(e?.message || e));
+  }
   return true;
 }
 
