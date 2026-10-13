@@ -1,29 +1,11 @@
 import { CONFIG } from '../core/config.js';
-import { state } from '../core/state.js';
 import { wait } from '../utils/async.js';
-import { buildFutbinApiUrl } from './urls.js';
-import { buildFutbinUrl } from './urls.js';
+import { buildFutbinApiUrl, buildFutbinUrl } from './urls.js';
 import { requestFutbinApi, requestFutbinPage } from './http.js';
 import { parseFutbinApiPlayers } from './apiParser.js';
 import { parseFutbinPlayers } from './htmlParser.js';
 
-let panel = null;
-let renderTargetContent;
-let mergeTargetPlayers;
-
-export function configureFutbinLoader(dependencies) {
-  if (typeof dependencies.renderTargetContent !== 'function' || typeof dependencies.mergeTargetPlayers !== 'function') {
-    throw new TypeError('FutBIN loader requires target rendering and merge functions.');
-  }
-  renderTargetContent = dependencies.renderTargetContent;
-  mergeTargetPlayers = dependencies.mergeTargetPlayers;
-}
-
-export function setFutbinPanel(element) {
-  panel = element;
-}
-
-export async function loadFromFutbinApi(rating, count) {
+async function loadFromFutbinApi(rating, count) {
   const found = new Map();
   for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count; page++) {
     if (page > 1) await wait(CONFIG.futbin.pageDelay);
@@ -46,61 +28,41 @@ export async function loadFromFutbinApi(rating, count) {
   return Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
 }
 
-export async function loadCheapestTargets(rating, count) {
-  if (state.targetLoading) return;
-  state.targetLoading = true;
-  state.targetStatus = null;
-  const content = panel.querySelector('.fc-snipe-tab-content');
-  if (content && state.activePanelTab === 'targets') renderTargetContent(content);
+export async function fetchCheapestPlayers(rating, count) {
   const found = new Map();
-  try {
-    let lastPage = CONFIG.futbin.maxPages;
-    for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count && page <= lastPage; page++) {
-      if (page > 1) await wait(CONFIG.futbin.pageDelay);
-      const url = buildFutbinUrl(rating, page);
-      let response;
-      try { response = await requestFutbinPage(url); } catch (error) {
-        console.error('[FutRUSH] FutBIN isteği başarısız:', url, error);
-        throw error;
-      }
-      const body = response.responseText || '';
-      if (response.status === 403 || response.status === 429 || response.status === 503 || /cloudflare|cf-chl|just a moment|attention required/i.test(body.slice(0, 4000))) {
-        console.warn('[FutRUSH] FutBIN sayfası engellendi; MagicBuyer uyumlu liste API yedeği deneniyor:', response.status, url);
-        const apiPlayers = await loadFromFutbinApi(rating, count);
-        if (!apiPlayers.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-        const apiAdded = mergeTargetPlayers(apiPlayers);
-        state.targetStatus = { type: 'success', message: apiAdded ? apiAdded + ' oyuncu hedef listesine eklendi (FutBIN yedek kaynağı).' : 'Bulunan oyuncular zaten hedef listesinde.' };
-        return;
-      }
-      if (response.status < 200 || response.status >= 300) {
-        console.error('[FutRUSH] FutBIN HTTP hatası:', response.status, url);
-        throw new Error('FutBIN yanıt vermedi (HTTP ' + response.status + ').');
-      }
-      let players;
-      try { players = parseFutbinPlayers(body, rating); } catch (error) {
-        console.error('[FutRUSH] FutBIN HTML ayrıştırılamadı:', url, error);
-        throw error;
-      }
-      players.forEach((player) => {
-        const key = player.futbinId ? 'id:' + player.futbinId : 'name:' + player.name.toLocaleLowerCase() + ':' + player.rating;
-        if (!found.has(key)) found.set(key, player);
-      });
-      if (players.lastPage) lastPage = Math.min(CONFIG.futbin.maxPages, players.lastPage);
-      if (players.pageRowCount === 0) break;
+  let lastPage = CONFIG.futbin.maxPages;
+  for (let page = 1; page <= CONFIG.futbin.maxPages && found.size < count && page <= lastPage; page++) {
+    if (page > 1) await wait(CONFIG.futbin.pageDelay);
+    const url = buildFutbinUrl(rating, page);
+    let response;
+    try { response = await requestFutbinPage(url); } catch (error) {
+      console.error('[FutRUSH] FutBIN isteği başarısız:', url, error);
+      throw error;
     }
-    const cheapest = Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
-    if (!cheapest.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
-    const added = mergeTargetPlayers(cheapest);
-    state.targetStatus = {
-      type: 'success',
-      message: added ? added + ' oyuncu hedef listesine eklendi.' : 'Bulunan oyuncular zaten hedef listesinde.'
-    };
-  } catch (error) {
-    state.targetStatus = { type: 'error', message: error.message || 'FutBIN oyuncuları yüklenemedi.' };
-    if (error.blocked) console.error('[FutRUSH] FutBIN engelleme ayrıntısı:', error);
-  } finally {
-    state.targetLoading = false;
-    const currentContent = panel.querySelector('.fc-snipe-tab-content');
-    if (currentContent && state.activePanelTab === 'targets') renderTargetContent(currentContent);
+    const body = response.responseText || '';
+    if (response.status === 403 || response.status === 429 || response.status === 503 || /cloudflare|cf-chl|just a moment|attention required/i.test(body.slice(0, 4000))) {
+      console.warn('[FutRUSH] FutBIN sayfası engellendi; MagicBuyer uyumlu liste API yedeği deneniyor:', response.status, url);
+      const players = await loadFromFutbinApi(rating, count);
+      if (!players.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
+      return { players, source: 'api' };
+    }
+    if (response.status < 200 || response.status >= 300) {
+      console.error('[FutRUSH] FutBIN HTTP hatası:', response.status, url);
+      throw new Error('FutBIN yanıt vermedi (HTTP ' + response.status + ').');
+    }
+    let players;
+    try { players = parseFutbinPlayers(body, rating); } catch (error) {
+      console.error('[FutRUSH] FutBIN HTML ayrıştırılamadı:', url, error);
+      throw error;
+    }
+    players.forEach((player) => {
+      const key = player.futbinId ? 'id:' + player.futbinId : 'name:' + player.name.toLocaleLowerCase() + ':' + player.rating;
+      if (!found.has(key)) found.set(key, player);
+    });
+    if (players.lastPage) lastPage = Math.min(CONFIG.futbin.maxPages, players.lastPage);
+    if (players.pageRowCount === 0) break;
   }
+  const players = Array.from(found.values()).sort((a, b) => a.price - b.price).slice(0, count);
+  if (!players.length) throw new Error('Seçilen reytingde FutBIN fiyatı bulunan oyuncu yok.');
+  return { players, source: 'html' };
 }

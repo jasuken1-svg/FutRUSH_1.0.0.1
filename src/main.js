@@ -1,14 +1,15 @@
 import { CONFIG, P, F, N } from './core/config.js';
 import { state } from './core/state.js';
+import { on as onEvent } from './core/events.js';
 import { loadCoreStorage } from './core/storage.js';
-import { pageWindow, pageStorage, vw, vh, visibleElement } from './utils/dom.js';
-import { wait } from './utils/async.js';
-import { buyNowStep, parseFutbinPrice } from './utils/format.js';
+import { pageWindow, pageStorage, vw, vh } from './utils/dom.js';
+import { buyNowStep } from './utils/format.js';
 import { inTransfers, topLimit } from './ea/page.js';
-import { searchAutoBuyOffers, buyAutoOffer } from './ea/market.js';
-import { getCoinBalance } from './ea/services.js';
-import { fetchFutbinPlayerId } from './futbin/playerLookup.js';
-import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './futbin/loader.js';
+import { startAutoBuyer, stopAutoBuyer } from './bot/autoBuyer.js';
+import { importCheapestTargets } from './targets/futbinImport.js';
+import { loadTargetStorage, saveTargets } from './targets/targetStore.js';
+import { restoreSavedTargets, saveTargetSnapshot } from './targets/targetOps.js';
+import { addPinnedPlayerToTargets } from './targets/pinnedPlayer.js';
 
 /*
  * ============================================================================
@@ -250,50 +251,10 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
       renderPanelTabs();
     });
     document.body.appendChild(panel);
-    setFutbinPanel(panel);
 
     // Son ölçüyü hatırla (pencere oranı olarak)
     loadCoreStorage();
-    try {
-      const savedTargets = JSON.parse(pageStorage().getItem('futrush-targets'));
-      if (Array.isArray(savedTargets)) {
-        state.targets = savedTargets.filter((item) => item && typeof item.name === 'string' && Number.isFinite(Number(item.rating)) && Number.isFinite(Number(item.price)))
-          .map((item) => {
-            const price = Math.max(1, Math.round(Number(item.price)));
-            const rating = Math.round(Number(item.rating));
-            const futbinId = item.futbinId == null ? null : String(item.futbinId);
-            return {
-              id: String(item.id || (futbinId ? 'futbin:' + futbinId : item.name + ':' + rating)),
-              name: item.name,
-              rating,
-              eaId: Number(item.eaId) || 0,
-              price,
-              searches: Math.max(1, Math.round(Number(item.searches) || 3)),
-              buyNow: Math.max(1, Math.round(Number(item.buyNow) || price)),
-              futbinId
-            };
-          });
-      }
-    } catch (e) {}
-    try {
-      const savedCustomData = JSON.parse(pageStorage().getItem('futrush-saved-targets'));
-      const normalizePlayers = (players) => Array.isArray(players) ? players.filter((item) => item && typeof item.name === 'string' && Number(item.price) > 0).map((item) => ({
-        id: String(item.id || item.futbinId || item.name + ':' + item.rating),
-        name: item.name, rating: Math.round(Number(item.rating) || 0), eaId: Number(item.eaId) || 0, price: Math.round(Number(item.price)),
-        searches: Math.max(1, Math.round(Number(item.searches) || 3)),
-        buyNow: Math.max(1, Math.round(Number(item.buyNow) || Number(item.price))),
-        futbinId: item.futbinId == null ? null : String(item.futbinId)
-      })) : [];
-      if (Array.isArray(savedCustomData) && savedCustomData.length && savedCustomData[0].players) {
-        state.savedTargetLists = savedCustomData.filter((list) => list && typeof list.name === 'string' && Array.isArray(list.players)).map((list) => ({
-          id: String(list.id || list.name), name: list.name, savedAt: Number(list.savedAt) || Date.now(), players: normalizePlayers(list.players)
-        }));
-      } else if (Array.isArray(savedCustomData) && savedCustomData.length) {
-        const legacyPlayers = normalizePlayers(savedCustomData);
-        if (legacyPlayers.length) state.savedTargetLists = [{ id: 'legacy-saved-targets', name: 'Kayıtlı Liste', savedAt: Date.now(), players: legacyPlayers }];
-      }
-      if (state.savedTargetLists.length) state.selectedSavedTargetListId = state.savedTargetLists[0].id;
-    } catch (e) {}
+    loadTargetStorage();
   }
 
   function renderPanelTabs() {
@@ -388,171 +349,6 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
     });
   }
 
-  function addBotLog(message, type) {
-    state.botLogs.unshift({ at: Date.now(), message: String(message), type: type || 'info' });
-    state.botLogs.length = Math.min(state.botLogs.length, 100);
-    if (state.activePanelTab === 'logs') {
-      const content = panel?.querySelector('.fc-snipe-tab-content');
-      if (content) renderBotLogs(content);
-    }
-  }
-
-  function setBotStatus(message) {
-    state.botStatus = String(message || '');
-    const content = panel?.querySelector('.fc-snipe-tab-content');
-    if (content && state.activePanelTab === 'settings') {
-      const status = content.querySelector('.fr-bot-status');
-      const button = content.querySelector('.fr-start span');
-      if (status) status.textContent = state.botStatus;
-      if (button) button.textContent = state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH';
-    }
-  }
-
-  async function resolveTargetEaId(target) {
-    if (Number(target.eaId) > 0) {
-      target.eaId = Number(target.eaId) & 0xffffff;
-      return target.eaId;
-    }
-    const eaId = await fetchFutbinPlayerId(target);
-    target.eaId = eaId;
-    saveTargets();
-    return eaId;
-  }
-
-  function stopAutoBuyer(reason) {
-    if (!state.botRunning) return;
-    state.botRunning = false;
-    state.botToken++;
-    setBotStatus(reason || 'Tarama durduruldu.');
-    addBotLog(state.botStatus, 'info');
-  }
-
-  async function startAutoBuyer() {
-    if (state.botRunning) return;
-    if (!state.targets.length) {
-      setBotStatus('Önce Oyuncu Hedefleri listesine oyuncu ekleyin.');
-      addBotLog(state.botStatus, 'error');
-      return;
-    }
-    const service = pageWindow.services?.Item;
-    if (!service || typeof service.searchTransferMarket !== 'function' || typeof service.bid !== 'function') {
-      setBotStatus('EA Transfer Market hazır değil. Transfer ekranını açıp tekrar deneyin.');
-      addBotLog(state.botStatus, 'error');
-      return;
-    }
-    state.botRunning = true;
-    const token = ++state.botToken;
-    setBotStatus('Oyuncular eşleştiriliyor...');
-    addBotLog('FutRUSH taraması başlatıldı.', 'info');
-    runAutoBuyer(token);
-  }
-
-  async function runAutoBuyer(token) {
-    const speedDelay = { 0: 5000, 1: 4000, 2: 2500, 3: 1500 };
-    const settings = state.snipeSettings;
-    let cycles = 0;
-    let bought = 0;
-    const attemptedTrades = new Set();
-    try {
-      for (const target of state.targets) {
-        if (token !== state.botToken || !state.botRunning) return;
-        const eaId = await resolveTargetEaId(target);
-        if (token !== state.botToken || !state.botRunning) return;
-        addBotLog(target.name + ' EA oyuncu kimliğiyle eşleştirildi.', 'success');
-        await wait(250);
-      }
-
-      do {
-        cycles++;
-        for (const target of state.targets) {
-          const eaId = Number(target.eaId) || 0;
-          const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
-          for (let attempt = 1; attempt <= attempts; attempt++) {
-            if (token !== state.botToken || !state.botRunning) return;
-            if (bought >= settings.maxPlayers) {
-              stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-              return;
-            }
-            setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
-            const result = await searchAutoBuyOffers(target, eaId, token);
-            if (result.stopped) return;
-            const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
-            if (!offer) {
-              addBotLog(target.name + ': Buy Now sınırında uygun ilan bulunamadı.', 'info');
-            } else {
-              attemptedTrades.add(offer.tradeId);
-              const balance = getCoinBalance();
-              if (balance && offer.price > balance) {
-                throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
-              }
-              setBotStatus(target.name + ' · ' + offer.price.toLocaleString('tr-TR') + ' coin için satın alma deneniyor...');
-              const purchase = await buyAutoOffer(offer);
-              if (token !== state.botToken || !state.botRunning) return;
-              if (purchase.success) {
-                bought++;
-                addBotLog(target.name + ' (' + offer.rating + ') ' + offer.price.toLocaleString('tr-TR') + ' coin karşılığında alındı.', 'success');
-              } else {
-                const error = purchase.error?.message || purchase.error || 'İlan alınamadı; ilan süresi dolmuş olabilir.';
-                addBotLog(target.name + ': satın alma başarısız — ' + error, 'error');
-              }
-            }
-            if (attempt < attempts && state.botRunning) await wait(speedDelay[settings.speed] || 4000);
-          }
-          if (bought >= settings.maxPlayers) break;
-        }
-        if (bought >= settings.maxPlayers) {
-          stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-          return;
-        }
-        if (settings.repeat > 0 && cycles >= settings.repeat) {
-          stopAutoBuyer('Tarama tamamlandı. Başarılı alım: ' + bought + '.');
-          return;
-        }
-        if (settings.waitSeconds > 0) await wait(settings.waitSeconds * 1000);
-        else await wait(speedDelay[settings.speed] || 4000);
-      } while (state.botRunning && token === state.botToken);
-    } catch (error) {
-      if (token === state.botToken) {
-        state.botRunning = false;
-        state.botToken++;
-        setBotStatus(error.message || 'FutRUSH taraması hata nedeniyle durdu.');
-        addBotLog(state.botStatus, 'error');
-      }
-    }
-  }
-
-  function saveTargets() {
-    try { pageStorage().setItem('futrush-targets', JSON.stringify(state.targets)); } catch (e) {}
-  }
-
-  function saveTargetSnapshot(listName) {
-    if (!state.targets.length) {
-      state.targetStatus = { type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' };
-      return false;
-    }
-    const snapshot = state.targets.map((player) => ({
-      id: player.id, name: player.name, rating: player.rating, eaId: player.eaId || 0, price: player.price,
-      searches: player.searches, buyNow: player.buyNow, futbinId: player.futbinId
-    }));
-    try {
-      const name = String(listName || '').trim();
-      if (!name) return false;
-      const existing = state.savedTargetLists.find((list) => list.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase());
-      const savedList = { id: existing ? existing.id : 'list:' + Date.now() + ':' + Math.random().toString(36).slice(2, 7), name, savedAt: Date.now(), players: snapshot };
-      const nextLists = existing
-        ? state.savedTargetLists.map((list) => list.id === existing.id ? savedList : list)
-        : [savedList].concat(state.savedTargetLists);
-      pageStorage().setItem('futrush-saved-targets', JSON.stringify(nextLists));
-      state.savedTargetLists = nextLists;
-      state.selectedSavedTargetListId = savedList.id;
-      state.targetStatus = { type: 'success', message: '“' + name + '” adıyla ' + snapshot.length + ' oyuncu kaydedildi.' };
-      return true;
-    } catch (error) {
-      state.targetStatus = { type: 'error', message: 'Oyuncu listesi kaydedilemedi. Tarayıcı depolama alanını kontrol edin.' };
-      return false;
-    }
-  }
-
   function openTargetSaveDialog() {
     document.querySelector('.fr-target-save-overlay')?.remove();
     const overlay = document.createElement('div');
@@ -590,59 +386,6 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
     shadow.querySelector('.backdrop').addEventListener('click', (event) => { if (event.target === event.currentTarget) close(); });
     input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); if (event.key === 'Escape') close(); });
     input.focus();
-  }
-
-  function restoreSavedTargets() {
-    const savedList = state.savedTargetLists.find((list) => list.id === state.selectedSavedTargetListId);
-    if (!savedList || !savedList.players.length) return 0;
-    let restored = 0;
-    savedList.players.forEach((saved) => {
-      const duplicate = state.targets.find((item) =>
-        (saved.futbinId && item.futbinId && String(item.futbinId) === String(saved.futbinId)) ||
-        (item.rating === saved.rating && item.name.trim().toLocaleLowerCase() === saved.name.trim().toLocaleLowerCase())
-      );
-      if (duplicate) {
-        duplicate.price = saved.price;
-        duplicate.eaId = saved.eaId || duplicate.eaId || 0;
-        duplicate.searches = saved.searches;
-        duplicate.buyNow = saved.buyNow;
-      } else {
-        state.targets.push({ ...saved });
-      }
-      restored++;
-    });
-    saveTargets();
-    return restored;
-  }
-
-  // Yeni oyuncuları mevcut hedef listesine ekle; listeyi sıfırlama davranışı ileride burada değiştirilebilir.
-  function mergeTargetPlayers(players) {
-    let added = 0;
-    players.forEach((player) => {
-      const nameKey = player.name.trim().toLocaleLowerCase();
-      const duplicate = state.targets.find((item) =>
-        (player.futbinId && item.futbinId && String(item.futbinId) === String(player.futbinId)) ||
-        (item.rating === player.rating && item.name.trim().toLocaleLowerCase() === nameKey)
-      );
-      if (duplicate) {
-        if (!duplicate.eaId && Number(player.eaId) > 0) duplicate.eaId = Number(player.eaId);
-        return;
-      }
-      const futbinId = player.futbinId == null ? null : String(player.futbinId);
-      state.targets.push({
-        id: futbinId ? 'futbin:' + futbinId : nameKey + ':' + player.rating,
-        name: player.name,
-        rating: player.rating,
-        eaId: Number(player.eaId) || 0,
-        price: player.price,
-        searches: 3,
-        buyNow: player.price,
-        futbinId
-      });
-      added++;
-    });
-    saveTargets();
-    return added;
   }
 
   function renderTargetContent(content) {
@@ -902,7 +645,7 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
       overlay.remove();
       const targetContent = panel.querySelector('.fc-snipe-tab-content');
       if (targetContent && state.activePanelTab === 'targets') renderTargetContent(targetContent);
-      if (mode === 'load' && nextFilter.kind === 'cheap') loadCheapestTargets(nextFilter.ratings[0], nextFilter.count);
+      if (mode === 'load' && nextFilter.kind === 'cheap') importCheapestTargets(nextFilter.ratings[0], nextFilter.count);
       if (mode === 'load' && nextFilter.kind === 'custom') {
         const restored = restoreSavedTargets();
         const loadedList = state.savedTargetLists.find((list) => list.id === state.selectedSavedTargetListId);
@@ -1365,6 +1108,7 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
   }
 
   function onSearchButtonClick() {
+    showTargetsAfterQuickAdd();
     addPinnedPlayerToTargets();
   }
 
@@ -1376,80 +1120,6 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
       renderPanelTabs();
     }
     return panel.querySelector('.fc-snipe-tab-content');
-  }
-
-  function selectedPinnedPlayer() {
-    const pinned = Array.from(document.querySelectorAll('.ut-pinned-list')).find(visibleElement);
-    const rows = pinned ? Array.from(pinned.querySelectorAll('li.listFUTItem, .listFUTItem')).filter(visibleElement) : [];
-    const selected = rows.find((row) => row.classList.contains('selected') || row.getAttribute('aria-selected') === 'true') || null;
-    const nameNode = selected?.querySelector('.entityContainer .name, .name, [class*="player-name"], [data-player-name], [aria-label*="player" i]');
-    const playerInput = Array.from(document.querySelectorAll('.ut-text-input-control, input[placeholder*="player" i], input[aria-label*="player" i]')).find(visibleElement);
-    const name = String(nameNode?.getAttribute('data-player-name') || nameNode?.getAttribute('aria-label') || nameNode?.textContent || playerInput?.value || playerInput?.textContent || '').trim().replace(/\s+/g, ' ');
-    const ratingNode = selected?.querySelector('.rating, [class*="rating"], [data-rating]');
-    const ratingText = ratingNode?.getAttribute('data-rating') || ratingNode?.textContent || selected?.getAttribute('data-rating') || '';
-    const ratingMatch = String(ratingText).match(/\b(\d{2})\b/) || String(selected?.textContent || '').match(/\b(\d{2})\b/);
-    const rating = ratingMatch ? Number(ratingMatch[1]) : 0;
-    if (!name) return { error: 'Oyuncu adı bulunamadı. Önce oyuncuyu arama alanından seçin.' };
-    const idNode = selected?.matches('[data-definition-id], [data-resource-id], [data-player-id]')
-      ? selected
-      : selected?.querySelector('[data-definition-id], [data-resource-id], [data-player-id]') || playerInput?.closest('[data-definition-id], [data-resource-id], [data-player-id]');
-    const playerImage = selected?.querySelector('img[src*="/players/"]');
-    const imageId = playerImage?.getAttribute('src')?.match(/\/players\/(\d+)/i)?.[1];
-    const rawEaId = Number(idNode?.getAttribute('data-definition-id') || idNode?.getAttribute('data-resource-id') || idNode?.getAttribute('data-player-id') || playerInput?.dataset?.definitionId || playerInput?.dataset?.resourceId || imageId) || 0;
-    const eaId = rawEaId > 0 ? rawEaId & 0xffffff : 0;
-    return { selected, name, rating, eaId };
-  }
-
-  function selectedBuyNowPrice(selected) {
-    const scoped = selected?.closest('.ut-content') || document.querySelector('.ut-content') || document;
-    // EA arama formunda fiyat kontrollerinin sırası: min/max teklif, min/max Buy Now.
-    const spinners = Array.from(scoped.querySelectorAll('.ut-market-search-filters-view .search-prices .ut-numeric-input-spinner-control')).filter(visibleElement);
-    const maxBuyNowInput = spinners[3]?.querySelector('input');
-    const directInputs = Array.from(scoped.querySelectorAll('input')).filter(visibleElement);
-    const labeledBuyNow = directInputs.filter((input) => {
-      const parentText = input.closest('.ut-numeric-input-spinner-control, .ut-control, .form-group, label')?.textContent || '';
-      const meta = [input.getAttribute('aria-label'), input.placeholder, input.name, input.id, parentText].filter(Boolean).join(' ');
-      return /buy\s*now|hemen\s*al|satın\s*al/i.test(meta) && /max|maximum|azami|en\s*yüksek/i.test(meta);
-    }).pop();
-    const input = maxBuyNowInput || labeledBuyNow;
-    let price = input ? parseFutbinPrice(input.value) : 0;
-    if (!price) {
-      const priceNode = selected?.querySelector('[data-price], .currency-coins, .buyNowPrice, [class*="buy-now"], [class*="price"]');
-      price = Number(priceNode?.getAttribute('data-price')) || parseFutbinPrice(priceNode?.textContent || '');
-    }
-    return price > 0 ? Math.round(price) : 0;
-  }
-
-  function addPinnedPlayerToTargets() {
-    const content = showTargetsAfterQuickAdd();
-    const player = selectedPinnedPlayer();
-    if (player.error) {
-      state.targetStatus = { type: 'error', message: player.error };
-      if (content) renderTargetContent(content);
-      console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', player.error);
-      return;
-    }
-    const price = selectedBuyNowPrice(player.selected);
-    if (!price) {
-      const message = 'Seçili oyuncu için Buy Now fiyatı bulunamadı. Arama filtresindeki en yüksek Buy Now fiyatını belirleyin.';
-      state.targetStatus = { type: 'error', message };
-      if (content) renderTargetContent(content);
-      console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: Buy Now fiyatı okunamadı.');
-      return;
-    }
-    const added = mergeTargetPlayers([{ name: player.name, rating: player.rating, eaId: player.eaId, price, futbinId: null }]);
-    if (added) {
-      state.targetStatus = { type: 'success', message: player.name + (player.rating ? ' (' + player.rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' };
-    } else {
-      const duplicate = state.targets.find((item) => item.rating === player.rating && item.name.trim().toLocaleLowerCase() === player.name.trim().toLocaleLowerCase());
-      if (duplicate) {
-        duplicate.buyNow = price;
-        duplicate.price = price;
-        saveTargets();
-        state.targetStatus = { type: 'success', message: player.name + ' zaten listede; Buy Now fiyatı güncellendi.' };
-      }
-    }
-    if (content) renderTargetContent(content);
   }
 
   function placeSearchButton() {
@@ -1553,10 +1223,30 @@ import { configureFutbinLoader, loadCheapestTargets, setFutbinPanel } from './fu
     pageWindow.addEventListener('scroll', schedule, true);
   }
 
+  function initTemporaryEventListeners() {
+    onEvent('targets:changed', () => {
+      const content = panel?.querySelector('.fc-snipe-tab-content');
+      if (content && state.activePanelTab === 'targets') renderTargetContent(content);
+    });
+    onEvent('log:added', () => {
+      const content = panel?.querySelector('.fc-snipe-tab-content');
+      if (content && state.activePanelTab === 'logs') renderBotLogs(content);
+    });
+    onEvent('bot:status', () => {
+      const content = panel?.querySelector('.fc-snipe-tab-content');
+      if (content && state.activePanelTab === 'settings') {
+        const status = content.querySelector('.fr-bot-status');
+        const button = content.querySelector('.fr-start span');
+        if (status) status.textContent = state.botStatus;
+        if (button) button.textContent = state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH';
+      }
+    });
+  }
+
   // ==========================================================================
   // 12. START  (yeni özellik eklerken init satırını buraya ekle)
   // ==========================================================================
-  configureFutbinLoader({ renderTargetContent, mergeTargetPlayers });
+  initTemporaryEventListeners();
   initPanel();
   if (CONFIG.features.settingsButton) initSettings();
   if (CONFIG.features.logoButton) initLogoButton();
