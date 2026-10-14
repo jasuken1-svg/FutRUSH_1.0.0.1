@@ -1,9 +1,7 @@
-const ISSUE_TYPES = new Set(['missed', 'error', 'warn']);
-
-export function filterBotLogs(logs, filter) {
-  if (filter === 'purchases') return logs.filter((entry) => entry.type === 'success');
-  if (filter === 'issues') return logs.filter((entry) => ISSUE_TYPES.has(entry.type));
-  return logs;
+export function logTone(type) {
+  if (type === 'success') return 'success';
+  if (type === 'error' || type === 'missed' || type === 'warn') return 'error';
+  return 'info';
 }
 
 export function summarizeBotStats(stats = {}) {

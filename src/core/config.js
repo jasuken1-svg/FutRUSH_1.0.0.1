@@ -2,6 +2,11 @@
 // Bagimlilik: yalnizca uygulama genelinde tuketilen sabit degerler.
 
 export const CONFIG = {
+  ui: {
+    statusHoldMs: 3000,
+    statusErrorHoldMs: 6000
+  },
+
   // Özellikleri aç/kapat (bozulan bir şeyi hızlıca devre dışı bırakmak için)
   features: {
     fitContent: true,       // alt sayfalarda içeriği panelin soluna sığdır

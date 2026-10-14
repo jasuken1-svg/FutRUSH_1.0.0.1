@@ -15,11 +15,6 @@ vi.mock('../../src/ea/marketPage.js', () => ({
   fetchMarketPage: vi.fn()
 }));
 
-vi.mock('../../src/utils/cancelToken.js', async (importOriginal) => ({
-  ...(await importOriginal()),
-  actionGap: vi.fn(async () => true)
-}));
-
 vi.mock('../../src/core/logger.js', () => ({
   info: vi.fn(),
   warnOnce: vi.fn()
@@ -29,7 +24,7 @@ const { mergeTargetPlayers } = await import('../../src/targets/targetOps.js');
 const { resolveTargetEaId } = await import('../../src/targets/targetOps.js');
 const { fetchCheapestPlayers } = await import('../../src/futbin/loader.js');
 const { info, warnOnce } = await import('../../src/core/logger.js');
-const { actionGap } = await import('../../src/utils/cancelToken.js');
+const { on } = await import('../../src/core/events.js');
 const { importCheapestTargets } = await import('../../src/targets/futbinImport.js');
 
 afterEach(() => {
@@ -43,6 +38,8 @@ afterEach(() => {
   CONFIG.targetAdd.actionGapMs = [1500, 2500];
   CONFIG.targetAdd.outlierRatio = 0.9;
   CONFIG.targetAdd.maxConsecutiveErrors = 2;
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -117,11 +114,61 @@ describe('importCheapestTargets EA pricing', () => {
     expect(players.map((item) => item.buyNow)).toEqual([1300, 1300]);
     expect(mergeTargetPlayers.mock.calls.map(([batch]) => batch)).toEqual([[players[0]], [players[1]]]);
     expect(progress).toEqual(['EA fiyatı alınıyor 1/2: Alpha', 'EA fiyatı alınıyor 2/2: Beta']);
-    expect(actionGap).toHaveBeenCalledOnce();
-    expect(actionGap.mock.calls[0][1]).toEqual([0, 0]);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
     expect(state.targetStatus.source).toBe('ea');
     expect(state.targetStatus.progress).toEqual({ done: 2, total: 2 });
+  });
+
+  it('holds each non-final player status for the same EA player gap it awaits', async () => {
+    vi.useFakeTimers();
+    const players = [player('Alpha'), player('Beta', 6000, 1002), player('Gamma', 7000, 1003)];
+    CONFIG.targetAdd.actionGapMs = [1500, 2500];
+    const gaps = [1700, 2300];
+    let gapIndex = 0;
+    const expectedMessages = [
+      'Alpha · Buy Now 1.300 hedeflere eklendi.',
+      'Beta · Buy Now 1.300 hedeflere eklendi.'
+    ];
+    const random = vi.fn(() => gaps[gapIndex++]);
+    const awaitedGaps = [];
+    const wait = vi.fn(async (gap) => {
+      const index = awaitedGaps.length;
+      expect(state.targetStatus.message).toBe(expectedMessages[index]);
+      vi.advanceTimersByTime(gap - 1);
+      expect(state.targetStatus.message).toBe(expectedMessages[index]);
+      vi.advanceTimersByTime(1);
+      expect(state.targetStatus).toBeNull();
+      awaitedGaps.push(gap);
+      return true;
+    });
+    const statuses = [];
+    const stop = on('targets:status', () => {
+      const status = state.targetStatus;
+      statuses.push(status ? {
+        ...status,
+        progress: status.progress ? { ...status.progress } : undefined
+      } : null);
+    });
+
+    await importCheapestTargets(90, 3, {
+      fetchCheapestPlayers: async () => ({ players, fallback: false }),
+      fetchMarketPage: async (eaId) => successfulPage(eaId),
+      sleepFn: noWait,
+      randomBetween: random,
+      sleep: wait
+    });
+    stop();
+
+    expect(random).toHaveBeenCalledTimes(2);
+    expect(random).toHaveBeenNthCalledWith(1, 1500, 2500);
+    expect(random).toHaveBeenNthCalledWith(2, 1500, 2500);
+    expect(awaitedGaps).toEqual(gaps);
+    expect(statuses.filter((status) => status?.message.includes('Buy Now')).map((status) => status.message)).toEqual(expectedMessages);
+    expect(statuses.filter((status) => status?.message.includes('Buy Now')).map(({ source, progress }) => ({ source, progress }))).toEqual([
+      { source: 'ea', progress: { done: 1, total: 3 } },
+      { source: 'ea', progress: { done: 2, total: 3 } }
+    ]);
+    expect(statuses.at(-1).message).toBe('3 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
   });
 
   it('uses the FutBIN price for one failed EA search and continues', async () => {
@@ -202,6 +249,8 @@ describe('importCheapestTargets EA pricing', () => {
     const players = [player('Alpha'), player('Beta', 6000, 1002)];
     const fetchMarketPage = vi.fn();
     mergeTargetPlayers.mockReturnValue(2);
+    const messages = [];
+    const stop = on('targets:status', () => messages.push(state.targetStatus?.message));
 
     await importCheapestTargets(90, 2, {
       fetchCheapestPlayers: async () => ({ players, fallback: false }),
@@ -213,6 +262,8 @@ describe('importCheapestTargets EA pricing', () => {
     expect(fetchMarketPage).not.toHaveBeenCalled();
     expect(resolveTargetEaId).not.toHaveBeenCalled();
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi.');
+    expect(messages).toEqual(['FutBIN oyuncuları yükleniyor...', '2 oyuncu hedef listesine eklendi.']);
+    stop();
   });
 
   it('logs outlier listings skipped during EA pricing', async () => {

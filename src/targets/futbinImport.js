@@ -7,9 +7,10 @@ import { CONFIG } from '../core/config.js';
 import { info, warnOnce } from '../core/logger.js';
 import { getMarketPrice } from '../ea/marketPrice.js';
 import { fetchMarketPage } from '../ea/marketPage.js';
-import { actionGap, createCancelToken } from '../utils/cancelToken.js';
+import { createCancelToken, randomBetween, sleep } from '../utils/cancelToken.js';
 import { fetchCheapestPlayers } from '../futbin/loader.js';
 import { mergeTargetPlayers, resolveTargetEaId } from './targetOps.js';
+import { setTargetStatus } from './targetStatus.js';
 
 let activeToken = null;
 
@@ -22,7 +23,7 @@ function importStatus(added, fallback, fallbackCount, total) {
   return message + '.';
 }
 
-async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn) {
+async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, randomBetweenFn, sleepBetweenFn) {
   let added = 0;
   let fallbackCount = 0;
   let consecutiveErrors = 0;
@@ -37,12 +38,12 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn) 
     const reference = player.price;
 
     if (activeToken === token) {
-      state.targetStatus = {
+      setTargetStatus({
         type: 'loading',
         message: 'EA fiyatı alınıyor ' + (index + 1) + '/' + players.length + ': ' + player.name,
         source: 'mixed',
         progress: { done: index, total: players.length }
-      };
+      });
       emit('targets:changed');
     }
 
@@ -120,14 +121,20 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn) 
       fallbackCount++;
     }
     added += mergeTargetPlayers([player]);
-    if (activeToken === token) {
-      state.targetStatus.progress.done = index + 1;
+    const shouldWait = didEaSearch && index < players.length - 1 && !token.cancelled;
+    const gap = shouldWait ? randomBetweenFn(settings.actionGapMs[0], settings.actionGapMs[1]) : 0;
+    if (activeToken === token && index < players.length - 1) {
+      setTargetStatus({
+        type: 'success',
+        message: player.name + ' · Buy Now ' + Number(player.buyNow).toLocaleString('tr-TR') + ' hedeflere eklendi.',
+        source: usedEaPrice ? 'ea' : 'futbin',
+        progress: { done: index + 1, total: players.length },
+        ...(shouldWait ? { holdMs: gap } : {})
+      });
     }
     emit('targets:changed');
 
-    if (didEaSearch && index < players.length - 1 && !token.cancelled) {
-      await actionGap(token, settings.actionGapMs);
-    }
+    if (shouldWait) await sleepBetweenFn(gap, token);
   }
   return { added, fallbackCount, total: players.length, fallback };
 }
@@ -139,48 +146,52 @@ export async function importCheapestTargets(rating, count, deps = {}) {
   const loadPlayers = deps.fetchCheapestPlayers || fetchCheapestPlayers;
   const fetchPage = deps.fetchMarketPage || fetchMarketPage;
   const sleepFn = deps.sleepFn;
+  const randomBetweenFn = deps.randomBetween || randomBetween;
+  const sleepBetweenFn = deps.sleep || sleep;
   state.targetLoading = true;
-  state.targetStatus = {
+  setTargetStatus({
     type: 'loading',
     message: 'FutBIN oyuncuları yükleniyor...',
     source: 'futbin',
     progress: { done: 0, total: count }
-  };
+  });
   emit('targets:changed');
   try {
     const result = await loadPlayers(rating, count);
     if (CONFIG.targetAdd.priceSource !== 'ea') {
       const added = mergeTargetPlayers(result.players);
       const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
-      state.targetStatus = {
+      setTargetStatus({
         type: 'success',
         message: added ? added + ' oyuncu hedef listesine eklendi' + fallbackNote + '.' : 'Bulunan oyuncular zaten hedef listesinde.',
         source: 'futbin',
-        progress: { done: result.players.length, total: result.players.length }
-      };
+        progress: { done: result.players.length, total: result.players.length },
+        holdMs: CONFIG.ui.statusHoldMs
+      });
       return;
     }
 
-    const imported = await importWithEaPrices(result.players, result.fallback, token, fetchPage, sleepFn);
+    const imported = await importWithEaPrices(result.players, result.fallback, token, fetchPage, sleepFn, randomBetweenFn, sleepBetweenFn);
     if (activeToken === token) {
       const source = imported.total === 0 || imported.fallbackCount === imported.total
         ? 'futbin'
         : imported.fallbackCount === 0 ? 'ea' : 'mixed';
-      state.targetStatus = {
+      setTargetStatus({
         type: 'success',
         message: importStatus(imported.added, imported.fallback, imported.fallbackCount, imported.total),
         source,
-        progress: { done: imported.total, total: imported.total }
-      };
+        progress: { done: imported.total, total: imported.total },
+        holdMs: CONFIG.ui.statusHoldMs
+      });
     }
   } catch (error) {
     if (activeToken === token) {
-      state.targetStatus = {
+      setTargetStatus({
         type: 'error',
         message: error.message || 'FutBIN oyuncuları yüklenemedi.',
         source: state.targetStatus?.source || 'futbin',
         progress: state.targetStatus?.progress || { done: 0, total: count }
-      };
+      });
       if (error.blocked) console.error('[FutRUSH] FutBIN engelleme ayrıntısı:', error);
     }
   } finally {

@@ -1,24 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
-  filterBotLogs,
   formatWaitCountdown,
+  logTone,
   normalizeTargetStatus,
   summarizeBotStats
 } from '../../src/ui/panel/panelLogic.js';
 
 describe('panel logic', () => {
-  const logs = [
-    { type: 'success' },
-    { type: 'missed' },
-    { type: 'error' },
-    { type: 'warn' },
-    { type: 'info' }
-  ];
-
-  it('filters all logs, purchases, and issues', () => {
-    expect(filterBotLogs(logs, 'all')).toEqual(logs);
-    expect(filterBotLogs(logs, 'purchases')).toEqual([{ type: 'success' }]);
-    expect(filterBotLogs(logs, 'issues')).toEqual(logs.slice(1, 4));
+  it.each([
+    ['success', 'success'],
+    ['info', 'info'],
+    ['error', 'error'],
+    ['missed', 'error'],
+    ['warn', 'error'],
+    ['unknown', 'info']
+  ])('maps log type %s to tone %s', (type, tone) => {
+    expect(logTone(type)).toBe(tone);
   });
 
   it('summarizes bought, missed, and search counts', () => {

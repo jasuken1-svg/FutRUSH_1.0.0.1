@@ -5,6 +5,7 @@ import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { fetchFutbinPlayerId } from '../futbin/playerLookup.js';
 import { saveSavedTargetLists, saveTargets } from './targetStore.js';
+import { setTargetStatus } from './targetStatus.js';
 
 export function findDuplicateTarget(targets, candidate, { matchFutbinId = true } = {}) {
   return targets.find((item) =>
@@ -26,7 +27,7 @@ export async function resolveTargetEaId(target) {
 
 export function saveTargetSnapshot(listName) {
   if (!state.targets.length) {
-    state.targetStatus = { type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' };
+    setTargetStatus({ type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' });
     return false;
   }
   const snapshot = state.targets.map((player) => ({
@@ -44,11 +45,11 @@ export function saveTargetSnapshot(listName) {
     saveSavedTargetLists(nextLists);
     state.savedTargetLists = nextLists;
     state.selectedSavedTargetListId = savedList.id;
-    state.targetStatus = { type: 'success', message: '“' + name + '” adıyla ' + snapshot.length + ' oyuncu kaydedildi.' };
+    setTargetStatus({ type: 'success', message: '“' + name + '” adıyla ' + snapshot.length + ' oyuncu kaydedildi.' });
     emit('targets:changed');
     return true;
   } catch (error) {
-    state.targetStatus = { type: 'error', message: 'Oyuncu listesi kaydedilemedi. Tarayıcı depolama alanını kontrol edin.' };
+    setTargetStatus({ type: 'error', message: 'Oyuncu listesi kaydedilemedi. Tarayıcı depolama alanını kontrol edin.' });
     return false;
   }
 }

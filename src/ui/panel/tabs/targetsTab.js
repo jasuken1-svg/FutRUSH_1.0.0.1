@@ -5,7 +5,10 @@ import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
 import { buyNowStep } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
+import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
+
+let statusRemovalTimer = null;
 
 function renderStatus(status, targetLoading) {
   const normalized = normalizeTargetStatus(status) || (targetLoading ? {
@@ -16,12 +19,22 @@ function renderStatus(status, targetLoading) {
   return normalized;
 }
 
-function updateTargetStatus(statusElement, status, targetLoading) {
+function cancelStatusRemoval(statusElement) {
+  if (statusRemovalTimer !== null) {
+    clearTimeout(statusRemovalTimer);
+    statusRemovalTimer = null;
+  }
+  statusElement.classList.remove('fr-target-status-exiting');
+}
+
+export function updateTargetStatus(statusElement, status, targetLoading) {
   const normalized = renderStatus(status, targetLoading);
   if (!normalized) {
+    if (statusElement.classList.contains('fr-target-status-exiting')) return;
     statusElement.hidden = true;
     return;
   }
+  cancelStatusRemoval(statusElement);
   const previousMessage = statusElement.dataset.message;
   const previousType = statusElement.dataset.type;
   statusElement.hidden = false;
@@ -98,16 +111,26 @@ function updateTargetStatus(statusElement, status, targetLoading) {
   }
 }
 
+export function expireTargetStatus(content) {
+  const statusElement = content.querySelector('.fr-target-status');
+  if (!statusElement || statusElement.hidden) return;
+  statusElement.classList.add('fr-target-status-exiting');
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    statusElement.remove();
+    return;
+  }
+  statusRemovalTimer = setTimeout(() => {
+    statusElement.remove();
+    statusRemovalTimer = null;
+  }, 220);
+}
+
 export function renderTargetContent(content) {
-    const target = state.targetFilter;
-    const ratings = target.ratings.length ? target.ratings.join(', ') : 'Seçilmedi';
-    const kindLabel = target.kind === 'custom' ? 'Özel' : 'En ucuz';
     const previousStatus = content.querySelector('.fr-target-status');
     content.innerHTML =
-      '<div class="fr-target-view"><div class="fr-target-summary"></div><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
+      '<div class="fr-target-view"><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
       '<div class="fr-target-actions"><button class="fr-target-action fr-target-save" type="button" data-filter-mode="save">Kaydet</button><button class="fr-target-action fr-target-load" type="button" data-filter-mode="load">Yükle</button></div></div>';
-    const summary = content.querySelector('.fr-target-summary');
-    summary.textContent = 'Filtre: ' + kindLabel + '  ·  Reyting: ' + ratings + '  ·  En ucuz sayısı: ' + target.count;
     const status = content.querySelector('.fr-target-status');
     if (previousStatus) status.replaceWith(previousStatus);
     updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
@@ -196,7 +219,7 @@ export function renderTargetContent(content) {
     });
     content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {
       if (!state.targets.length) {
-        state.targetStatus = { type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' };
+        setTargetStatus({ type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' });
         renderTargetContent(content);
         return;
       }

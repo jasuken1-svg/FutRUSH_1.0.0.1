@@ -7,6 +7,7 @@ import { visibleElement } from '../utils/dom.js';
 import { parseFutbinPrice } from '../utils/format.js';
 import { findDuplicateTarget, mergeTargetPlayers } from './targetOps.js';
 import { saveTargets } from './targetStore.js';
+import { setTargetStatus } from './targetStatus.js';
 
 export function selectedPinnedPlayer() {
   const pinned = Array.from(document.querySelectorAll('.ut-pinned-list')).find(visibleElement);
@@ -53,7 +54,7 @@ export function selectedBuyNowPrice(selected) {
 export function addPinnedPlayerToTargets() {
   const player = selectedPinnedPlayer();
   if (player.error) {
-    state.targetStatus = { type: 'error', message: player.error };
+    setTargetStatus({ type: 'error', message: player.error });
     emit('targets:changed');
     console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', player.error);
     return;
@@ -61,21 +62,21 @@ export function addPinnedPlayerToTargets() {
   const price = selectedBuyNowPrice(player.selected);
   if (!price) {
     const message = 'Seçili oyuncu için Buy Now fiyatı bulunamadı. Arama filtresindeki en yüksek Buy Now fiyatını belirleyin.';
-    state.targetStatus = { type: 'error', message };
+    setTargetStatus({ type: 'error', message });
     emit('targets:changed');
     console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: Buy Now fiyatı okunamadı.');
     return;
   }
   const added = mergeTargetPlayers([{ name: player.name, rating: player.rating, eaId: player.eaId, price, futbinId: null }]);
   if (added) {
-    state.targetStatus = { type: 'success', message: player.name + (player.rating ? ' (' + player.rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' };
+    setTargetStatus({ type: 'success', message: player.name + (player.rating ? ' (' + player.rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' });
   } else {
     const duplicate = findDuplicateTarget(state.targets, { name: player.name, rating: player.rating }, { matchFutbinId: false });
     if (duplicate) {
       duplicate.buyNow = price;
       duplicate.price = price;
       saveTargets();
-      state.targetStatus = { type: 'success', message: player.name + ' zaten listede; Buy Now fiyatı güncellendi.' };
+      setTargetStatus({ type: 'success', message: player.name + ' zaten listede; Buy Now fiyatı güncellendi.' });
     }
   }
   emit('targets:changed');

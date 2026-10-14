@@ -5,6 +5,7 @@ import { on } from '../../core/events.js';
 import { state } from '../../core/state.js';
 import { importCheapestTargets } from '../../targets/futbinImport.js';
 import { restoreSavedTargets } from '../../targets/targetOps.js';
+import { setTargetStatus } from '../../targets/targetStatus.js';
 import { panel } from '../panel/panel.js';
 import { renderTargetContent } from '../panel/tabs/targetsTab.js';
 import { filterModalCss } from './filterModal.css.js';
@@ -122,7 +123,7 @@ export function openFilterModal(mode) {
       if (mode === 'load' && nextFilter.kind === 'custom') {
         const restored = restoreSavedTargets();
         const loadedList = state.savedTargetLists.find((list) => list.id === state.selectedSavedTargetListId);
-        state.targetStatus = { type: 'success', message: '“' + (loadedList ? loadedList.name : 'Özel liste') + '” listesinden ' + restored + ' oyuncu adet ve fiyat bilgileriyle aktarıldı.' };
+        setTargetStatus({ type: 'success', message: '“' + (loadedList ? loadedList.name : 'Özel liste') + '” listesinden ' + restored + ' oyuncu adet ve fiyat bilgileriyle aktarıldı.' });
         if (targetContent && state.activePanelTab === 'targets') renderTargetContent(targetContent);
       }
     });
