@@ -55,7 +55,9 @@ describe('importCheapestTargets fallback status', () => {
 
     expect(state.targetStatus).toEqual({
       type: 'success',
-      message: '2 oyuncu hedef listesine eklendi.'
+      message: '2 oyuncu hedef listesine eklendi.',
+      source: 'futbin',
+      progress: { done: 0, total: 0 }
     });
     expect(mergeTargetPlayers).toHaveBeenCalledOnce();
   });
@@ -68,7 +70,9 @@ describe('importCheapestTargets fallback status', () => {
 
     expect(state.targetStatus).toEqual({
       type: 'success',
-      message: '2 oyuncu hedef listesine eklendi (FutBIN yedek kaynağı).'
+      message: '2 oyuncu hedef listesine eklendi (FutBIN yedek kaynağı).',
+      source: 'futbin',
+      progress: { done: 0, total: 0 }
     });
   });
 });
@@ -116,6 +120,8 @@ describe('importCheapestTargets EA pricing', () => {
     expect(actionGap).toHaveBeenCalledOnce();
     expect(actionGap.mock.calls[0][1]).toEqual([0, 0]);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
+    expect(state.targetStatus.source).toBe('ea');
+    expect(state.targetStatus.progress).toEqual({ done: 2, total: 2 });
   });
 
   it('uses the FutBIN price for one failed EA search and continues', async () => {
@@ -133,6 +139,8 @@ describe('importCheapestTargets EA pricing', () => {
     expect(players.map((item) => item.price)).toEqual([5000, 1300]);
     expect(fetchMarketPage).toHaveBeenCalledTimes(2);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (1 oyuncuda FutBIN fiyatı kullanıldı).');
+    expect(state.targetStatus.source).toBe('mixed');
+    expect(state.targetStatus.progress).toEqual({ done: 2, total: 2 });
   });
 
   it('stops EA searches after the configured consecutive failures', async () => {

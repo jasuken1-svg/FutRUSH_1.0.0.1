@@ -4,7 +4,7 @@
 import { on } from '../../core/events.js';
 import { state } from '../../core/state.js';
 import { panel } from './panel.js';
-import { renderBotLogs } from './tabs/logsTab.js';
+import { addBotLogEntry, updateBotLogStats } from './tabs/logsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
 
 export function registerPanelEvents() {
@@ -14,7 +14,11 @@ export function registerPanelEvents() {
   });
   on('log:added', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
-    if (content && state.activePanelTab === 'logs') renderBotLogs(content);
+    if (content && state.activePanelTab === 'logs') addBotLogEntry(content);
+  });
+  on('bot:stats', () => {
+    const content = panel?.querySelector('.fc-snipe-tab-content');
+    if (content && state.activePanelTab === 'logs') updateBotLogStats(content);
   });
   on('bot:status', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');

@@ -5,26 +5,112 @@ import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
 import { buyNowStep } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
+import { normalizeTargetStatus } from '../panelLogic.js';
+
+function renderStatus(status, targetLoading) {
+  const normalized = normalizeTargetStatus(status) || (targetLoading ? {
+    type: 'loading',
+    message: 'FutBIN oyuncuları yükleniyor...',
+    source: 'futbin'
+  } : null);
+  return normalized;
+}
+
+function updateTargetStatus(statusElement, status, targetLoading) {
+  const normalized = renderStatus(status, targetLoading);
+  if (!normalized) {
+    statusElement.hidden = true;
+    return;
+  }
+  const previousMessage = statusElement.dataset.message;
+  const previousType = statusElement.dataset.type;
+  statusElement.hidden = false;
+  statusElement.dataset.type = normalized.type;
+
+  let main = statusElement.querySelector('.fr-target-status-main');
+  if (!main) {
+    main = document.createElement('div');
+    main.className = 'fr-target-status-main';
+    const icon = document.createElement('span');
+    icon.className = 'fr-target-status-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const message = document.createElement('span');
+    message.className = 'fr-target-status-message';
+    const meta = document.createElement('span');
+    meta.className = 'fr-target-status-meta';
+    const source = document.createElement('span');
+    source.className = 'fr-target-source';
+    const progress = document.createElement('span');
+    progress.className = 'fr-target-progress-label';
+    meta.append(source, progress);
+    main.append(icon, message, meta);
+    statusElement.appendChild(main);
+  }
+
+  const icon = main.querySelector('.fr-target-status-icon');
+  icon.dataset.type = normalized.type;
+  icon.textContent = normalized.type === 'loading' ? '' : normalized.type === 'success' ? '✓' : normalized.type === 'error' ? '!' : '·';
+  const message = main.querySelector('.fr-target-status-message');
+  if (previousMessage !== normalized.message || !message.textContent) {
+    message.textContent = normalized.message;
+    message.classList.remove('fr-status-message-enter');
+    void message.offsetWidth;
+    message.classList.add('fr-status-message-enter');
+  }
+  statusElement.dataset.message = normalized.message;
+
+  const source = main.querySelector('.fr-target-source');
+  const sourceLabels = { ea: 'EA', futbin: 'FutBIN', mixed: 'EA+FutBIN' };
+  const sourceLabel = sourceLabels[normalized.source] || '';
+  source.textContent = sourceLabel;
+  source.hidden = !sourceLabel;
+  source.dataset.source = normalized.source || '';
+
+  const progressLabel = main.querySelector('.fr-target-progress-label');
+  let progress = statusElement.querySelector('.fr-target-progress');
+  if (normalized.progress) {
+    if (!progress) {
+      progress = document.createElement('div');
+      progress.className = 'fr-target-progress';
+      const fill = document.createElement('div');
+      fill.className = 'fr-target-progress-fill';
+      progress.appendChild(fill);
+      statusElement.appendChild(progress);
+    }
+    const done = Math.max(0, Number(normalized.progress.done) || 0);
+    const total = Math.max(0, Number(normalized.progress.total) || 0);
+    const width = total ? Math.min(100, done / total * 100) : 0;
+    progress.querySelector('.fr-target-progress-fill').style.width = width + '%';
+    progressLabel.textContent = done + '/' + total;
+    progressLabel.hidden = false;
+  } else {
+    progress?.remove();
+    progressLabel.textContent = '';
+    progressLabel.hidden = true;
+  }
+
+  if (normalized.type === 'success' && (previousType !== 'success' || previousMessage !== normalized.message)) {
+    statusElement.classList.remove('fr-status-success-flash');
+    void statusElement.offsetWidth;
+    statusElement.classList.add('fr-status-success-flash');
+  } else {
+    statusElement.classList.remove('fr-status-success-flash');
+  }
+}
 
 export function renderTargetContent(content) {
     const target = state.targetFilter;
     const ratings = target.ratings.length ? target.ratings.join(', ') : 'Seçilmedi';
     const kindLabel = target.kind === 'custom' ? 'Özel' : 'En ucuz';
+    const previousStatus = content.querySelector('.fr-target-status');
     content.innerHTML =
       '<div class="fr-target-view"><div class="fr-target-summary"></div><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
       '<div class="fr-target-actions"><button class="fr-target-action fr-target-save" type="button" data-filter-mode="save">Kaydet</button><button class="fr-target-action fr-target-load" type="button" data-filter-mode="load">Yükle</button></div></div>';
     const summary = content.querySelector('.fr-target-summary');
     summary.textContent = 'Filtre: ' + kindLabel + '  ·  Reyting: ' + ratings + '  ·  En ucuz sayısı: ' + target.count;
     const status = content.querySelector('.fr-target-status');
-    if (state.targetLoading) {
-      status.textContent = 'FutBIN oyuncuları yükleniyor...';
-      status.dataset.type = 'loading';
-    } else if (state.targetStatus) {
-      status.textContent = state.targetStatus.message;
-      status.dataset.type = state.targetStatus.type;
-    } else {
-      status.hidden = true;
-    }
+    if (previousStatus) status.replaceWith(previousStatus);
+    updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
 
     const list = content.querySelector('.fr-target-list');
     if (!state.targets.length) {

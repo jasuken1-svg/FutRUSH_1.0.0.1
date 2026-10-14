@@ -5,8 +5,10 @@ import { state } from '../../core/state.js';
 import { renderPanelSettings } from './tabs/settingsTab.js';
 import { renderBotLogs } from './tabs/logsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
+import { unmountWaitBar } from './waitBar.js';
 
 export function renderPanelTabs(panel) {
+    unmountWaitBar();
     const tabs = [
       { id: 'targets', label: 'Oyuncu Hedefleri' },
       { id: 'settings', label: 'Ayarlar' },
@@ -28,6 +30,7 @@ export function renderPanelTabs(panel) {
   }
 
 export function renderPanelTabContent(content) {
+  unmountWaitBar();
   if (state.activePanelTab === 'targets') {
     renderTargetContent(content);
     return;
