@@ -10,7 +10,8 @@ export default [
         ...globals.browser,
         GM_xmlhttpRequest: 'readonly',
         unsafeWindow: 'readonly',
-        __DEV__: 'readonly'
+        __DEV__: 'readonly',
+        __VERSION__: 'readonly'
       }
     },
     rules: {

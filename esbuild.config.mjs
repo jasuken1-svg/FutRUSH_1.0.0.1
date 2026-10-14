@@ -9,6 +9,7 @@ import { writeDevLoader } from './scripts/make-dev-loader.mjs';
 
 const dev = process.argv.includes('--dev');
 const watch = process.argv.includes('--watch');
+const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
 
 // Userscript header dosyanın EN BAŞINDA olmalı (banner olarak eklenir)
 const meta = readFileSync('src/meta.txt', 'utf8').replace(/\r\n/g, '\n').trimEnd() + '\n\n';
@@ -23,7 +24,7 @@ const options = {
   sourcemap: dev ? 'inline' : false,   // hata satırları modül dosyasını göstersin
   legalComments: 'none',
   logLevel: 'info',
-  define: { __DEV__: JSON.stringify(dev) }
+  define: { __DEV__: JSON.stringify(dev), __VERSION__: JSON.stringify(version) }
 };
 
 mkdirSync('dist', { recursive: true });

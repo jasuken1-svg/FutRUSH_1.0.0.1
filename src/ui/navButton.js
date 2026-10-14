@@ -3,6 +3,8 @@
 
 import { N } from '../core/config.js';
 import { ICON_SVG } from './icons.js';
+import { renderSettingsBody } from './settingsModal.js';
+import { settingsModalCss } from './settingsModal.css.js';
 
 let navBtn = null;
 let modal = null;
@@ -52,7 +54,7 @@ export function initSettings() {
     }
     #${N.modalId} .fr-close:hover { background: rgba(255,255,255,.18); }
     #${N.modalId} .fr-body { flex: 1; padding: 18px; overflow: auto; }   /* şimdilik boş */
-  `;
+  ` + settingsModalCss;
     document.head.appendChild(navStyle);
 
     navBtn = document.createElement('button');
@@ -83,7 +85,11 @@ export function initSettings() {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
   }
 
-export function openSettings() { modal.style.display = 'block'; navBtn.classList.add('fr-open'); }
+export function openSettings() {
+    renderSettingsBody(modal.querySelector('#futrush-settings-body'));
+    modal.style.display = 'block';
+    navBtn.classList.add('fr-open');
+}
 
 export function closeSettings() { modal.style.display = 'none'; navBtn.classList.remove('fr-open'); }
 

@@ -6,6 +6,7 @@ import { state } from './state.js';
 import { pageStorage } from '../utils/dom.js';
 import { error as logError } from './logger.js';
 import { warn as logWarn } from './logger.js';
+import { applyPrefs, loadPrefs } from './prefs.js';
 
 const SNIPE_SETTINGS_KEY = 'futrush-snipe-settings';
 const SNIPE_SETTINGS_DEFAULTS = {
@@ -93,4 +94,5 @@ export function loadCoreStorage() {
     logWarn('[FutRUSH:storage]', 'Kayıtlı hedef filtresi localStorage’dan okunamadı.', 'futrush-saved-target-filter', String(e?.message || e));
   }
   loadSnipeSettings();
+  applyPrefs(loadPrefs());
 }
