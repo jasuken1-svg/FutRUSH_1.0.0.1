@@ -68,6 +68,11 @@ export const CONFIG = {
     maxConsecutiveErrors: 2
   },
 
+  bot: {
+    delayJitter: 0,
+    stopOnFatalPurchaseError: true
+  },
+
   // FutBIN oyuncu listesi entegrasyonu (URL ve HTML seçicileri burada tutulur)
   futbin: {
     baseUrl: 'https://www.futbin.com/27/players',
