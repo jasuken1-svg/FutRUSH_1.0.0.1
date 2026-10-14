@@ -58,6 +58,16 @@ export const CONFIG = {
     debug: false                      // true: konsola ölçüm bilgisi yazar
   },
 
+  // Hedef eklerken EA piyasa fiyatı araması
+  targetAdd: {
+    priceSource: 'ea',
+    maxSearches: 5,
+    searchGapMs: [1200, 1800],
+    actionGapMs: [1500, 2500],
+    outlierRatio: 0.9,
+    maxConsecutiveErrors: 2
+  },
+
   // FutBIN oyuncu listesi entegrasyonu (URL ve HTML seçicileri burada tutulur)
   futbin: {
     baseUrl: 'https://www.futbin.com/27/players',
