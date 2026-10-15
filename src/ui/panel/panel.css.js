@@ -225,7 +225,7 @@ export const panelCss = `
     #${P.id} .fr-target-rating { flex: 0 0 auto; margin-left: 5px; color: #c8d7df; font-size: 10px; font-weight: 600; }
     #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
     #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-    #${P.id} .fr-target-control-title { margin-bottom: 3px; color: #aebfc8; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    #${P.id} .fr-target-control-title { margin-bottom: 3px; color: #aebfc8; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-align: center; text-transform: uppercase; }
     #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
     #${P.id} .fr-target-counter button { width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 15px; line-height: 1; cursor: pointer; }
     #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }

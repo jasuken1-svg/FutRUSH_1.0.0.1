@@ -134,7 +134,6 @@ export function renderTargetContent(content) {
     const status = content.querySelector('.fr-target-status');
     if (previousStatus) status.replaceWith(previousStatus);
     updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
-
     const list = content.querySelector('.fr-target-list');
     if (!state.targets.length) {
       const empty = document.createElement('div');
@@ -171,8 +170,8 @@ export function renderTargetContent(content) {
       const controls = document.createElement('div');
       controls.className = 'fr-target-controls';
       [
-        { key: 'searches', label: 'Searches', step: 1, min: 1 },
-        { key: 'buyNow', label: 'Buy Now', step: buyNowStep(player.buyNow), min: 1 }
+        { key: 'searches', label: 'TUR SAYISI', step: 1, min: 1 },
+        { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 1 }
       ].forEach((control) => {
         const group = document.createElement('div');
         const title = document.createElement('div');
@@ -195,7 +194,9 @@ export function renderTargetContent(content) {
           const step = control.key === 'buyNow' ? buyNowStep(player.buyNow) : control.step;
           player[control.key] = Math.max(control.min, Number(player[control.key]) + direction * step);
           saveTargets();
-          renderTargetContent(content);
+          value.textContent = control.key === 'buyNow'
+            ? Number(player.buyNow).toLocaleString('tr-TR')
+            : String(player.searches);
         };
         minus.addEventListener('click', () => change(-1));
         plus.addEventListener('click', () => change(1));
