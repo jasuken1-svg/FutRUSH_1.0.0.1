@@ -31,6 +31,7 @@ export function renderPanelTabs(panel) {
 
 export function renderPanelTabContent(content) {
   unmountWaitBar();
+  content.dataset.activeTab = state.activePanelTab;
   if (state.activePanelTab === 'targets') {
     renderTargetContent(content);
     return;

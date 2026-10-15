@@ -63,6 +63,8 @@ export const panelCss = `
       padding: 10px 4px 4px;
       color: #e8f4f6;
     }
+    #${P.id} .fc-snipe-tab-content[data-active-tab="settings"] { overflow-y: auto; scrollbar-width: none; }
+    #${P.id} .fc-snipe-tab-content[data-active-tab="settings"]::-webkit-scrollbar { display: none; }
     #${P.id} .fr-settings-view {
       display: flex;
       flex-direction: column;
@@ -217,7 +219,8 @@ export const panelCss = `
       animation: fr-status-shimmer 1.2s linear infinite;
     }
     #${P.id} .fr-status-success-flash { animation: fr-status-flash .55s ease-out; }
-    #${P.id} .fr-target-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 3px 2px 1px; }
+    #${P.id} .fr-target-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 3px 2px 1px; scrollbar-width: none; }
+    #${P.id} .fr-target-list::-webkit-scrollbar { display: none; }
     #${P.id} .fr-target-empty { margin: auto; color: #90a2ad; font-size: 12px; text-align: center; }
     #${P.id} .fr-target-card { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(4,12,22,.48); }
     #${P.id} .fr-target-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -254,7 +257,8 @@ export const panelCss = `
       transition: background .16s ease, border-color .16s ease, color .16s ease;
     }
     #${P.id} .fr-log-clear { border-color: rgba(255,82,97,.3); color: #ff9ca4; }
-    #${P.id} .fr-log-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px; min-height: 0; overflow: auto; color: #c8d7df; font-size: 11px; }
+    #${P.id} .fr-log-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px; min-height: 0; overflow-y: auto; color: #c8d7df; font-size: 11px; scrollbar-width: none; }
+    #${P.id} .fr-log-list::-webkit-scrollbar { display: none; }
     #${P.id} .fr-log-row {
       display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;
       padding: 6px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;

@@ -4,6 +4,18 @@ export function logTone(type) {
   return 'info';
 }
 
+export function botLogType(entry) {
+  return entry?.kind || entry?.type || 'info';
+}
+
+export function chronologicalBotLogs(logs = []) {
+  return logs.slice().reverse();
+}
+
+export function shouldAutoScrollLogList({ scrollHeight = 0, scrollTop = 0, clientHeight = 0 } = {}) {
+  return scrollHeight - scrollTop - clientHeight <= 2;
+}
+
 export function summarizeBotStats(stats = {}) {
   return {
     bought: Number(stats.bought) || 0,

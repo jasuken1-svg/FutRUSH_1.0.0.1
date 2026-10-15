@@ -126,7 +126,7 @@ export async function runAutoBuyer(token, deps = {}) {
             if (purchase.success) {
               bought++;
               incrementStat('bought');
-              addBotLog(target.name + ' (' + offer.rating + ') · ' + offer.price.toLocaleString('tr-TR') + ' 🪙 — ALINDI', 'success');
+              addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'success' });
             } else {
               const error = purchase.error;
               const classified = classifyPurchaseError(error, purchase);
@@ -143,7 +143,7 @@ export async function runAutoBuyer(token, deps = {}) {
               }
               const codeText = classified.code === null ? '' : ' (kod ' + classified.code + ')';
               if (classified.kind === 'missed') {
-                addBotLog(target.name + ' (' + offer.rating + ') · ' + offer.price.toLocaleString('tr-TR') + ' 🪙 — BAŞKASI ALDI (kod ' + (classified.code ?? 'bilinmiyor') + ')', 'missed');
+                addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'missed' });
               } else {
                 addBotLog(target.name + ': satın alma başarısız — ' + classified.text + codeText, 'error');
               }

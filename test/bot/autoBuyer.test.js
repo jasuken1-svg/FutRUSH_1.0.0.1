@@ -218,8 +218,8 @@ describe('runAutoBuyer', () => {
 
     expect(idleWait).not.toHaveBeenCalled();
     expect(state.botStats).toMatchObject({ bought: 1, searches: 1 });
-    const boughtLog = state.botLogs.find((entry) => entry.type === 'success');
-    expect(boughtLog.message).toContain('500 🪙 — ALINDI');
+    const boughtLog = state.botLogs.find((entry) => entry.kind === 'success');
+    expect(boughtLog).toMatchObject({ name: 'A', rating: 90, price: 500, kind: 'success' });
   });
 
   it('logs and counts missed purchases', async () => {
@@ -233,9 +233,9 @@ describe('runAutoBuyer', () => {
     }));
 
     expect(state.botStats).toMatchObject({ missed: 1, errors: 0 });
-    const missedLog = state.botLogs.find((entry) => entry.type === 'missed');
+    const missedLog = state.botLogs.find((entry) => entry.kind === 'missed');
     expect(missedLog.id).toBeGreaterThan(0);
-    expect(missedLog.message).toContain('500 🪙 — BAŞKASI ALDI');
+    expect(missedLog).toMatchObject({ name: 'A', rating: 90, price: 500, kind: 'missed' });
     expect(state.botLogs.map((entry) => entry.id)).toEqual([3, 2, 1]);
   });
 
