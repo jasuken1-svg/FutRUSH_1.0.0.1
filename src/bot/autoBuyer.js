@@ -11,7 +11,7 @@ import { randomBetween } from '../utils/cancelToken.js';
 import { searchAutoBuyOffers, buyAutoOffer } from '../ea/market.js';
 import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
-import { resolveTargetEaId } from '../targets/targetOps.js';
+import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { idleWait } from './idle.js';
 
@@ -78,11 +78,14 @@ export async function runAutoBuyer(token, deps = {}) {
   let bought = 0;
   const attemptedTrades = new Set();
   const loggedMatches = new Set();
+  const newlyResolvedTargets = new Set();
   try {
     for (const target of state.targets) {
       if (token !== state.botToken || !state.botRunning) return;
+      const needsResolution = !hasCurrentTargetEaId(target);
       await resolveId(target);
       if (token !== state.botToken || !state.botRunning) return;
+      if (needsResolution && hasCurrentTargetEaId(target)) newlyResolvedTargets.add(target);
       await wait(250);
     }
 
@@ -100,7 +103,7 @@ export async function runAutoBuyer(token, deps = {}) {
           }
           setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
           incrementStat('searches');
-          if (!loggedMatches.has(target)) {
+          if (newlyResolvedTargets.has(target) && !loggedMatches.has(target)) {
             addBotLog(target.name + ' EA oyuncu kimliğiyle eşleştirildi.', 'success');
             loggedMatches.add(target);
           }

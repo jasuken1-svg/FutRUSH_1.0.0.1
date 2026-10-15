@@ -26,13 +26,41 @@ export function findDuplicateTarget(targets, candidate, { matchFutbinId = true }
   );
 }
 
+function targetEaIdKey(target) {
+  return JSON.stringify([
+    String(target.name),
+    Number(target.rating),
+    target.futbinId == null ? null : String(target.futbinId)
+  ]);
+}
+
+function normalizedEaId(value) {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) return 0;
+  return id & 0xffffff;
+}
+
+export function hasCurrentTargetEaId(target) {
+  const eaId = normalizedEaId(target.eaId);
+  if (!eaId) return false;
+  return !target.eaIdTargetKey || target.eaIdTargetKey === targetEaIdKey(target);
+}
+
 export async function resolveTargetEaId(target) {
-  if (Number(target.eaId) > 0) {
-    target.eaId = Number(target.eaId) & 0xffffff;
+  if (hasCurrentTargetEaId(target)) {
+    const eaId = normalizedEaId(target.eaId);
+    if (target.eaIdTargetKey !== targetEaIdKey(target)) {
+      target.eaId = eaId;
+      target.eaIdTargetKey = targetEaIdKey(target);
+      saveTargets();
+    }
     return target.eaId;
   }
-  const eaId = await fetchFutbinPlayerId(target);
+  const fetchedEaId = Number(await fetchFutbinPlayerId(target));
+  const eaId = normalizedEaId(fetchedEaId);
+  if (!eaId) throw new Error('FutBIN yanıtında geçerli EA oyuncu kimliği bulunamadı.');
   target.eaId = eaId;
+  target.eaIdTargetKey = targetEaIdKey(target);
   saveTargets();
   return eaId;
 }
@@ -43,7 +71,8 @@ export function saveTargetSnapshot(listName) {
     return false;
   }
   const snapshot = state.targets.map((player) => ({
-    id: player.id, name: player.name, rating: player.rating, eaId: player.eaId || 0, price: player.price,
+    id: player.id, name: player.name, rating: player.rating, eaId: player.eaId || 0,
+    eaIdTargetKey: player.eaIdTargetKey || null, price: player.price,
     searches: player.searches, buyNow: player.buyNow, futbinId: player.futbinId
   }));
   try {
@@ -74,7 +103,10 @@ export function restoreSavedTargets() {
     const duplicate = findDuplicateTarget(state.targets, saved);
     if (duplicate) {
       duplicate.price = saved.price;
-      duplicate.eaId = saved.eaId || duplicate.eaId || 0;
+      if (normalizedEaId(saved.eaId)) {
+        duplicate.eaId = normalizedEaId(saved.eaId);
+        duplicate.eaIdTargetKey = saved.eaIdTargetKey || null;
+      }
       duplicate.searches = saved.searches;
       duplicate.buyNow = saved.buyNow;
     } else {
@@ -93,7 +125,10 @@ export function mergeTargetPlayers(players) {
     const nameKey = player.name.trim().toLocaleLowerCase();
     const duplicate = findDuplicateTarget(state.targets, player);
     if (duplicate) {
-      if (!duplicate.eaId && Number(player.eaId) > 0) duplicate.eaId = Number(player.eaId);
+      if (!duplicate.eaId && normalizedEaId(player.eaId)) {
+        duplicate.eaId = normalizedEaId(player.eaId);
+        duplicate.eaIdTargetKey = player.eaIdTargetKey || null;
+      }
       return;
     }
     const futbinId = player.futbinId == null ? null : String(player.futbinId);
@@ -102,6 +137,7 @@ export function mergeTargetPlayers(players) {
       name: player.name,
       rating: player.rating,
       eaId: Number(player.eaId) || 0,
+      eaIdTargetKey: player.eaIdTargetKey || null,
       price: player.price,
       searches: 3,
       buyNow: player.price,
