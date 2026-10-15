@@ -7,12 +7,16 @@ import { emit } from '../core/events.js';
 import { debug, warnOnce } from '../core/logger.js';
 import { pageWindow } from '../utils/dom.js';
 import { wait } from '../utils/async.js';
+import { randomBetween } from '../utils/cancelToken.js';
 import { searchAutoBuyOffers, buyAutoOffer } from '../ea/market.js';
 import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
 import { resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { idleWait } from './idle.js';
+
+const defaultSearchJitterMs = [...CONFIG.bot.searchJitterMs];
+const defaultCycleJitterMs = [...CONFIG.bot.cycleJitterMs];
 
 export function stopAutoBuyer(reason) {
   if (!state.botRunning) return;
@@ -53,14 +57,22 @@ export async function runAutoBuyer(token, deps = {}) {
   const idle = deps.idleWait || idleWait;
   const resolveId = deps.resolveTargetEaId || resolveTargetEaId;
   const coinBalance = deps.getCoinBalance || getCoinBalance;
+  const rnd = deps.random || Math.random;
+  const validJitterRange = (range, fallback) => (
+    Array.isArray(range) &&
+    range.length === 2 &&
+    range.every(Number.isFinite) &&
+    range[0] >= 0 &&
+    range[1] >= range[0]
+      ? range
+      : fallback
+  );
+  const searchJitterRange = validJitterRange(CONFIG.bot.searchJitterMs, defaultSearchJitterMs);
+  const cycleJitterRange = validJitterRange(CONFIG.bot.cycleJitterMs, defaultCycleJitterMs);
+  const jitterMs = (range) => Math.round(randomBetween(range[0], range[1], rnd));
   const incrementStat = (name) => {
     state.botStats[name]++;
     emit('bot:stats');
-  };
-  const delayForSpeed = () => {
-    const base = speedDelay[settings.speed] || 4000;
-    const jitter = Number(CONFIG.bot.delayJitter) || 0;
-    return Math.max(0, Math.round(base * (1 + (Math.random() * 2 - 1) * jitter)));
   };
   let cycles = 0;
   let bought = 0;
@@ -142,7 +154,11 @@ export async function runAutoBuyer(token, deps = {}) {
             return;
           }
           if (hasMoreSearches && state.botRunning && token === state.botToken) {
-            await idle(delayForSpeed(), token, 'search');
+            const baseDelay = speedDelay[settings.speed] || 4000;
+            const jitter = jitterMs(searchJitterRange);
+            const totalDelay = baseDelay + jitter;
+            debug('[FutRUSH:bot]', 'Arama arası gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
+            await idle(baseDelay + jitter, token, 'search');
           }
         }
         if (bought >= settings.maxPlayers) break;
@@ -156,8 +172,13 @@ export async function runAutoBuyer(token, deps = {}) {
         stopAutoBuyer('Tarama tamamlandı. Başarılı alım: ' + bought + '.');
         return;
       }
-      if (settings.waitSeconds > 0) await idle(settings.waitSeconds * 1000, token, 'cycle');
-      else await idle(delayForSpeed(), token, 'cycle');
+      const baseDelay = settings.waitSeconds > 0
+        ? settings.waitSeconds * 1000
+        : speedDelay[settings.speed] || 4000;
+      const jitter = jitterMs(cycleJitterRange);
+      const totalDelay = baseDelay + jitter;
+      debug('[FutRUSH:bot]', 'Döngü sonu gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
+      await idle(totalDelay, token, 'cycle');
     } while (state.botRunning && token === state.botToken);
   } catch (error) {
     if (token === state.botToken) {
