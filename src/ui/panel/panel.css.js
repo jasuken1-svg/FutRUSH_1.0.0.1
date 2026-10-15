@@ -224,14 +224,17 @@ export const panelCss = `
     #${P.id} .fr-target-name { overflow: hidden; color: #ffd447; font-size: 13px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; }
     #${P.id} .fr-target-rating { flex: 0 0 auto; margin-left: 5px; color: #c8d7df; font-size: 10px; font-weight: 600; }
     #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
-    #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+    #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
     #${P.id} .fr-target-control-title { margin-bottom: 3px; color: #aebfc8; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-align: center; text-transform: uppercase; }
-    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 60px; }
+    #${P.id} .fr-target-counter-editable { gap: 6px; }
     #${P.id} .fr-target-counter button { width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 15px; line-height: 1; cursor: pointer; }
     #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }
     #${P.id} .fr-target-counter-value { min-width: 24px; color: #00e5ff; font-size: 12px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-target-icons { display: flex; gap: 5px; margin-top: 6px; color: #7f929d; }
-    #${P.id} .fr-target-icon { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid rgba(255,255,255,.13); border-radius: 3px; font-size: 9px; line-height: 1; opacity: .65; }
+    #${P.id} .fr-target-counter-input { box-sizing: border-box; flex: 0 0 8ch; width: 8ch; min-width: 0; height: 24px; padding: 2px 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 4px; color: #00e5ff; background: rgba(255,255,255,.05); font: inherit; font-size: 12px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; }
+    #${P.id} .fr-target-counter-input::-webkit-inner-spin-button,
+    #${P.id} .fr-target-counter-input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+    #${P.id} .fr-target-counter-input:focus { outline: 1px solid rgba(0,229,255,.7); }
     #${P.id} .fr-target-actions { display: flex; flex: 0 0 auto; gap: 8px; padding-top: 2px; }
     #${P.id} .fr-target-action {
       flex: 1; min-height: 34px; border: 1px solid transparent; border-radius: 7px;

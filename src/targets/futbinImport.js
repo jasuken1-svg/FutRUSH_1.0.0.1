@@ -32,6 +32,7 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, 
 
   if (activeToken === token) state.targetLoading = false;
   for (let index = 0; index < players.length; index++) {
+    if (token.cancelled) break;
     const player = players[index];
     let didEaSearch = false;
     let usedEaPrice = false;
@@ -115,6 +116,7 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, 
       }
     }
 
+    if (token.cancelled) break;
     if (!usedEaPrice) {
       player.price = reference;
       player.buyNow = reference;
@@ -136,6 +138,7 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, 
 
     if (shouldWait) await sleepBetweenFn(gap, token);
   }
+  if (token.cancelled) return { added, fallbackCount, total: players.length, fallback, cancelled: true };
   return { added, fallbackCount, total: players.length, fallback };
 }
 

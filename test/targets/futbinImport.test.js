@@ -105,6 +105,10 @@ describe('importCheapestTargets EA pricing', () => {
       fetchCheapestPlayers: async () => ({ players, fallback: false }),
       fetchMarketPage: async (eaId) => {
         progress.push(state.targetStatus.message);
+        if (eaId === 1002) {
+          expect(mergeTargetPlayers).toHaveBeenCalledOnce();
+          expect(mergeTargetPlayers).toHaveBeenCalledWith([players[0]]);
+        }
         return successfulPage(eaId);
       },
       sleepFn: noWait
@@ -112,7 +116,9 @@ describe('importCheapestTargets EA pricing', () => {
 
     expect(players.map((item) => item.price)).toEqual([1300, 1300]);
     expect(players.map((item) => item.buyNow)).toEqual([1300, 1300]);
-    expect(mergeTargetPlayers.mock.calls.map(([batch]) => batch)).toEqual([[players[0]], [players[1]]]);
+    expect(mergeTargetPlayers).toHaveBeenCalledTimes(2);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [players[0]]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [players[1]]);
     expect(progress).toEqual(['EA fiyatı alınıyor 1/2: Alpha', 'EA fiyatı alınıyor 2/2: Beta']);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
     expect(state.targetStatus.source).toBe('ea');
@@ -221,7 +227,7 @@ describe('importCheapestTargets EA pricing', () => {
     expect(state.targetStatus.message).toBe('1 oyuncu hedef listesine eklendi (1 oyuncuda FutBIN fiyatı kullanıldı).');
   });
 
-  it('cancels an older import, which adds its remaining players at FutBIN prices', async () => {
+  it('does not add the in-flight player after its import is cancelled', async () => {
     let releasePage;
     const firstPlayers = [player('Alpha'), player('Beta', 6000, 1002)];
     const firstPage = new Promise((resolve) => { releasePage = resolve; });
@@ -237,9 +243,11 @@ describe('importCheapestTargets EA pricing', () => {
     await importCheapestTargets(90, 0, {
       fetchCheapestPlayers: async () => ({ players: [], fallback: false })
     });
+    mergeTargetPlayers.mockClear();
     releasePage(successfulPage(1001));
     await previousImport;
 
+    expect(mergeTargetPlayers).not.toHaveBeenCalled();
     expect(firstPlayers.map((item) => item.price)).toEqual([5000, 6000]);
     expect(state.targetStatus.message).toBe('Bulunan oyuncular zaten hedef listesinde.');
   });

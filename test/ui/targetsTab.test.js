@@ -46,6 +46,7 @@ describe('player target controls', () => {
     list.scrollTop = 90;
     const secondCard = list.querySelectorAll('.fr-target-card')[1];
     const groups = secondCard.querySelectorAll('.fr-target-controls > div');
+    expect(secondCard.querySelector('.fr-target-icons')).toBeNull();
     expect(groups[0].querySelector('.fr-target-control-title').textContent).toBe('TUR SAYISI');
     expect(groups[1].querySelector('.fr-target-control-title').textContent).toBe('SATIN AL');
     expect(groups[0].querySelector('.fr-target-control-title').nextElementSibling)
@@ -67,5 +68,68 @@ describe('player target controls', () => {
     expect(state.targets.map((target) => target.id)).toEqual(['first', 'second', 'third']);
     expect(content.querySelectorAll('.fr-target-card')[1]).toBe(secondCard);
     expect(content.querySelector('.fr-target-list').scrollTop).toBe(90);
+  });
+
+  it('uses the next price tier when stepping across thresholds', () => {
+    state.targets = [
+      { id: 'threshold', name: 'Threshold', rating: 90, price: 950, searches: 3, buyNow: 950 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const card = content.querySelector('.fr-target-card');
+    const increase = card.querySelector('[aria-label="SATIN AL artır"]');
+    const decrease = card.querySelector('[aria-label="SATIN AL azalt"]');
+    const value = card.querySelector('[aria-label="SATIN AL değeri"]');
+
+    increase.click();
+    expect(state.targets[0].buyNow).toBe(1000);
+    increase.click();
+    expect(state.targets[0].buyNow).toBe(1100);
+    decrease.click();
+    expect(state.targets[0].buyNow).toBe(1000);
+    decrease.click();
+    expect(state.targets[0].buyNow).toBe(950);
+    expect(value.value).toBe('950');
+  });
+
+  it('rounds manually entered prices down to the EA tier and allows exact search counts', () => {
+    state.targets = [
+      { id: 'manual', name: 'Manual', rating: 90, price: 1000, searches: 3, buyNow: 1000 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+    const card = content.querySelector('.fr-target-card');
+    const searches = card.querySelector('[aria-label="TUR SAYISI değeri"]');
+    const buyNow = card.querySelector('[aria-label="SATIN AL değeri"]');
+
+    searches.value = '12';
+    searches.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    buyNow.value = '2111';
+    buyNow.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+
+    expect(state.targets[0]).toMatchObject({ searches: 12, buyNow: 2100 });
+    expect(buyNow.value).toBe('2100');
+
+    buyNow.value = '111111';
+    buyNow.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(state.targets[0].buyNow).toBe(111000);
+    expect(buyNow.value).toBe('111000');
+  });
+
+  it('rejects invalid manual values and restores the saved value', () => {
+    state.targets = [
+      { id: 'invalid', name: 'Invalid', rating: 90, price: 1000, searches: 3, buyNow: 1000 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+    const input = content.querySelector('[aria-label="TUR SAYISI değeri"]');
+
+    input.value = '0';
+    input.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+
+    expect(state.targets[0].searches).toBe(3);
+    expect(input.value).toBe('3');
+    expect(state.targetStatus).toMatchObject({ type: 'error' });
   });
 });

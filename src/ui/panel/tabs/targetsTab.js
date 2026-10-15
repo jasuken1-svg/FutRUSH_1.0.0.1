@@ -3,7 +3,7 @@
 
 import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
-import { buyNowStep } from '../../../utils/format.js';
+import { buyNowStep, floorPrice } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
@@ -171,33 +171,54 @@ export function renderTargetContent(content) {
       controls.className = 'fr-target-controls';
       [
         { key: 'searches', label: 'TUR SAYISI', step: 1, min: 1 },
-        { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 1 }
+        { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 150 }
       ].forEach((control) => {
         const group = document.createElement('div');
         const title = document.createElement('div');
         title.className = 'fr-target-control-title';
         title.textContent = control.label;
         const counter = document.createElement('div');
-        counter.className = 'fr-target-counter';
+        counter.className = 'fr-target-counter fr-target-counter-editable';
         const minus = document.createElement('button');
         minus.type = 'button';
         minus.textContent = '−';
         minus.setAttribute('aria-label', control.label + ' azalt');
-        const value = document.createElement('span');
-        value.className = 'fr-target-counter-value';
-        value.textContent = control.key === 'buyNow' ? Number(player.buyNow).toLocaleString('tr-TR') : String(player.searches);
+        const value = document.createElement('input');
+        value.className = 'fr-target-counter-input';
+        value.type = 'number';
+        value.min = String(control.min);
+        value.step = '1';
+        value.inputMode = 'numeric';
+        value.setAttribute('aria-label', control.label + ' değeri');
+        value.value = String(player[control.key]);
         const plus = document.createElement('button');
         plus.type = 'button';
         plus.textContent = '+';
         plus.setAttribute('aria-label', control.label + ' artır');
         const change = (direction) => {
-          const step = control.key === 'buyNow' ? buyNowStep(player.buyNow) : control.step;
-          player[control.key] = Math.max(control.min, Number(player[control.key]) + direction * step);
+          const current = Number(player[control.key]);
+          const step = control.key === 'buyNow'
+            ? buyNowStep(Math.max(0, current + direction))
+            : control.step;
+          player[control.key] = Math.max(control.min, current + direction * step);
           saveTargets();
-          value.textContent = control.key === 'buyNow'
-            ? Number(player.buyNow).toLocaleString('tr-TR')
-            : String(player.searches);
+          value.value = String(player[control.key]);
         };
+        value.addEventListener('change', () => {
+          const enteredValue = value.value === '' ? NaN : Number(value.value);
+          const completedValue = control.key === 'buyNow' ? floorPrice(enteredValue) : enteredValue;
+          if (!Number.isSafeInteger(enteredValue) || enteredValue < control.min || completedValue < control.min) {
+            value.value = String(player[control.key]);
+            setTargetStatus({
+              type: 'error',
+              message: control.label + ' için ' + control.min + ' veya daha büyük bir tam sayı girin.'
+            });
+            return;
+          }
+          player[control.key] = completedValue;
+          value.value = String(completedValue);
+          saveTargets();
+        });
         minus.addEventListener('click', () => change(-1));
         plus.addEventListener('click', () => change(1));
         counter.append(minus, value, plus);
@@ -206,16 +227,6 @@ export function renderTargetContent(content) {
       });
       card.appendChild(controls);
 
-      const icons = document.createElement('div');
-      icons.className = 'fr-target-icons';
-      ['FUT', '▧', '⌖', '⚽', '◎', '≋', '♣', '✦'].forEach((label, iconIndex) => {
-        const icon = document.createElement('span');
-        icon.className = 'fr-target-icon';
-        icon.textContent = label;
-        icon.title = ['FUT', 'Kart tipi', 'Pozisyon', 'Ayakkabı', 'Ülke', 'Lig', 'Kulüp', 'Nadirlik'][iconIndex];
-        icons.appendChild(icon);
-      });
-      card.appendChild(icons);
       list.appendChild(card);
     });
     content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {

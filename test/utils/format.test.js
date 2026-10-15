@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buyNowStep, parsePrice, parseFutbinPrice } from '../../src/utils/format.js';
+import { buyNowStep, floorPrice, parsePrice, parseFutbinPrice } from '../../src/utils/format.js';
 
 describe('parsePrice', () => {
   it.each([
@@ -33,5 +33,16 @@ describe('buyNowStep', () => {
     [100001, 1000]
   ])('returns the step for price %i', (price, expected) => {
     expect(buyNowStep(price)).toBe(expected);
+  });
+
+  describe('floorPrice', () => {
+    it.each([
+      [2111, 2100],
+      [111111, 111000],
+      [10000, 10000],
+      [149, 0]
+    ])('completes %i down to an EA tier', (price, expected) => {
+      expect(floorPrice(price)).toBe(expected);
+    });
   });
 });

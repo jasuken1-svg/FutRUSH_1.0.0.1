@@ -14,6 +14,23 @@ export function parsePrice(text) {
 
 export const parseFutbinPrice = parsePrice;
 
+const fallbackPriceTiers = [
+  { min: 100000, inc: 1000 },
+  { min: 50000, inc: 500 },
+  { min: 10000, inc: 250 },
+  { min: 1000, inc: 100 },
+  { min: 150, inc: 50 },
+  { min: 0, inc: 150 }
+];
+
+export function floorPrice(value, priceTiers = fallbackPriceTiers) {
+  const price = Math.floor(Number(value) || 0);
+  if (price < 150) return 0;
+  const tier = priceTiers.find((item) => price >= item.min);
+  if (!tier) return 0;
+  return Math.floor(price / tier.inc) * tier.inc;
+}
+
 export function buyNowStep(price) {
   if (price <= 1000) return 50;
   if (price <= 10000) return 100;

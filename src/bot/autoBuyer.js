@@ -23,7 +23,7 @@ export function stopAutoBuyer(reason) {
   state.botRunning = false;
   state.botToken++;
   setBotStatus(reason || 'Tarama durduruldu.');
-  addBotLog(state.botStatus, 'info');
+  addBotLog(state.botStatus, 'error');
 }
 
 export async function startAutoBuyer() {
@@ -45,7 +45,7 @@ export async function startAutoBuyer() {
   state.botWait = null;
   emit('bot:stats');
   setBotStatus('Oyuncular eşleştiriliyor...');
-  addBotLog('FutRUSH taraması başlatıldı.', 'info');
+  addBotLog('FutRUSH taraması başlatıldı.', 'success');
   runAutoBuyer(token);
 }
 
@@ -77,12 +77,12 @@ export async function runAutoBuyer(token, deps = {}) {
   let cycles = 0;
   let bought = 0;
   const attemptedTrades = new Set();
+  const loggedMatches = new Set();
   try {
     for (const target of state.targets) {
       if (token !== state.botToken || !state.botRunning) return;
       await resolveId(target);
       if (token !== state.botToken || !state.botRunning) return;
-      addBotLog(target.name + ' EA oyuncu kimliğiyle eşleştirildi.', 'success');
       await wait(250);
     }
 
@@ -100,6 +100,10 @@ export async function runAutoBuyer(token, deps = {}) {
           }
           setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
           incrementStat('searches');
+          if (!loggedMatches.has(target)) {
+            addBotLog(target.name + ' EA oyuncu kimliğiyle eşleştirildi.', 'success');
+            loggedMatches.add(target);
+          }
           const result = await search(target, eaId, token);
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
@@ -122,7 +126,7 @@ export async function runAutoBuyer(token, deps = {}) {
             if (purchase.success) {
               bought++;
               incrementStat('bought');
-              addBotLog(target.name + ' (' + offer.rating + ') ' + offer.price.toLocaleString('tr-TR') + ' coin karşılığında alındı.', 'success');
+              addBotLog(target.name + ' (' + offer.rating + ') · ' + offer.price.toLocaleString('tr-TR') + ' 🪙 — ALINDI', 'success');
             } else {
               const error = purchase.error;
               const classified = classifyPurchaseError(error, purchase);
@@ -139,7 +143,7 @@ export async function runAutoBuyer(token, deps = {}) {
               }
               const codeText = classified.code === null ? '' : ' (kod ' + classified.code + ')';
               if (classified.kind === 'missed') {
-                addBotLog(target.name + ' (' + offer.rating + '): kaçırıldı — kart başka bir kullanıcı tarafından alınmış (kod ' + (classified.code ?? 'bilinmiyor') + ').', 'missed');
+                addBotLog(target.name + ' (' + offer.rating + ') · ' + offer.price.toLocaleString('tr-TR') + ' 🪙 — BAŞKASI ALDI (kod ' + (classified.code ?? 'bilinmiyor') + ')', 'missed');
               } else {
                 addBotLog(target.name + ': satın alma başarısız — ' + classified.text + codeText, 'error');
               }

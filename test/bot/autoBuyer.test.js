@@ -90,6 +90,29 @@ describe('runAutoBuyer', () => {
     expect(idleWait.mock.calls[0][2]).toBe('search');
   });
 
+  it('logs each resolved player immediately before their first search', async () => {
+    prepareBot([target('A', 1), target('B', 1)]);
+    const order = [];
+    const resolveTargetEaId = vi.fn(async (player) => order.push(['resolve', player.name]));
+    const searchAutoBuyOffers = vi.fn(async (player) => {
+      order.push(['search', player.name, state.botLogs[0]?.message]);
+      return { stopped: false, offers: [] };
+    });
+
+    await runAutoBuyer(1, deps(vi.fn(), searchAutoBuyOffers, { resolveTargetEaId }));
+
+    expect(order.map(([action, name]) => [action, name])).toEqual([
+      ['resolve', 'A'],
+      ['resolve', 'B'],
+      ['search', 'A'],
+      ['search', 'B']
+    ]);
+    expect(order.filter(([action]) => action === 'search').map(([, name, message]) => message)).toEqual([
+      'A EA oyuncu kimliğiyle eşleştirildi.',
+      'B EA oyuncu kimliğiyle eşleştirildi.'
+    ]);
+  });
+
   it('uses the cycle wait when repeat is unlimited', async () => {
     prepareBot([target('A', 1)], { repeat: 0, waitSeconds: 3 });
     const idleWait = vi.fn(async (ms, token, kind) => {
@@ -195,6 +218,8 @@ describe('runAutoBuyer', () => {
 
     expect(idleWait).not.toHaveBeenCalled();
     expect(state.botStats).toMatchObject({ bought: 1, searches: 1 });
+    const boughtLog = state.botLogs.find((entry) => entry.type === 'success');
+    expect(boughtLog.message).toContain('500 🪙 — ALINDI');
   });
 
   it('logs and counts missed purchases', async () => {
@@ -210,7 +235,7 @@ describe('runAutoBuyer', () => {
     expect(state.botStats).toMatchObject({ missed: 1, errors: 0 });
     const missedLog = state.botLogs.find((entry) => entry.type === 'missed');
     expect(missedLog.id).toBeGreaterThan(0);
-    expect(missedLog.message).toContain('kaçırıldı');
+    expect(missedLog.message).toContain('500 🪙 — BAŞKASI ALDI');
     expect(state.botLogs.map((entry) => entry.id)).toEqual([3, 2, 1]);
   });
 
