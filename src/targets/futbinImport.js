@@ -9,7 +9,7 @@ import { getMarketPrice } from '../ea/marketPrice.js';
 import { fetchMarketPage } from '../ea/marketPage.js';
 import { createCancelToken, randomBetween, sleep } from '../utils/cancelToken.js';
 import { fetchCheapestPlayers } from '../futbin/loader.js';
-import { mergeTargetPlayers, resolveTargetEaId } from './targetOps.js';
+import { applyTargetAddEaTax, mergeTargetPlayers, resolveTargetEaId } from './targetOps.js';
 import { setTargetStatus } from './targetStatus.js';
 
 let activeToken = null;
@@ -122,13 +122,14 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, 
       player.buyNow = reference;
       fallbackCount++;
     }
-    added += mergeTargetPlayers([player]);
+    const importedPlayer = applyTargetAddEaTax(player);
+    added += mergeTargetPlayers([importedPlayer]);
     const shouldWait = didEaSearch && index < players.length - 1 && !token.cancelled;
     const gap = shouldWait ? randomBetweenFn(settings.actionGapMs[0], settings.actionGapMs[1]) : 0;
     if (activeToken === token && index < players.length - 1) {
       setTargetStatus({
         type: 'success',
-        message: player.name + ' · Buy Now ' + Number(player.buyNow).toLocaleString('tr-TR') + ' hedeflere eklendi.',
+        message: player.name + ' · Buy Now ' + Number(importedPlayer.buyNow).toLocaleString('tr-TR') + ' hedeflere eklendi.',
         source: usedEaPrice ? 'ea' : 'futbin',
         progress: { done: index + 1, total: players.length },
         ...(shouldWait ? { holdMs: gap } : {})
@@ -162,7 +163,8 @@ export async function importCheapestTargets(rating, count, deps = {}) {
   try {
     const result = await loadPlayers(rating, count);
     if (CONFIG.targetAdd.priceSource !== 'ea') {
-      const added = mergeTargetPlayers(result.players);
+      const importedPlayers = result.players.map((player) => applyTargetAddEaTax(player));
+      const added = mergeTargetPlayers(importedPlayers);
       const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
       setTargetStatus({
         type: 'success',

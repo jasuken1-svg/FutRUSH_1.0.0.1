@@ -6,6 +6,18 @@ import { emit } from '../core/events.js';
 import { fetchFutbinPlayerId } from '../futbin/playerLookup.js';
 import { saveSavedTargetLists, saveTargets } from './targetStore.js';
 import { setTargetStatus } from './targetStatus.js';
+import { CONFIG } from '../core/config.js';
+import { MIN_BIN, roundDownToStep } from '../ea/priceSteps.js';
+
+export function applyTargetAddEaTax(player, eaTaxRate = CONFIG.targetAdd.eaTaxRate) {
+  const rate = typeof eaTaxRate === 'number' && Number.isFinite(eaTaxRate) && eaTaxRate >= 0 && eaTaxRate < 1
+    ? eaTaxRate
+    : 0.05;
+  const originalPrice = Number(player.price);
+  const discountedPrice = Number.isFinite(originalPrice) ? originalPrice * (1 - rate) : MIN_BIN;
+  const price = Math.max(MIN_BIN, roundDownToStep(discountedPrice));
+  return { ...player, price, buyNow: price };
+}
 
 export function findDuplicateTarget(targets, candidate, { matchFutbinId = true } = {}) {
   return targets.find((item) =>

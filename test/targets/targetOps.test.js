@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CONFIG } from '../../src/core/config.js';
 
 let normalizeTarget;
 let findDuplicateTarget;
+let applyTargetAddEaTax;
 let originalWindow;
 let originalUnsafeWindow;
 
@@ -13,7 +15,7 @@ beforeAll(async () => {
   globalThis.unsafeWindow = pageWindowStub;
 
   ({ normalizeTarget } = await import('../../src/targets/targetStore.js'));
-  ({ findDuplicateTarget } = await import('../../src/targets/targetOps.js'));
+  ({ findDuplicateTarget, applyTargetAddEaTax } = await import('../../src/targets/targetOps.js'));
 });
 
 afterAll(() => {
@@ -107,5 +109,32 @@ describe('findDuplicateTarget', () => {
       { name: 'Different Name', rating: 80, futbinId: '123' },
       { matchFutbinId: false }
     )).toBeUndefined();
+  });
+});
+
+describe('applyTargetAddEaTax', () => {
+  it.each([
+    [10000, 9500],
+    [950, 900],
+    [1000, 950],
+    [200, 200],
+    [53000, 50000]
+  ])('calculates the taxed target price for %i as %i', (price, expected) => {
+    expect(applyTargetAddEaTax({ price }).buyNow).toBe(expected);
+    expect(applyTargetAddEaTax({ price }).price).toBe(expected);
+  });
+
+  it.each([-0.01, 1, '0.1', Number.NaN])('uses the default tax rate for invalid rate %s', (eaTaxRate) => {
+    expect(applyTargetAddEaTax({ price: 10000 }, eaTaxRate).buyNow).toBe(9500);
+  });
+
+  it('uses the default tax rate when the configured rate is invalid', () => {
+    const originalRate = CONFIG.targetAdd.eaTaxRate;
+    CONFIG.targetAdd.eaTaxRate = 1;
+    try {
+      expect(applyTargetAddEaTax({ price: 10000 }).buyNow).toBe(9500);
+    } finally {
+      CONFIG.targetAdd.eaTaxRate = originalRate;
+    }
   });
 });

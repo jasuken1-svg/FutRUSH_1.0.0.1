@@ -66,6 +66,7 @@ export const CONFIG = {
   // Hedef eklerken EA piyasa fiyatı araması
   targetAdd: {
     priceSource: 'ea',
+    eaTaxRate: 0.05,
     maxSearches: 5,
     searchGapMs: [1200, 1800],
     actionGapMs: [1500, 2500],

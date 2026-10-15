@@ -2,9 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONFIG } from '../../src/core/config.js';
 import { state } from '../../src/core/state.js';
 
-vi.mock('../../src/targets/targetOps.js', () => ({
-  mergeTargetPlayers: vi.fn(() => 2),
-  resolveTargetEaId: vi.fn(async (player) => Number(player.eaId) || 0)
+vi.mock('../../src/targets/targetOps.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    mergeTargetPlayers: vi.fn(() => 2),
+    applyTargetAddEaTax: vi.fn(actual.applyTargetAddEaTax),
+    resolveTargetEaId: vi.fn(async (player) => Number(player.eaId) || 0)
+  };
+});
+
+vi.mock('../../src/targets/targetStore.js', () => ({
+  saveSavedTargetLists: vi.fn(),
+  saveTargets: vi.fn()
 }));
 
 vi.mock('../../src/futbin/loader.js', () => ({
@@ -21,6 +31,7 @@ vi.mock('../../src/core/logger.js', () => ({
 }));
 
 const { mergeTargetPlayers } = await import('../../src/targets/targetOps.js');
+const { applyTargetAddEaTax } = await import('../../src/targets/targetOps.js');
 const { resolveTargetEaId } = await import('../../src/targets/targetOps.js');
 const { fetchCheapestPlayers } = await import('../../src/futbin/loader.js');
 const { info, warnOnce } = await import('../../src/core/logger.js');
@@ -38,6 +49,7 @@ afterEach(() => {
   CONFIG.targetAdd.actionGapMs = [1500, 2500];
   CONFIG.targetAdd.outlierRatio = 0.9;
   CONFIG.targetAdd.maxConsecutiveErrors = 2;
+  CONFIG.targetAdd.eaTaxRate = 0.05;
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -107,7 +119,7 @@ describe('importCheapestTargets EA pricing', () => {
         progress.push(state.targetStatus.message);
         if (eaId === 1002) {
           expect(mergeTargetPlayers).toHaveBeenCalledOnce();
-          expect(mergeTargetPlayers).toHaveBeenCalledWith([players[0]]);
+          expect(mergeTargetPlayers).toHaveBeenCalledWith([{ ...players[0], price: 1200, buyNow: 1200 }]);
         }
         return successfulPage(eaId);
       },
@@ -117,8 +129,9 @@ describe('importCheapestTargets EA pricing', () => {
     expect(players.map((item) => item.price)).toEqual([1300, 1300]);
     expect(players.map((item) => item.buyNow)).toEqual([1300, 1300]);
     expect(mergeTargetPlayers).toHaveBeenCalledTimes(2);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [players[0]]);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [players[1]]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [{ ...players[0], price: 1200, buyNow: 1200 }]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [{ ...players[1], price: 1200, buyNow: 1200 }]);
+    expect(applyTargetAddEaTax).toHaveBeenCalledTimes(2);
     expect(progress).toEqual(['EA fiyatı alınıyor 1/2: Alpha', 'EA fiyatı alınıyor 2/2: Beta']);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
     expect(state.targetStatus.source).toBe('ea');
@@ -132,8 +145,8 @@ describe('importCheapestTargets EA pricing', () => {
     const gaps = [1700, 2300];
     let gapIndex = 0;
     const expectedMessages = [
-      'Alpha · Buy Now 1.300 hedeflere eklendi.',
-      'Beta · Buy Now 1.300 hedeflere eklendi.'
+      'Alpha · Buy Now 1.200 hedeflere eklendi.',
+      'Beta · Buy Now 1.200 hedeflere eklendi.'
     ];
     const random = vi.fn(() => gaps[gapIndex++]);
     const awaitedGaps = [];
@@ -266,7 +279,11 @@ describe('importCheapestTargets EA pricing', () => {
     });
 
     expect(mergeTargetPlayers).toHaveBeenCalledOnce();
-    expect(mergeTargetPlayers).toHaveBeenCalledWith(players);
+    expect(mergeTargetPlayers).toHaveBeenCalledWith([
+      { ...players[0], price: 4700, buyNow: 4700 },
+      { ...players[1], price: 5700, buyNow: 5700 }
+    ]);
+    expect(applyTargetAddEaTax).toHaveBeenCalledTimes(2);
     expect(fetchMarketPage).not.toHaveBeenCalled();
     expect(resolveTargetEaId).not.toHaveBeenCalled();
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi.');
