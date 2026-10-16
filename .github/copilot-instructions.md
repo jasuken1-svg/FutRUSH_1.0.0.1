@@ -7,7 +7,7 @@ Plan ve eşleme: `PLAN.md`. Aşama komutları: `docs/PROMPTS.md`.
 ## Değişmez kurallar
 1. DAVRANIŞ DEĞİŞMEZ. Refactor sırasında mantığı yeniden yazma; fonksiyonları `legacy/futrush_v21.js` içinden BİREBİR taşı.
    Seçiciler, regex'ler, gecikmeler (speedDelay, pageDelay, tailDelay), CSS, Türkçe metinler aynı kalır.
-2. localStorage anahtarları değişmez: `fc-snipe-panel-geom`, `futrush-saved-target-filter`, `futrush-targets`, `futrush-saved-targets`.
+2. Mevcut localStorage anahtarları yeniden adlandırılmaz: `fc-snipe-panel-geom`, `futrush-saved-target-filter`, `futrush-targets`, `futrush-saved-targets`. Sonraki özelliklerle eklenen `futrush-prefs` ve `futrush-snipe-settings` anahtarları da mevcut sözleşmenin parçasıdır.
 3. `GM_xmlhttpRequest` ve `unsafeWindow` GLOBAL'dir, import edilmez.
 4. Userscript header'ı yalnızca `src/meta.txt` içindedir; build onu bundle'ın başına ekler.
 5. EA'ya ait erişim (`pageWindow.services`, `UTSearchCriteriaDTO`, `getAuctionData`, `bid`, `searchTransferMarket`)
@@ -28,7 +28,4 @@ Plan ve eşleme: `PLAN.md`. Aşama komutları: `docs/PROMPTS.md`.
 - Bitirince: değişen dosyalar, riskli noktalar ve dokunmadığın şüpheli yerler listesi ver.
 
 ## Bilinen ve BİLEREK dokunulmayacak noktalar (sadece raporla)
-- `runAutoBuyer` içinde kullanılmayan `eaId` değişkeni.
-- `state.snipeSettings` kalıcı değil.
-- Ayarlar modalının body'si boş.
-- `id` formatı: live listede `futbin:<id>`, kayıtlı listede ham `futbinId` olabilir.
+- Hedef `id` formatı live listede `futbin:<id>`, kayıtlı listede ham `futbinId` olabilir. Bu farklılığı tek formata indirme.

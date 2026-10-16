@@ -5,13 +5,13 @@
 | Klasor | Sorumluluk |
 |---|---|
 | `src/` | Userscript giris noktasi (`main.js`) ve paket metadata'si (`meta.txt`). |
-| `src/core/` | `CONFIG`, paylasilan `state`, olay bus'i, modul registry'si, loglama, DOM olaylari, depolama yukleme ve sync zamanlayicisi. |
-| `src/ui/` | EA sayfasina eklenen arayuz bilesenleri: logo/arama/navigasyon dugmeleri, SNIPE paneli, sekmeler, modal ve UI olay dinleyicileri. |
-| `src/ui/panel/` | Panel iskeleti, stilleri, sekme yonetimi ve panel icin event tepkileri. |
+| `src/core/` | `CONFIG`, paylasilan `state`, olay bus'i, modul registry'si, loglama, DOM olaylari, depolama yukleme, kalici tercihler (`prefs.js`) ve sync zamanlayicisi. |
+| `src/ui/` | EA sayfasina eklenen arayuz bilesenleri: logo/arama/navigasyon dugmeleri, SNIPE paneli, `settingsModal.js` tercih/veri/hata ayiklama modal'i, sekmeler ve UI olay dinleyicileri. |
+| `src/ui/panel/` | Panel iskeleti, stilleri, sekme yonetimi, panel event tepkileri ve bot bekleme gostergesi (`waitBar.js`). |
 | `src/ui/panel/tabs/` | Hedefler, bot ayarlari ve bot loglari sekmelerinin cizimi. |
 | `src/ui/modals/` | Hedef filtresi ve kayitli hedef listesi modal pencereleri ile stilleri. |
-| `src/targets/` | Hedef kaydi normalizasyonu, kalici depolama, birlestirme, kayitli listeler ve EA'de secilmis oyuncu islemleri. |
-| `src/bot/` | Otomatik alici dongusu ile bot durum/log yayinlari. |
+| `src/targets/` | Hedef kaydi normalizasyonu, kalici depolama, birlestirme, kayitli listeler, gecici hedef durumlari (`targetStatus.js`) ve EA'de secilmis oyuncu islemleri. |
+| `src/bot/` | Otomatik alici dongusu, kesilebilir bekleme (`idle.js`) ile bot durum/log yayinlari. |
 | `src/ea/` | EA sayfa durumu, Transfer Market arama/satin alma servisleri, istek gozlemleme ve coin bakiyesi adaptoru. |
 | `src/futbin/` | FutBIN adresleri ve istekleri, HTML/API ayrıştırma, oyuncu kimligi cozumleme ve liste yukleme. |
 | `src/layout/` | Hub kartlarindan panel geometrisi olcme ve hub disinda sayfa icerigini sigdirma. |
@@ -66,7 +66,7 @@ Tum event'ler `core/events.js` uzerinden isim ve opsiyonel argumanlarla yayinlan
 | `bot:wait` | `bot/idle.js` | `ui/panel/waitBar.js` | Arguman yok; bekleme durumu `state.botWait` icinden okunur. |
 | `ui:open-save-dialog` | `ui/panel/tabs/targetsTab.js` | `ui/modals/saveDialog.js` | Arguman yok; hedef listesini kaydetme modalini acar. |
 | `ui:open-filter-modal` | `ui/panel/tabs/targetsTab.js` | `ui/modals/filterModal.js` | `{ mode: 'load' }`; hedef filtresi/kayitli liste modalini acar. |
-| `panel:request-render` | `ui/settingsModal.js` | `src/` icinde listener bulunmadi | Render istegi yayinlanir ancak su an dinlenmiyor; davranissal etkisi ayri incelenmeli. |
+| `panel:request-render` | `ui/settingsModal.js` | `ui/panel/panelEvents.js` | Arguman yok; panel aciksa aktif sekme icerigini yeniden cizer. |
 
 Yeni bir moduller arasi etki gerekiyorsa dogrudan UI modulu cagirmak yerine event yayinlayin; mevcut event adlarini degistirirken hem yayini hem dinleyicileri guncelleyin.
 

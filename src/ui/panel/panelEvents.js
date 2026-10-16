@@ -4,6 +4,7 @@
 import { on } from '../../core/events.js';
 import { state } from '../../core/state.js';
 import { panel } from './panel.js';
+import { renderPanelTabContent } from './panelTabs.js';
 import { addBotLogEntry, updateBotLogStats } from './tabs/logsTab.js';
 import { expireTargetStatus, renderTargetContent, updateTargetStatus } from './tabs/targetsTab.js';
 
@@ -17,6 +18,10 @@ function updateStartButton(content) {
 }
 
 export function registerPanelEvents() {
+  on('panel:request-render', () => {
+    const content = panel?.querySelector('.fc-snipe-tab-content');
+    if (content) renderPanelTabContent(content);
+  });
   on('targets:changed', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (content && state.activePanelTab === 'targets') renderTargetContent(content);
