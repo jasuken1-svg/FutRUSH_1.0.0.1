@@ -58,10 +58,15 @@ Tum event'ler `core/events.js` uzerinden isim ve opsiyonel argumanlarla yayinlan
 |---|---|---|---|
 | `layout:request-sync` | `ui/logoButton.js` (logo dugmesine tiklama) | `core/scheduler.js` | Arguman yok; aninda `sync()` ister. |
 | `targets:changed` | `targets/targetOps.js`, `targets/futbinImport.js`, `targets/pinnedPlayer.js`, `ui/modals/saveDialog.js` | `ui/panel/panelEvents.js` | Arguman yok; panel aciksa secili hedef sekmesini yeniler. |
-| `log:added` | `bot/botLog.js` / `addBotLog` | `ui/panel/panelEvents.js` | Arguman yok; log sekmesi aciksa loglari yeniler. |
-| `bot:status` | `bot/botLog.js` / `setBotStatus` | `ui/panel/panelEvents.js` | Arguman yok; ayarlar sekmesi aciksa durum ve dugme etiketini yeniler. |
+| `targets:status` | `targets/targetStatus.js` | `ui/panel/panelEvents.js` | Arguman yok; guncel durum `state.targetStatus` icinden okunur. |
+| `targets:status-expire` | `targets/targetStatus.js` | `ui/panel/panelEvents.js` | Arguman yok; panelde suresi dolan durum gostergesini kaldirir. |
+| `log:added` | `bot/botLog.js` / `addBotLog`, `ui/settingsModal.js` (loglari temizleme) | `ui/panel/panelEvents.js` | Arguman yok; log sekmesi aciksa loglari yeniler. |
+| `bot:status` | `bot/botLog.js` / `setBotStatus` | `ui/panel/panelEvents.js`, `ui/panel/waitBar.js`, `ui/settingsModal.js` | Arguman yok; UI guncellemeleri bot durumunu `state` icinden okur. |
+| `bot:stats` | `bot/autoBuyer.js` | `ui/panel/panelEvents.js` | Arguman yok; log sekmesindeki istatistikleri yeniler. |
+| `bot:wait` | `bot/idle.js` | `ui/panel/waitBar.js` | Arguman yok; bekleme durumu `state.botWait` icinden okunur. |
 | `ui:open-save-dialog` | `ui/panel/tabs/targetsTab.js` | `ui/modals/saveDialog.js` | Arguman yok; hedef listesini kaydetme modalini acar. |
 | `ui:open-filter-modal` | `ui/panel/tabs/targetsTab.js` | `ui/modals/filterModal.js` | `{ mode: 'load' }`; hedef filtresi/kayitli liste modalini acar. |
+| `panel:request-render` | `ui/settingsModal.js` | `src/` icinde listener bulunmadi | Render istegi yayinlanir ancak su an dinlenmiyor; davranissal etkisi ayri incelenmeli. |
 
 Yeni bir moduller arasi etki gerekiyorsa dogrudan UI modulu cagirmak yerine event yayinlayin; mevcut event adlarini degistirirken hem yayini hem dinleyicileri guncelleyin.
 
@@ -90,6 +95,8 @@ Yeni bir moduller arasi etki gerekiyorsa dogrudan UI modulu cagirmak yerine even
 | `futrush-saved-target-filter` | Okuma: `core/storage.js` | Kayitli filtre `{ kind, ratings, count }`; yalnizca gecerli degerler state'e yuklenir. |
 | `futrush-targets` | Okuma/yazma: `targets/targetStore.js` | Aktif hedef oyunculari. |
 | `futrush-saved-targets` | Okuma/yazma: `targets/targetStore.js` | Kayitli oyuncu listeleri; eski duz liste formati icin uyumluluk donusumu vardir. |
+| `futrush-prefs` | Okuma/yazma: `core/prefs.js` | Hedef ekleme tercihleri ve ayrintili log ayari. |
+| `futrush-snipe-settings` | Okuma/yazma: `core/storage.js` | SNIPE tekrar, bekleme, otomatik satis, oyuncu limiti ve hiz ayarlari. |
 
 ## `CONFIG.features` bayraklari
 

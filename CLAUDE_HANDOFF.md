@@ -8,8 +8,8 @@ Amaç: Yeni Claude sohbetinin mevcut kod, tamamlanan işler, commit geçmişi ve
 - Proje: EA FC 27 Web App için Tampermonkey userscript'i.
 - Kaynak: `src/` altındaki ES modülleri; derleme çıktısı `dist/futrush.user.js`.
 - Referans tek dosya: `legacy/futrush_v21.js`; taşıma planı `PLAN.md`.
-- Dal: `master`; HEAD: `f2c00f1` (`EA kimligi eslesme izi; eslestirildi logu yalnizca yeni eslesmede`).
-- HEAD, kontrol sırasında `origin/master` ile aynıydı. Bu devir belgesi eklenmeden önce çalışma ağacı temizdi.
+- Dal: `master`; devir notu ilk yazılırken kaynak HEAD `f2c00f1` idi. Devir notunun kendisi `104a04a` (`Claude devir notu`) commit'inde eklendi; güncel HEAD `104a04a` ve kontrol sırasında `origin/master` ile aynı.
+- `f2c00f1`, bu belgenin hazırlanma anındaki kaynak commit'ini belirtir; belgenin kendi commit hash'i değildir. Devir notu eklenmeden önce çalışma ağacı temizdi.
 - Aşama 1–6 tamamlanmış görünüyor. `MIGRATION_MAP.md` legacy'deki 60 top-level fonksiyonun 60'ının da yeni kaynakta eşleştiğini kaydediyor.
 - Bu oturumda `npm test` başarılı: 23 test dosyası, 227 test geçti. `npm run build` başarılı; `dist/futrush.user.js` 180.1 KB olarak üretildi.
 - Çalışan EA FC Web App üzerinde Tampermonkey ile manuel/gerçek kullanıcı akışı doğrulaması bu oturumda yapılmadı.
@@ -47,7 +47,7 @@ Amaç: Yeni Claude sohbetinin mevcut kod, tamamlanan işler, commit geçmişi ve
 - Alım logları, kronolojik akış ve yeni EA oyuncu kimliği eşleşmesinde tek seferlik bildirim eklendi.
 - Hedef fiyatı güncellenince sıralamanın korunması sağlandı.
 
-## Commit geçmişi (mevcut `master` HEAD'e kadar)
+## Commit geçmişi (devir belgesinin ilk eklendiği ana kadar)
 
 Kronolojik sırada:
 
@@ -72,19 +72,25 @@ Kronolojik sırada:
 19. `69c3d11` — autoBuyer: arama ve tur arası rastgele gecikme (CONFIG.bot)
 20. `e66c897` — FutBIN eşleştirme: tam ad boş dönerse ad parçalarıyla yedek arama
 21. `199d2d1` — Hedef listesi: fiyat değişince sıra korunur, SATIN AL ve TUR SAYISI etiketleri
-22. `1f6f759` — Hedef listesi: fiyat değişince sıra korunur, SATIN AL ve TUR SAYISI etiketleri
+22. `1f6f759` — Aynı başlıklı hedef listesi değişikliğinin devamı: hedef/bot davranışı ve ek testler
 23. `1177660` — Yükle ekranı: hedef fiyatından %5 EA vergisi düşülür
 24. `4b30ba0` — Loglar: ALINDI/BASKASI ALDI satırları, kronolojik akış, gizli kaydırma çubuğu
 25. `f2c00f1` — EA kimliği eşleşme izi; eşleştirildi logu yalnızca yeni eşleşmede
+26. `104a04a` — Claude devir notu
+
+`199d2d1` ve `1f6f759` aynı commit mesajını taşısa da farklı commitlerdir: `199d2d1` hedef sekmesi/CSS ve UI testlerini; `1f6f759` ise bunlara ek olarak bot hedef güncelleme sırası, FutBIN import sırası, fiyat formatlaması ve ilgili testleri değiştirir. `git show --stat` çıktıları farklı dosya ve değişiklik sayılarını doğrular.
+
+Yukarıdaki liste `104a04a` ile, yani bu devir belgesinin ilk eklendiği commit'te biter. Sonraki doküman düzeltmeleri için güncel commit geçmişi `git log` ile kontrol edilmelidir; bu dosya kendisini içeren commit hash'ini listeleyemez.
 
 ## Eksikler ve doğrulanmamış noktalar
 
 - **Gerçek sayfa doğrulaması eksik:** EA Web App üzerinde Tampermonkey kurulumu, login/Transfers akışı ve satın alma davranışı bu oturumda denenmedi. Birim testleri gerçek EA servislerini doğrulamaz.
-- `npm run lint` bu oturumda çalıştırılmadı. Test ve build çalıştırıldı.
-- `MIGRATION_MAP.md` 60/60 eşleşme bildiriyor; haritanın üretim komutu (`npm run migration-map`) bu oturumda yeniden çalıştırılmadı.
+- Son doğrulama geçişinde `npm run lint`, `npm run migration-map`, `npm test` ve `npm run build` çalıştırıldı; lint/build başarılı, migration-map 60 fonksiyonu tarayıp eksik bildirmedi, testler 23 dosya/227 test olarak geçti. Testlerde FutBIN engellenme/yedek akışları beklenen 403 uyarılarını stderr'e yazdı.
 - Kaynak kodu için bu oturumda ayrıca güvenlik denetimi, manuel UI incelemesi veya legacy ile satır/satır davranış karşılaştırması yapılmadı.
 - `id` biçimi live hedeflerde `futbin:<id>`, kayıtlı hedeflerde ham `futbinId` olabiliyor. Bu bilinen farktır; otomatik birleştirilmemeli.
 - `src/` ve `test/` içinde `TODO`, `FIXME`, `XXX` araması bu incelemede eşleşme bulmadı. Bu, test edilmeyen runtime davranışlarının olmadığı anlamına gelmez.
+- `ARCHITECTURE.md` event tablosunda bazı event'ler ve storage tablosunda `futrush-prefs` ile `futrush-snipe-settings` eksikti; bu devir güncellemesinde kaynakla eşleştirildi.
+- `settingsModal.js` `panel:request-render` event'ini yayıyor ancak `src/` içinde buna abone olan bir listener bulunmadı. Bu şüpheli durum raporlandı, davranış etkisi netleştirilmeden kodu değiştirilmedi.
 
 ### Proje yönergelerindeki güncelliğini yitirmiş notlar
 
@@ -96,20 +102,22 @@ Kronolojik sırada:
 
 Bu tutarsızlıkları kaynak yönergelerinde düzeltmedim; kapsam yalnızca devir belgesi hazırlamaktı.
 
-## Bu oturumda yapılanlar / yapılmayanlar
+## Devir ve son doğrulama geçişinde yapılanlar / yapılmayanlar
 
 **Yapılanlar**
 
-- Dal, HEAD, çalışma ağacı, commit geçmişi, plan/mimari/eşleme dokümanları ve ilgili güncel kaynak incelendi.
-- `npm test` çalıştırıldı: **23/23 test dosyası, 227/227 test başarılı**. FutBIN fallback senaryoları beklenen 403 uyarılarını stderr'e yazdı; test sonucu başarılı.
-- `npm run build` çalıştırıldı: başarılı, `dist/futrush.user.js` üretildi (180.1 KB).
-- Yalnızca bu devir belgesi eklendi.
+- Dal, HEAD, çalışma ağacı, commit geçmişi, plan/mimari/eşleme dokümanları ve ilgili güncel kaynak incelendi; aynı mesajlı iki commit'in farklı kapsamları `git show --stat` ile karşılaştırıldı.
+- `npm run lint` başarılı.
+- `npm run migration-map` başarılı; 60 fonksiyon incelendi, eksik fonksiyon yok.
+- `npm test` başarılı: **23/23 test dosyası, 227/227 test**. FutBIN fallback senaryoları beklenen 403 uyarılarını stderr'e yazdı.
+- `npm run build` başarılı; `dist/futrush.user.js` 180.1 KB olarak üretildi.
+- `ARCHITECTURE.md` storage anahtarları ve event tablosu güncel kaynakla karşılaştırılarak düzeltildi; `CLAUDE_HANDOFF.md` HEAD/commit durumu ve doğrulama sonuçları güncellendi.
 
 **Yapılmayanlar**
 
-- Kaynak kod, test, yapılandırma, legacy dosyası ve mevcut dokümanlar değiştirilmedi.
-- Commit oluşturulmadı.
-- Lint, canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı.
+- Kaynak kod, test, yapılandırma ve legacy dosyası değiştirilmedi.
+- Bu devir belgesinin ilk eklendiği commit'ten sonraki belge düzeltmeleri ayrı commit olarak yayınlanır; güncel HEAD için `git log` kontrol edilmelidir.
+- Canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı.
 
 ## Claude için önerilen devam
 
