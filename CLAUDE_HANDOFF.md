@@ -9,10 +9,10 @@ Amaç: Yeni Claude sohbetinin mevcut kod, tamamlanan işler, commit geçmişi ve
 - Kaynak: `src/` altındaki ES modülleri; derleme çıktısı `dist/futrush.user.js`.
 - Referans tek dosya: `legacy/futrush_v21.js`; taşıma planı `PLAN.md`.
 - Dal: `master`; bu not ilk yazılırken kaynak HEAD `f2c00f1` idi. Devir notu `104a04a` (`Claude devir notunu ekle`) commit'inde eklendi; sonraki belge güncellemesinin tabanı `0ac4ce0` idi. Bu dosya mevcut HEAD hash'ini sabitlemez; güncel durum için `git log -1` kullan.
-- `f2c00f1`, bu belgenin hazırlanma anındaki kaynak commit'ini belirtir; belgenin kendi commit hash'i değildir. Devir notu eklenmeden önce çalışma ağacı temizdi.
+- `f2c00f1`, bu belgenin hazırlanma anındaki kaynak commit'ini belirtir; belgenin kendi commit hash'i değildir. Devir notunun ilk yazım anında ve son doğrulama geçişinde çalışma ağacı temizdi.
 - Aşama 1–6 tamamlanmış görünüyor. `MIGRATION_MAP.md` legacy'deki 60 top-level fonksiyonun 60'ının da yeni kaynakta eşleştiğini kaydediyor.
 - Son yerel doğrulamada `npm test` başarılı: 24 test dosyası, 229 test geçti. `npm run build` başarılı; `dist/futrush.user.js` 180.2 KB olarak üretildi.
-- Çalışan EA FC Web App üzerinde Tampermonkey ile manuel/gerçek kullanıcı akışı doğrulaması bu oturumda yapılmadı.
+- Çalışan EA FC Web App üzerinde Tampermonkey ile manuel/gerçek kullanıcı akışı doğrulaması ilk yazım anında ve son doğrulama geçişinde yapılmadı (doğrulanamadı).
 
 ## Mimari ve çalışma kuralları
 
@@ -78,15 +78,21 @@ Kronolojik sırada:
 25. `f2c00f1` — EA kimliği eşleşme izi; eşleştirildi logu yalnızca yeni eşleşmede
 26. `104a04a` — Claude devir notu
 
+### Sonraki commitler
+
+27. `0ac4ce0` — Devir ve mimari belgelerini güncelle
+28. `cc1894a` — Panel render event aboneligini tamamla
+29. `8bebd24` — Devir notu HEAD kaydını netleştir
+
 `199d2d1` ve `1f6f759` aynı commit mesajını taşısa da farklı commitlerdir: `199d2d1` hedef sekmesi/CSS ve UI testlerini; `1f6f759` ise bunlara ek olarak bot hedef güncelleme sırası, FutBIN import sırası, fiyat formatlaması ve ilgili testleri değiştirir. `git show --stat` çıktıları farklı dosya ve değişiklik sayılarını doğrular.
 
 Yukarıdaki liste `104a04a` ile, yani bu devir belgesinin ilk eklendiği commit'te biter. Sonraki doküman düzeltmeleri için güncel commit geçmişi `git log` ile kontrol edilmelidir; bu dosya kendisini içeren commit hash'ini listeleyemez.
 
 ## Eksikler ve doğrulanmamış noktalar
 
-- **Gerçek sayfa doğrulaması eksik:** EA Web App üzerinde Tampermonkey kurulumu, login/Transfers akışı ve satın alma davranışı bu oturumda denenmedi. Birim testleri gerçek EA servislerini doğrulamaz.
+- **Gerçek sayfa doğrulaması eksik:** EA Web App üzerinde Tampermonkey kurulumu, login/Transfers akışı ve satın alma davranışı ilk yazım anında ve son doğrulama geçişinde denenmedi (doğrulanamadı). Birim testleri gerçek EA servislerini doğrulamaz.
 - Son doğrulama geçişinde `npm run lint`, `npm run migration-map`, `npm test` ve `npm run build` çalıştırıldı; lint/build başarılı, migration-map 60 fonksiyonu tarayıp eksik bildirmedi, testler 24 dosya/229 test olarak geçti. Testlerde FutBIN engellenme/yedek akışları beklenen 403 uyarılarını stderr'e yazdı.
-- Kaynak kodu için bu oturumda ayrıca güvenlik denetimi, manuel UI incelemesi veya legacy ile satır/satır davranış karşılaştırması yapılmadı.
+- Kaynak kodu için ilk yazım anında ve son doğrulama geçişinde ayrıca güvenlik denetimi, manuel UI incelemesi veya legacy ile satır/satır davranış karşılaştırması yapılmadı.
 - `id` biçimi live hedeflerde `futbin:<id>`, kayıtlı hedeflerde ham `futbinId` olabiliyor. Bu bilinen farktır; otomatik birleştirilmemeli.
 - `src/` ve `test/` içinde `TODO`, `FIXME`, `XXX` araması bu incelemede eşleşme bulmadı. Bu, test edilmeyen runtime davranışlarının olmadığı anlamına gelmez.
 - `ARCHITECTURE.md` event tablosunda bazı event'ler ve storage tablosunda `futrush-prefs` ile `futrush-snipe-settings` eksikti; bu devir güncellemesinde kaynakla eşleştirildi.
@@ -113,12 +119,13 @@ Korunması gereken mevcut istisna, live listedeki `futbin:<id>` ve kayıtlı lis
 - `npm test` başarılı: **24/24 test dosyası, 229/229 test**. FutBIN fallback senaryoları beklenen 403 uyarılarını stderr'e yazdı.
 - `npm run build` başarılı; `dist/futrush.user.js` 180.2 KB olarak üretildi.
 - `panel:request-render` listener'ı eklendi ve iki regresyon testi yazıldı; `ARCHITECTURE.md` event/folder haritası, `.github/copilot-instructions.md` eski notlar ve bu devir dosyasının durum bilgileri güncellendi.
+- Sonraki kod ve belge düzeltmeleri (panel render dinleyicisi, doküman güncellemeleri ve HEAD kayıt netleştirmesi) `master` dalına commit edilip `origin/master`'a push edildi.
+- `settingsTab.js` UTF-8 ve BOM denetimi yapıldı; dosyanın BOM içermediği ve geçerli UTF-8 olduğu doğrulandı.
 
 **Yapılmayanlar**
 
-- EA canlı ortamında doğrulama, güvenlik incelemesi ve legacy ile satır satır karşılaştırma yapılmadı.
-- Sonraki kod ve belge düzeltmeleri `master` dalına commit edilip push edildi; commit hash'ini bu dosyaya sabitlemek yerine `git log -1` ile kontrol et.
-- Canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı.
+- EA canlı ortamında doğrulama, güvenlik incelemesi ve legacy ile satır satır karşılaştırma yapılmadı (doğrulanamadı).
+- Canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı (doğrulanamadı).
 
 ## Claude için önerilen devam
 
