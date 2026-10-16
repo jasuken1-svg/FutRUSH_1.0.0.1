@@ -8,7 +8,7 @@ Amaç: Yeni Claude sohbetinin mevcut kod, tamamlanan işler, commit geçmişi ve
 - Proje: EA FC 27 Web App için Tampermonkey userscript'i.
 - Kaynak: `src/` altındaki ES modülleri; derleme çıktısı `dist/futrush.user.js`.
 - Referans tek dosya: `legacy/futrush_v21.js`; taşıma planı `PLAN.md`.
-- Dal: `master`; bu not ilk yazılırken kaynak HEAD `f2c00f1` idi. Devir notu `104a04a` (`Claude devir notunu ekle`) commit'inde eklendi; belge güncellemesi `0ac4ce0` ile yayınlandı. Son bilinen HEAD `0ac4ce0`; yeni commitler için `git log -1` ile kontrol et.
+- Dal: `master`; bu not ilk yazılırken kaynak HEAD `f2c00f1` idi. Devir notu `104a04a` (`Claude devir notunu ekle`) commit'inde eklendi; sonraki belge güncellemesinin tabanı `0ac4ce0` idi. Bu dosya mevcut HEAD hash'ini sabitlemez; güncel durum için `git log -1` kullan.
 - `f2c00f1`, bu belgenin hazırlanma anındaki kaynak commit'ini belirtir; belgenin kendi commit hash'i değildir. Devir notu eklenmeden önce çalışma ağacı temizdi.
 - Aşama 1–6 tamamlanmış görünüyor. `MIGRATION_MAP.md` legacy'deki 60 top-level fonksiyonun 60'ının da yeni kaynakta eşleştiğini kaydediyor.
 - Son yerel doğrulamada `npm test` başarılı: 24 test dosyası, 229 test geçti. `npm run build` başarılı; `dist/futrush.user.js` 180.2 KB olarak üretildi.
@@ -117,7 +117,7 @@ Korunması gereken mevcut istisna, live listedeki `futbin:<id>` ve kayıtlı lis
 **Yapılmayanlar**
 
 - EA canlı ortamında doğrulama, güvenlik incelemesi ve legacy ile satır satır karşılaştırma yapılmadı.
-- Bu güncelleme henüz commit/push edilmedi; taban remote HEAD `0ac4ce0` idi.
+- Sonraki kod ve belge düzeltmeleri `master` dalına commit edilip push edildi; commit hash'ini bu dosyaya sabitlemek yerine `git log -1` ile kontrol et.
 - Canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı.
 
 ## Claude için önerilen devam
