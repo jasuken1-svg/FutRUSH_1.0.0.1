@@ -7,7 +7,7 @@ export const state = {
   panelOpen: false,  // SNIPE paneli logoyla açıldı mı
   panelExpanded: false, // SNIPE düğmesinden sekmeler açıldı mı
   activePanelTab: 'targets',
-  snipeSettings: { repeat: 0, waitSeconds: 0, autoSell: false, maxPlayers: 1, speed: 0, maxSpendCoins: 0 },
+  snipeSettings: { repeat: 0, waitSeconds: [15, 35], autoSell: false, maxPlayers: 1, speed: 0, maxSpendCoins: 0 },
   targetFilter: { kind: 'cheap', ratings: [], count: 5 },
   targets: [],
   savedTargetLists: [],

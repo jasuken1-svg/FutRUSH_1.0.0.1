@@ -168,6 +168,23 @@ export const panelCss = `
     #${P.id} .fr-setting-input::placeholder {
       color: rgba(255,255,255,.3);
     }
+    #${P.id} .fr-range-dual {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    #${P.id} .fr-dual-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11px;
+      color: #9cb3be;
+    }
+    #${P.id} .fr-dual-field span {
+      font-weight: 500;
+    }
     #${P.id} .fr-start {
       position: relative; isolation: isolate; overflow: hidden;
       display: flex; align-items: center; justify-content: center; gap: 9px;

@@ -197,9 +197,22 @@ export async function runAutoBuyer(token, deps = {}) {
         stopAutoBuyer('Tarama tamamlandı. Başarılı alım: ' + bought + '.');
         return;
       }
-      const baseDelay = settings.waitSeconds > 0
-        ? settings.waitSeconds * 1000
-        : speedDelay[settings.speed] || 4000;
+      let baseDelay = 4000;
+      const waitCfg = settings.waitSeconds;
+      if (Array.isArray(waitCfg) && waitCfg.length === 2) {
+        const minSec = Math.max(0, Math.min(Number(waitCfg[0]) || 0, Number(waitCfg[1]) || 0));
+        const maxSec = Math.max(0, Math.max(Number(waitCfg[0]) || 0, Number(waitCfg[1]) || 0));
+        if (maxSec > 0) {
+          const chosenSec = Math.round(randomBetween(minSec, maxSec, rnd));
+          baseDelay = chosenSec * 1000;
+        } else {
+          baseDelay = speedDelay[settings.speed] || 4000;
+        }
+      } else if (typeof waitCfg === 'number' && waitCfg > 0) {
+        baseDelay = waitCfg * 1000;
+      } else {
+        baseDelay = speedDelay[settings.speed] || 4000;
+      }
       const jitter = jitterMs(cycleJitterRange);
       const totalDelay = baseDelay + jitter;
       debug('[FutRUSH:bot]', 'Döngü sonu gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');

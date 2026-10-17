@@ -23,7 +23,7 @@ import { state } from '../../src/core/state.js';
 
 const defaults = {
   repeat: 0,
-  waitSeconds: 0,
+  waitSeconds: [15, 35],
   autoSell: false,
   maxPlayers: 1,
   speed: 0,
@@ -71,17 +71,27 @@ describe('snipe settings storage', () => {
 
   it('loads a valid record into the existing settings object', () => {
     const settings = state.snipeSettings;
-    loadRecord({ repeat: 4, waitSeconds: 25, autoSell: true, maxPlayers: 8, speed: 2 });
+    loadRecord({ repeat: 4, waitSeconds: [10, 25], autoSell: true, maxPlayers: 8, speed: 2 });
 
     expect(state.snipeSettings).toBe(settings);
     expect(state.snipeSettings).toEqual({
       repeat: 4,
-      waitSeconds: 25,
+      waitSeconds: [10, 25],
       autoSell: true,
       maxPlayers: 8,
       speed: 2,
       maxSpendCoins: 0
     });
+  });
+
+  it('normalizes single number waitSeconds into range', () => {
+    loadRecord({ waitSeconds: 20 });
+    expect(state.snipeSettings.waitSeconds).toEqual([20, 20]);
+  });
+
+  it('defaults out-of-range waitSeconds values', () => {
+    loadRecord({ waitSeconds: [-5, 200] });
+    expect(state.snipeSettings.waitSeconds).toEqual([15, 35]);
   });
 
   it('defaults an out-of-range speed above the maximum', () => {
@@ -132,7 +142,7 @@ describe('snipe settings storage', () => {
   it('round-trips settings through localStorage', () => {
     Object.assign(state.snipeSettings, {
       repeat: 12,
-      waitSeconds: 45,
+      waitSeconds: [15, 45],
       autoSell: true,
       maxPlayers: 6,
       speed: 3,
@@ -145,7 +155,7 @@ describe('snipe settings storage', () => {
 
     expect(state.snipeSettings).toEqual({
       repeat: 12,
-      waitSeconds: 45,
+      waitSeconds: [15, 45],
       autoSell: true,
       maxPlayers: 6,
       speed: 3,

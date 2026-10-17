@@ -8,7 +8,7 @@ import { applyPrefs, loadPrefs, savePrefs, validatePrefs } from '../core/prefs.j
 import { saveSnipeSettings } from '../core/storage.js';
 import { saveSavedTargetLists, saveTargets } from '../targets/targetStore.js';
 
-const SNIPE_DEFAULTS = { repeat: 0, waitSeconds: 0, autoSell: false, maxPlayers: 1, speed: 0, maxSpendCoins: 0 };
+const SNIPE_DEFAULTS = { repeat: 0, waitSeconds: [15, 35], autoSell: false, maxPlayers: 1, speed: 0, maxSpendCoins: 0 };
 const CONFIRM_DELAY_MS = 4000;
 let currentPrefs = null;
 let activeBody = null;

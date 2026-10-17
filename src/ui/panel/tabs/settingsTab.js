@@ -8,10 +8,21 @@ import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
 export function renderPanelSettings(content) {
 const s = state.snipeSettings;
 const speedLabels = { 0: 'Yavaş', 1: 'Orta', 2: 'Hızlı', 3: 'Çok hızlı' };
+const waitRange = Array.isArray(s.waitSeconds) && s.waitSeconds.length === 2
+  ? s.waitSeconds
+  : [15, 35];
+const waitDisplay = waitRange[0] === waitRange[1]
+  ? waitRange[0] + ' sn'
+  : waitRange[0] + ' - ' + waitRange[1] + ' sn';
 content.innerHTML =
   '<div class="fr-settings-view">' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Oyuncu listesi tekrarı</span><span class="fr-setting-value" data-value="repeat">' + s.repeat + '</span></div><input class="fr-range" data-setting="repeat" type="range" min="0" max="50" step="1" value="' + s.repeat + '" aria-label="Oyuncu listesi kaç kez tekrarlanacak"></div>' +
-    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Bekleme süresi (arama bitince)</span><span class="fr-setting-value" data-value="waitSeconds">' + s.waitSeconds + ' sn</span></div><input class="fr-range" data-setting="waitSeconds" type="range" min="0" max="120" step="1" value="' + s.waitSeconds + '" aria-label="Arama bitince beklenecek süre"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Bekleme süresi (arama bitince)</span><span class="fr-setting-value" data-value="waitSeconds">' + waitDisplay + '</span></div>' +
+      '<div class="fr-range-dual">' +
+        '<label class="fr-dual-field"><span>Min (sn)</span><input class="fr-setting-input" data-setting="waitSeconds.0" type="number" min="1" max="120" step="1" value="' + waitRange[0] + '" aria-label="Minimum bekleme saniyesi"></label>' +
+        '<label class="fr-dual-field"><span>Max (sn)</span><input class="fr-setting-input" data-setting="waitSeconds.1" type="number" min="1" max="120" step="1" value="' + waitRange[1] + '" aria-label="Maksimum bekleme saniyesi"></label>' +
+      '</div>' +
+    '</div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Arama hızı</span><span class="fr-setting-value" data-value="speed">' + (speedLabels[s.speed] || '') + '</span></div><input class="fr-range" data-setting="speed" type="range" min="0" max="3" step="1" value="' + s.speed + '" aria-label="Arama hızı 0 ile 3 arasında"></div>' +
@@ -33,13 +44,32 @@ content.querySelectorAll('.fr-range').forEach((input) => {
   const updateSetting = () => {
     const key = input.dataset.setting;
     s[key] = Number(input.value);
-    const displayValue = key === 'waitSeconds' ? s[key] + ' sn' : key === 'speed' ? (speedLabels[s.speed] || '') : String(s[key]);
+    const displayValue = key === 'speed' ? (speedLabels[s.speed] || '') : String(s[key]);
     content.querySelector('[data-value="' + key + '"]').textContent = displayValue;
     updateRange();
   };
   input.addEventListener('input', updateSetting);
   input.addEventListener('change', () => {
     updateSetting();
+    saveSnipeSettings();
+  });
+});
+
+content.querySelectorAll('.fr-setting-input[data-setting^="waitSeconds."]').forEach((input) => {
+  const updateWait = () => {
+    const minInput = content.querySelector('.fr-setting-input[data-setting="waitSeconds.0"]');
+    const maxInput = content.querySelector('.fr-setting-input[data-setting="waitSeconds.1"]');
+    const minVal = Math.min(120, Math.max(1, Math.floor(Number(minInput?.value) || 1)));
+    const maxVal = Math.min(120, Math.max(1, Math.floor(Number(maxInput?.value) || 1)));
+    s.waitSeconds = [Math.min(minVal, maxVal), Math.max(minVal, maxVal)];
+    const text = s.waitSeconds[0] === s.waitSeconds[1]
+      ? s.waitSeconds[0] + ' sn'
+      : s.waitSeconds[0] + ' - ' + s.waitSeconds[1] + ' sn';
+    content.querySelector('[data-value="waitSeconds"]').textContent = text;
+  };
+  input.addEventListener('input', updateWait);
+  input.addEventListener('change', () => {
+    updateWait();
     saveSnipeSettings();
   });
 });

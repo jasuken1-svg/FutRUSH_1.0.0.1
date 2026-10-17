@@ -38,7 +38,7 @@ function deps(idleWait, searchAutoBuyOffers = vi.fn(async () => ({ stopped: fals
 afterEach(() => {
   vi.restoreAllMocks();
   CONFIG.bot.searchJitterMs = [350, 600];
-  CONFIG.bot.cycleJitterMs = [0, 1500];
+  CONFIG.bot.cycleJitterMs = [350, 750];
 });
 
 describe('runAutoBuyer', () => {
@@ -126,7 +126,19 @@ describe('runAutoBuyer', () => {
     )).toHaveLength(0);
   });
 
-  it('uses the cycle wait when repeat is unlimited', async () => {
+  it('uses the cycle wait range when repeat is unlimited', async () => {
+    prepareBot([target('A', 1)], { repeat: 0, waitSeconds: [15, 35] });
+    const idleWait = vi.fn(async (ms, token, kind) => {
+      state.botRunning = false;
+      return kind === 'cycle';
+    });
+    await runAutoBuyer(1, deps(idleWait));
+
+    expect(idleWait).toHaveBeenCalledOnce();
+    expect(idleWait).toHaveBeenCalledWith(15350, 1, 'cycle');
+  });
+
+  it('supports single number waitSeconds for legacy compatibility', async () => {
     prepareBot([target('A', 1)], { repeat: 0, waitSeconds: 3 });
     const idleWait = vi.fn(async (ms, token, kind) => {
       state.botRunning = false;
@@ -135,18 +147,18 @@ describe('runAutoBuyer', () => {
     await runAutoBuyer(1, deps(idleWait));
 
     expect(idleWait).toHaveBeenCalledOnce();
-    expect(idleWait).toHaveBeenCalledWith(3000, 1, 'cycle');
+    expect(idleWait).toHaveBeenCalledWith(3350, 1, 'cycle');
   });
 
   it.each([
-    [0, 5000, 0, 0],
-    [0, 5000, 1, 1500],
-    [1, 4000, 0, 0],
-    [1, 4000, 1, 1500],
-    [2, 2500, 0, 0],
-    [2, 2500, 1, 1500],
-    [3, 1500, 0, 0],
-    [3, 1500, 1, 1500]
+    [0, 5000, 0, 350],
+    [0, 5000, 1, 750],
+    [1, 4000, 0, 350],
+    [1, 4000, 1, 750],
+    [2, 2500, 0, 350],
+    [2, 2500, 1, 750],
+    [3, 1500, 0, 350],
+    [3, 1500, 1, 750]
   ])('uses the zero-wait cycle base and jitter at speed %i (random %i)', async (speed, baseDelay, randomValue, jitter) => {
     prepareBot([target('A', 1)], { repeat: 0, speed });
     const idleWait = vi.fn(async (ms, token, kind) => {
@@ -168,7 +180,7 @@ describe('runAutoBuyer', () => {
     await runAutoBuyer(1, deps(idleWait, undefined, { random: () => randomValue }));
 
     expect(idleWait).toHaveBeenCalledOnce();
-    expect(idleWait).toHaveBeenCalledWith(randomValue === 0 ? 10000 : 11500, 1, 'cycle');
+    expect(idleWait).toHaveBeenCalledWith(randomValue === 0 ? 10350 : 10750, 1, 'cycle');
   });
 
   it('uses configured jitter ranges for searches and cycles', async () => {
@@ -206,7 +218,7 @@ describe('runAutoBuyer', () => {
 
     expect(idleWait.mock.calls.map((call) => [call[0], call[2]])).toEqual([
       [4600, 'search'],
-      [5500, 'cycle']
+      [4750, 'cycle']
     ]);
   });
 

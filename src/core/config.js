@@ -76,7 +76,7 @@ export const CONFIG = {
 
   bot: {
     searchJitterMs: [350, 600],
-    cycleJitterMs: [0, 1500],
+    cycleJitterMs: [350, 750],
     stopOnFatalPurchaseError: true
   },
 

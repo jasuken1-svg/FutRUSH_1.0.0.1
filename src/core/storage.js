@@ -11,7 +11,7 @@ import { applyPrefs, loadPrefs } from './prefs.js';
 const SNIPE_SETTINGS_KEY = 'futrush-snipe-settings';
 const SNIPE_SETTINGS_DEFAULTS = {
   repeat: 0,
-  waitSeconds: 0,
+  waitSeconds: [15, 35],
   autoSell: false,
   maxPlayers: 1,
   speed: 0,
@@ -26,7 +26,9 @@ export function saveSnipeSettings() {
   try {
     pageStorage().setItem(SNIPE_SETTINGS_KEY, JSON.stringify({
       repeat: state.snipeSettings.repeat,
-      waitSeconds: state.snipeSettings.waitSeconds,
+      waitSeconds: Array.isArray(state.snipeSettings.waitSeconds)
+        ? state.snipeSettings.waitSeconds.slice(0, 2)
+        : [15, 35],
       autoSell: state.snipeSettings.autoSell,
       maxPlayers: state.snipeSettings.maxPlayers,
       speed: state.snipeSettings.speed,
@@ -60,8 +62,16 @@ export function loadSnipeSettings() {
     if (isNumberInRange(savedSettings.repeat, 0, 50)) {
       loadedSettings.repeat = savedSettings.repeat;
     }
-    if (isNumberInRange(savedSettings.waitSeconds, 0, 120)) {
-      loadedSettings.waitSeconds = savedSettings.waitSeconds;
+    if (Array.isArray(savedSettings.waitSeconds)
+      && savedSettings.waitSeconds.length === 2
+      && isNumberInRange(savedSettings.waitSeconds[0], 0, 120)
+      && isNumberInRange(savedSettings.waitSeconds[1], 0, 120)) {
+      loadedSettings.waitSeconds = [
+        Math.min(savedSettings.waitSeconds[0], savedSettings.waitSeconds[1]),
+        Math.max(savedSettings.waitSeconds[0], savedSettings.waitSeconds[1])
+      ];
+    } else if (isNumberInRange(savedSettings.waitSeconds, 0, 120)) {
+      loadedSettings.waitSeconds = [savedSettings.waitSeconds, savedSettings.waitSeconds];
     }
     if (typeof savedSettings.autoSell === 'boolean') {
       loadedSettings.autoSell = savedSettings.autoSell;
