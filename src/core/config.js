@@ -67,6 +67,7 @@ export const CONFIG = {
   targetAdd: {
     priceSource: 'ea',
     eaTaxRate: 0.05,
+    discountRate: 0.1,
     maxSearches: 5,
     searchGapMs: [1200, 1800],
     actionGapMs: [1500, 2500],

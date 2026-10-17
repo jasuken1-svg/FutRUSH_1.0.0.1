@@ -7,6 +7,7 @@ vi.mock('../../src/targets/targetOps.js', async (importOriginal) => {
   return {
     ...actual,
     mergeTargetPlayers: vi.fn(() => 2),
+    applyTargetAddDiscount: vi.fn(actual.applyTargetAddDiscount),
     applyTargetAddEaTax: vi.fn(actual.applyTargetAddEaTax),
     resolveTargetEaId: vi.fn(async (player) => Number(player.eaId) || 0)
   };
@@ -31,6 +32,7 @@ vi.mock('../../src/core/logger.js', () => ({
 }));
 
 const { mergeTargetPlayers } = await import('../../src/targets/targetOps.js');
+const { applyTargetAddDiscount } = await import('../../src/targets/targetOps.js');
 const { applyTargetAddEaTax } = await import('../../src/targets/targetOps.js');
 const { resolveTargetEaId } = await import('../../src/targets/targetOps.js');
 const { fetchCheapestPlayers } = await import('../../src/futbin/loader.js');
@@ -50,6 +52,7 @@ afterEach(() => {
   CONFIG.targetAdd.outlierRatio = 0.9;
   CONFIG.targetAdd.maxConsecutiveErrors = 2;
   CONFIG.targetAdd.eaTaxRate = 0.05;
+  CONFIG.targetAdd.discountRate = 0.1;
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -119,7 +122,7 @@ describe('importCheapestTargets EA pricing', () => {
         progress.push(state.targetStatus.message);
         if (eaId === 1002) {
           expect(mergeTargetPlayers).toHaveBeenCalledOnce();
-          expect(mergeTargetPlayers).toHaveBeenCalledWith([{ ...players[0], price: 1200, buyNow: 1200 }]);
+          expect(mergeTargetPlayers).toHaveBeenCalledWith([{ ...players[0], price: 1100, buyNow: 1100 }]);
         }
         return successfulPage(eaId);
       },
@@ -129,9 +132,9 @@ describe('importCheapestTargets EA pricing', () => {
     expect(players.map((item) => item.price)).toEqual([1300, 1300]);
     expect(players.map((item) => item.buyNow)).toEqual([1300, 1300]);
     expect(mergeTargetPlayers).toHaveBeenCalledTimes(2);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [{ ...players[0], price: 1200, buyNow: 1200 }]);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [{ ...players[1], price: 1200, buyNow: 1200 }]);
-    expect(applyTargetAddEaTax).toHaveBeenCalledTimes(2);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [{ ...players[0], price: 1100, buyNow: 1100 }]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [{ ...players[1], price: 1100, buyNow: 1100 }]);
+    expect(applyTargetAddDiscount).toHaveBeenCalledTimes(2);
     expect(progress).toEqual(['EA fiyatı alınıyor 1/2: Alpha', 'EA fiyatı alınıyor 2/2: Beta']);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
     expect(state.targetStatus.source).toBe('ea');
@@ -145,8 +148,8 @@ describe('importCheapestTargets EA pricing', () => {
     const gaps = [1700, 2300];
     let gapIndex = 0;
     const expectedMessages = [
-      'Alpha · Buy Now 1.200 hedeflere eklendi.',
-      'Beta · Buy Now 1.200 hedeflere eklendi.'
+      'Alpha · Buy Now 1.100 hedeflere eklendi.',
+      'Beta · Buy Now 1.100 hedeflere eklendi.'
     ];
     const random = vi.fn(() => gaps[gapIndex++]);
     const awaitedGaps = [];
@@ -280,15 +283,31 @@ describe('importCheapestTargets EA pricing', () => {
 
     expect(mergeTargetPlayers).toHaveBeenCalledOnce();
     expect(mergeTargetPlayers).toHaveBeenCalledWith([
-      { ...players[0], price: 4700, buyNow: 4700 },
-      { ...players[1], price: 5700, buyNow: 5700 }
+      { ...players[0], price: 4500, buyNow: 4500 },
+      { ...players[1], price: 5400, buyNow: 5400 }
     ]);
-    expect(applyTargetAddEaTax).toHaveBeenCalledTimes(2);
+    expect(applyTargetAddDiscount).toHaveBeenCalledTimes(2);
     expect(fetchMarketPage).not.toHaveBeenCalled();
     expect(resolveTargetEaId).not.toHaveBeenCalled();
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi.');
     expect(messages).toEqual(['FutBIN oyuncuları yükleniyor...', '2 oyuncu hedef listesine eklendi.']);
     stop();
+  });
+
+  it('respects a custom discountRate for imported players', async () => {
+    CONFIG.targetAdd.priceSource = 'futbin';
+    CONFIG.targetAdd.discountRate = 0.2;
+    const players = [player('Alpha', 5000)];
+    mergeTargetPlayers.mockReturnValue(1);
+
+    await importCheapestTargets(90, 1, {
+      fetchCheapestPlayers: async () => ({ players, fallback: false }),
+      fetchMarketPage: vi.fn()
+    });
+
+    expect(mergeTargetPlayers).toHaveBeenCalledWith([
+      { ...players[0], price: 4000, buyNow: 4000 }
+    ]);
   });
 
   it('logs outlier listings skipped during EA pricing', async () => {

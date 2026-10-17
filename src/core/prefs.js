@@ -9,6 +9,7 @@ const PREFS_KEY = 'futrush-prefs';
 const DEFAULT_PREFS = {
   targetAdd: {
     priceSource: 'ea',
+    discountRate: 0.1,
     maxSearches: 5,
     searchGapMs: [1200, 1800],
     actionGapMs: [1500, 2500],
@@ -32,6 +33,12 @@ export function validatePrefs(raw) {
     : {};
   const defaults = DEFAULT_PREFS.targetAdd;
   const priceSource = targetAdd.priceSource === 'futbin' ? 'futbin' : targetAdd.priceSource === 'ea' ? 'ea' : defaults.priceSource;
+  const discountRate = (typeof targetAdd.discountRate === 'number'
+    && Number.isFinite(targetAdd.discountRate)
+    && targetAdd.discountRate >= 0
+    && targetAdd.discountRate <= 0.5)
+    ? Math.round(targetAdd.discountRate * 100) / 100
+    : defaults.discountRate;
   const maxSearches = Number.isInteger(targetAdd.maxSearches) && targetAdd.maxSearches >= 1 && targetAdd.maxSearches <= 8
     ? targetAdd.maxSearches
     : defaults.maxSearches;
@@ -50,7 +57,7 @@ export function validatePrefs(raw) {
     : defaults.outlierRatio;
 
   return {
-    targetAdd: { priceSource, maxSearches, searchGapMs, actionGapMs, outlierRatio },
+    targetAdd: { priceSource, discountRate, maxSearches, searchGapMs, actionGapMs, outlierRatio },
     debug: typeof source.debug === 'boolean' ? source.debug : DEFAULT_PREFS.debug
   };
 }

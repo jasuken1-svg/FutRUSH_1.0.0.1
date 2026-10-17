@@ -77,6 +77,7 @@ function validationMessage(key) {
   if (key === 'actionGapMs') return 'En az 200 ms olmalı; üst sınır alt sınırdan küçük olamaz.';
   if (key === 'maxSearches') return '1 ile 8 arasında tam sayı girin.';
   if (key === 'outlierRatio') return 'Eşik kapalı veya %50-%95 arasında olmalı.';
+  if (key === 'discountRate') return 'İndirim oranı %0 ile %50 arasında olmalı.';
   return 'Geçerli bir değer seçin.';
 }
 
@@ -184,6 +185,15 @@ export function renderSettingsBody(body) {
     const value = index + 1;
     return '<option value="' + value + '"' + (targetAdd.maxSearches === value ? ' selected' : '') + '>' + value + '</option>';
   }).join('');
+  const discountOptions = Array.from({ length: 51 }, (_, index) => {
+    const percentage = index;
+    const value = percentage / 100;
+    let label = percentage + '%';
+    if (percentage === 0) label += ' (İndirimsiz)';
+    else if (percentage === 5) label += ' (Başa baş / %5 EA vergisi)';
+    else if (percentage === 10) label += ' (Önerilen)';
+    return '<option value="' + value + '"' + (Math.abs(targetAdd.discountRate - value) < 0.001 ? ' selected' : '') + '>' + label + '</option>';
+  }).join('');
   const outlierOptions = '<option value="0"' + (targetAdd.outlierRatio === 0 ? ' selected' : '') + '>Kapalı</option>' +
     Array.from({ length: 46 }, (_, index) => {
       const percentage = index + 50;
@@ -194,6 +204,7 @@ export function renderSettingsBody(body) {
     '<div class="fr-settings-content">' +
       '<section class="fr-settings-card"><h2>Hedef ekleme</h2>' +
         settingMarkup('Fiyat kaynağı', 'priceSource', '<select class="fr-settings-control" id="__ID__" data-pref="priceSource"><option value="ea"' + (targetAdd.priceSource === 'ea' ? ' selected' : '') + '>EA</option><option value="futbin"' + (targetAdd.priceSource === 'futbin' ? ' selected' : '') + '>FutBIN</option></select>', 'EA piyasa fiyatını veya FutBIN fiyatını kullanır.') +
+        settingMarkup('İndirim oranı / Kâr marjı', 'discountRate', '<select class="fr-settings-control" id="__ID__" data-pref="discountRate">' + discountOptions + '</select>', 'Piyasa fiyatından düşülecek indirim / kâr marjı oranı.') +
         settingMarkup('Maksimum arama sayısı', 'maxSearches', '<select class="fr-settings-control" id="__ID__" data-pref="maxSearches">' + searchOptions + '</select>', 'EA aramasında kullanılacak en fazla deneme sayısı.') +
         settingMarkup('Arama aralığı (ms)', 'searchGapMs', '<div class="fr-settings-range"><label>Min<input class="fr-settings-control" id="__ID__" data-pref="searchGapMs.0" type="number" step="1" value="' + targetAdd.searchGapMs[0] + '"></label><label>Max<input class="fr-settings-control" data-pref="searchGapMs.1" type="number" step="1" value="' + targetAdd.searchGapMs[1] + '"></label></div>', 'Düşük aralık EA’nın hata vermesine yol açabilir.') +
         settingMarkup('Oyuncu arası aralık (ms)', 'actionGapMs', '<div class="fr-settings-range"><label>Min<input class="fr-settings-control" id="__ID__" data-pref="actionGapMs.0" type="number" step="1" value="' + targetAdd.actionGapMs[0] + '"></label><label>Max<input class="fr-settings-control" data-pref="actionGapMs.1" type="number" step="1" value="' + targetAdd.actionGapMs[1] + '"></label></div>', 'Düşük aralık EA isteklerinin reddedilmesine neden olabilir.') +

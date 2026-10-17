@@ -11,7 +11,7 @@ Amaç: Yeni Claude sohbetinin mevcut kod, tamamlanan işler, commit geçmişi ve
 - Dal: `master`; bu not ilk yazılırken kaynak HEAD `f2c00f1` idi. Devir notu `104a04a` (`Claude devir notunu ekle`) commit'inde eklendi; sonraki belge güncellemesinin tabanı `0ac4ce0` idi. Bu dosya mevcut HEAD hash'ini sabitlemez; güncel durum için `git log -1` kullan.
 - `f2c00f1`, bu belgenin hazırlanma anındaki kaynak commit'ini belirtir; belgenin kendi commit hash'i değildir. Devir notunun ilk yazım anında ve son doğrulama geçişinde çalışma ağacı temizdi.
 - Aşama 1–6 tamamlanmış görünüyor. `MIGRATION_MAP.md` legacy'deki 60 top-level fonksiyonun 60'ının da yeni kaynakta eşleştiğini kaydediyor.
-- Son yerel doğrulamada `npm test` başarılı: 24 test dosyası, 229 test geçti. `npm run build` başarılı; `dist/futrush.user.js` 180.2 KB olarak üretildi.
+- Son yerel doğrulamada `npm test` başarılı: 24 test dosyası, 235 test geçti. `npm run build` başarılı; `dist/futrush.user.js` 186.1 KB olarak üretildi.
 - Çalışan EA FC Web App üzerinde Tampermonkey ile manuel/gerçek kullanıcı akışı doğrulaması ilk yazım anında ve son doğrulama geçişinde yapılmadı (doğrulanamadı).
 
 ## Mimari ve çalışma kuralları
@@ -83,6 +83,9 @@ Kronolojik sırada:
 27. `0ac4ce0` — Devir ve mimari belgelerini güncelle
 28. `cc1894a` — Panel render event aboneligini tamamla
 29. `8bebd24` — Devir notu HEAD kaydını netleştir
+30. `b2ce5b1` — Devir notu bolumlerini duzelt
+31. `31972ca` — Bütçe ve harcama sınırı (maxSpendCoins) desteği ekle
+32. `6613d92` — Turlar arasi bekleme suresi araligi (15-35s) ve jitter destegi ekle
 
 `199d2d1` ve `1f6f759` aynı commit mesajını taşısa da farklı commitlerdir: `199d2d1` hedef sekmesi/CSS ve UI testlerini; `1f6f759` ise bunlara ek olarak bot hedef güncelleme sırası, FutBIN import sırası, fiyat formatlaması ve ilgili testleri değiştirir. `git show --stat` çıktıları farklı dosya ve değişiklik sayılarını doğrular.
 
@@ -116,14 +119,18 @@ Korunması gereken mevcut istisna, live listedeki `futbin:<id>` ve kayıtlı lis
 - Dal, HEAD, çalışma ağacı, commit geçmişi, plan/mimari/eşleme dokümanları ve ilgili güncel kaynak incelendi; aynı mesajlı iki commit'in farklı kapsamları `git show --stat` ile karşılaştırıldı.
 - `npm run lint` başarılı.
 - `npm run migration-map` başarılı; 60 fonksiyon incelendi, eksik fonksiyon yok.
-- `npm test` başarılı: **24/24 test dosyası, 229/229 test**. FutBIN fallback senaryoları beklenen 403 uyarılarını stderr'e yazdı.
-- `npm run build` başarılı; `dist/futrush.user.js` 180.2 KB olarak üretildi.
+- `npm test` başarılı: **24/24 test dosyası, 235/235 test**. FutBIN fallback senaryoları beklenen 403 uyarılarını stderr'e yazdı.
+- `npm run build` başarılı; `dist/futrush.user.js` 186.1 KB olarak üretildi.
 - `panel:request-render` listener'ı eklendi ve iki regresyon testi yazıldı; `ARCHITECTURE.md` event/folder haritası, `.github/copilot-instructions.md` eski notlar ve bu devir dosyasının durum bilgileri güncellendi.
 - Sonraki kod ve belge düzeltmeleri (panel render dinleyicisi, doküman güncellemeleri ve HEAD kayıt netleştirmesi) `master` dalına commit edilip `origin/master`'a push edildi.
 - `settingsTab.js` UTF-8 ve BOM denetimi yapıldı; dosyanın BOM içermediği ve geçerli UTF-8 olduğu doğrulandı.
+- Bütçe ve harcama sınırı (`maxSpendCoins`) desteği eklendi; state, storage, UI ve testler tamamlanıp `31972ca` ile commit ve push edildi.
+- Turlar arası bekleme süresi aralığı (`waitSeconds: [15, 35]`, 1-120s aralığında min/max) ve `cycleJitterMs: [350, 750]` insansı gecikmesi eklendi; `6613d92` ile commit ve push edildi.
+- Kâr marjı / indirim oranı (`discountRate`, varsayılan %10) desteği eklendi; `prefs`, `targetOps`, `futbinImport`, `settingsModal` ve testler tamamlandı.
 
-**Yapılmayanlar**
+**Yapılmayanlar / Sıradaki Adımlar**
 
+- Sıradaki Geliştirme: **Aşama 4 (Sesli Bildirim Sistemi - Web Audio Chime)** veya **Aşama 2 (İnsan Dinlenme Simülasyonu - Mola Modu)**.
 - EA canlı ortamında doğrulama, güvenlik incelemesi ve legacy ile satır satır karşılaştırma yapılmadı (doğrulanamadı).
 - Canlı EA/Tampermonkey testi ve uygulamalı kullanıcı akışı doğrulaması yapılmadı (doğrulanamadı).
 

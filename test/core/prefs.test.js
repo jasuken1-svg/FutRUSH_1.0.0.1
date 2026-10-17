@@ -26,6 +26,7 @@ import { applyPrefs, loadPrefs, resetPrefs, savePrefs, validatePrefs } from '../
 const defaults = {
   targetAdd: {
     priceSource: 'ea',
+    discountRate: 0.1,
     maxSearches: 5,
     searchGapMs: [1200, 1800],
     actionGapMs: [1500, 2500],
@@ -41,6 +42,7 @@ afterEach(() => {
   setLogLevelMock.mockClear();
   Object.assign(CONFIG.targetAdd, {
     priceSource: 'ea',
+    discountRate: 0.1,
     maxSearches: 5,
     searchGapMs: [1200, 1800],
     actionGapMs: [1500, 2500],
@@ -53,6 +55,9 @@ describe('validatePrefs', () => {
   it.each([
     ['priceSource EA', { targetAdd: { priceSource: 'ea' } }, 'priceSource', 'ea'],
     ['priceSource FutBIN', { targetAdd: { priceSource: 'futbin' } }, 'priceSource', 'futbin'],
+    ['discountRate zero / disabled', { targetAdd: { discountRate: 0 } }, 'discountRate', 0],
+    ['discountRate lower interior', { targetAdd: { discountRate: 0.05 } }, 'discountRate', 0.05],
+    ['discountRate upper boundary', { targetAdd: { discountRate: 0.5 } }, 'discountRate', 0.5],
     ['maxSearches lower boundary', { targetAdd: { maxSearches: 1 } }, 'maxSearches', 1],
     ['maxSearches upper boundary', { targetAdd: { maxSearches: 8 } }, 'maxSearches', 8],
     ['maxSearches interior', { targetAdd: { maxSearches: 4 } }, 'maxSearches', 4],
@@ -73,6 +78,9 @@ describe('validatePrefs', () => {
 
   it.each([
     ['priceSource', { priceSource: 'EA' }],
+    ['discountRate negative', { discountRate: -0.01 }],
+    ['discountRate above max', { discountRate: 0.51 }],
+    ['discountRate wrong type', { discountRate: '0.1' }],
     ['maxSearches low', { maxSearches: 0 }],
     ['maxSearches high', { maxSearches: 9 }],
     ['maxSearches fractional', { maxSearches: 2.5 }],
@@ -129,7 +137,7 @@ describe('prefs storage and application', () => {
 
   it('round-trips preferences through storage', () => {
     const prefs = {
-      targetAdd: { priceSource: 'futbin', maxSearches: 3, searchGapMs: [800, 1400], actionGapMs: [400, 700], outlierRatio: 0.75 },
+      targetAdd: { priceSource: 'futbin', discountRate: 0.15, maxSearches: 3, searchGapMs: [800, 1400], actionGapMs: [400, 700], outlierRatio: 0.75 },
       debug: true
     };
 
@@ -141,7 +149,7 @@ describe('prefs storage and application', () => {
   it('applies target settings without changing maxConsecutiveErrors', () => {
     const before = CONFIG.targetAdd.maxConsecutiveErrors;
     const prefs = validatePrefs({
-      targetAdd: { priceSource: 'futbin', maxSearches: 8, searchGapMs: [500, 600], actionGapMs: [200, 300], outlierRatio: 0 },
+      targetAdd: { priceSource: 'futbin', discountRate: 0.2, maxSearches: 8, searchGapMs: [500, 600], actionGapMs: [200, 300], outlierRatio: 0 },
       debug: true
     });
 

@@ -9,14 +9,23 @@ import { setTargetStatus } from './targetStatus.js';
 import { CONFIG } from '../core/config.js';
 import { MIN_BIN, roundDownToStep } from '../ea/priceSteps.js';
 
-export function applyTargetAddEaTax(player, eaTaxRate = CONFIG.targetAdd.eaTaxRate) {
-  const rate = typeof eaTaxRate === 'number' && Number.isFinite(eaTaxRate) && eaTaxRate >= 0 && eaTaxRate < 1
-    ? eaTaxRate
-    : 0.05;
+export function applyTargetAddDiscount(player, discountRate = CONFIG.targetAdd.discountRate) {
+  const rate = typeof discountRate === 'number' && Number.isFinite(discountRate) && discountRate >= 0 && discountRate < 1
+    ? discountRate
+    : (typeof CONFIG.targetAdd.discountRate === 'number' && Number.isFinite(CONFIG.targetAdd.discountRate) && CONFIG.targetAdd.discountRate >= 0 && CONFIG.targetAdd.discountRate < 1
+      ? CONFIG.targetAdd.discountRate
+      : 0.1);
   const originalPrice = Number(player.price);
   const discountedPrice = Number.isFinite(originalPrice) ? originalPrice * (1 - rate) : MIN_BIN;
   const price = Math.max(MIN_BIN, roundDownToStep(discountedPrice));
   return { ...player, price, buyNow: price };
+}
+
+export function applyTargetAddEaTax(player, eaTaxRate = CONFIG.targetAdd.eaTaxRate) {
+  const rate = typeof eaTaxRate === 'number' && Number.isFinite(eaTaxRate) && eaTaxRate >= 0 && eaTaxRate < 1
+    ? eaTaxRate
+    : 0.05;
+  return applyTargetAddDiscount(player, rate);
 }
 
 export function findDuplicateTarget(targets, candidate, { matchFutbinId = true } = {}) {

@@ -3,6 +3,7 @@ import { CONFIG } from '../../src/core/config.js';
 
 let normalizeTarget;
 let findDuplicateTarget;
+let applyTargetAddDiscount;
 let applyTargetAddEaTax;
 let originalWindow;
 let originalUnsafeWindow;
@@ -15,7 +16,7 @@ beforeAll(async () => {
   globalThis.unsafeWindow = pageWindowStub;
 
   ({ normalizeTarget } = await import('../../src/targets/targetStore.js'));
-  ({ findDuplicateTarget, applyTargetAddEaTax } = await import('../../src/targets/targetOps.js'));
+  ({ findDuplicateTarget, applyTargetAddDiscount, applyTargetAddEaTax } = await import('../../src/targets/targetOps.js'));
 });
 
 afterAll(() => {
@@ -136,5 +137,34 @@ describe('applyTargetAddEaTax', () => {
     } finally {
       CONFIG.targetAdd.eaTaxRate = originalRate;
     }
+  });
+});
+
+describe('applyTargetAddDiscount', () => {
+  it.each([
+    [10000, 0.1, 9000],
+    [10000, 0.15, 8500],
+    [10000, 0, 10000],
+    [950, 0.1, 850],
+    [1000, 0.1, 900],
+    [200, 0.1, 200],
+    [53000, 0.1, 47500]
+  ])('calculates the discounted price for %i with rate %s as %i', (price, rate, expected) => {
+    expect(applyTargetAddDiscount({ price }, rate).buyNow).toBe(expected);
+    expect(applyTargetAddDiscount({ price }, rate).price).toBe(expected);
+  });
+
+  it('uses CONFIG.targetAdd.discountRate when rate argument is omitted', () => {
+    const originalRate = CONFIG.targetAdd.discountRate;
+    CONFIG.targetAdd.discountRate = 0.15;
+    try {
+      expect(applyTargetAddDiscount({ price: 10000 }).buyNow).toBe(8500);
+    } finally {
+      CONFIG.targetAdd.discountRate = originalRate;
+    }
+  });
+
+  it.each([-0.01, 1, '0.1', Number.NaN])('uses fallback rate when given invalid rate %s', (rate) => {
+    expect(applyTargetAddDiscount({ price: 10000 }, rate).buyNow).toBe(9000);
   });
 });

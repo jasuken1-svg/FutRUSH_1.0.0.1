@@ -9,7 +9,7 @@ import { getMarketPrice } from '../ea/marketPrice.js';
 import { fetchMarketPage } from '../ea/marketPage.js';
 import { createCancelToken, randomBetween, sleep } from '../utils/cancelToken.js';
 import { fetchCheapestPlayers } from '../futbin/loader.js';
-import { applyTargetAddEaTax, mergeTargetPlayers, resolveTargetEaId } from './targetOps.js';
+import { applyTargetAddDiscount, mergeTargetPlayers, resolveTargetEaId } from './targetOps.js';
 import { setTargetStatus } from './targetStatus.js';
 
 let activeToken = null;
@@ -122,7 +122,7 @@ async function importWithEaPrices(players, fallback, token, fetchPage, sleepFn, 
       player.buyNow = reference;
       fallbackCount++;
     }
-    const importedPlayer = applyTargetAddEaTax(player);
+    const importedPlayer = applyTargetAddDiscount(player, settings.discountRate);
     added += mergeTargetPlayers([importedPlayer]);
     const shouldWait = didEaSearch && index < players.length - 1 && !token.cancelled;
     const gap = shouldWait ? randomBetweenFn(settings.actionGapMs[0], settings.actionGapMs[1]) : 0;
@@ -163,7 +163,7 @@ export async function importCheapestTargets(rating, count, deps = {}) {
   try {
     const result = await loadPlayers(rating, count);
     if (CONFIG.targetAdd.priceSource !== 'ea') {
-      const importedPlayers = result.players.map((player) => applyTargetAddEaTax(player));
+      const importedPlayers = result.players.map((player) => applyTargetAddDiscount(player, CONFIG.targetAdd.discountRate));
       const added = mergeTargetPlayers(importedPlayers);
       const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
       setTargetStatus({
