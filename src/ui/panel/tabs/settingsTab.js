@@ -15,6 +15,7 @@ content.innerHTML =
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Arama hızı</span><span class="fr-setting-value" data-value="speed">' + (speedLabels[s.speed] || '') + '</span></div><input class="fr-range" data-setting="speed" type="range" min="0" max="3" step="1" value="' + s.speed + '" aria-label="Arama hızı 0 ile 3 arasında"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Harcama limiti (coin)</span><span class="fr-setting-value" data-value="maxSpendCoins">' + (s.maxSpendCoins ? Number(s.maxSpendCoins).toLocaleString('tr-TR') : 'Limitsiz') + '</span></div><input class="fr-setting-input" data-setting="maxSpendCoins" type="number" min="0" step="1000" placeholder="0 = limitsiz" value="' + (s.maxSpendCoins || '') + '" aria-label="Harcama limiti coin olarak"></div>' +
     '<button class="fr-start" type="button" data-state="' + (state.botRunning ? 'running' : 'idle') + '" aria-pressed="' + state.botRunning + '" aria-label="' + (state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH') + '">' +
       '<svg class="fr-start-icon fr-start-icon-idle" viewBox="0 0 24 32" aria-hidden="true"><path d="M14 1 3 18h7l-1 13 12-19h-8z" fill="currentColor" stroke="rgba(255,255,255,.8)" stroke-width="1" stroke-linejoin="round"/></svg>' +
       '<svg class="fr-start-icon fr-start-icon-running" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>' +
@@ -42,6 +43,19 @@ content.querySelectorAll('.fr-range').forEach((input) => {
     saveSnipeSettings();
   });
 });
+const spendInput = content.querySelector('.fr-setting-input[data-setting="maxSpendCoins"]');
+if (spendInput) {
+  const updateSpend = () => {
+    const val = Math.max(0, Math.floor(Number(spendInput.value) || 0));
+    s.maxSpendCoins = val;
+    content.querySelector('[data-value="maxSpendCoins"]').textContent = val ? val.toLocaleString('tr-TR') : 'Limitsiz';
+  };
+  spendInput.addEventListener('input', updateSpend);
+  spendInput.addEventListener('change', () => {
+    updateSpend();
+    saveSnipeSettings();
+  });
+}
 content.querySelector('.fr-toggle').addEventListener('click', (event) => {
   s.autoSell = !s.autoSell;
   event.currentTarget.setAttribute('aria-checked', String(s.autoSell));

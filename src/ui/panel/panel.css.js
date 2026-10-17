@@ -148,6 +148,26 @@ export const panelCss = `
       color: #aebfc8; background: rgba(255,255,255,.05); font: inherit; cursor: pointer; transition: .18s ease;
     }
     #${P.id} .fr-speed-option[aria-pressed="true"] { color: #07131b; border-color: #00e5ff; background: #00e5ff; font-weight: 700; }
+    #${P.id} .fr-setting-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 9px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 6px;
+      background: rgba(0,0,0,.25);
+      color: #00e5ff;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    #${P.id} .fr-setting-input:focus {
+      border-color: #00e5ff;
+      box-shadow: 0 0 6px rgba(0,229,255,.3);
+    }
+    #${P.id} .fr-setting-input::placeholder {
+      color: rgba(255,255,255,.3);
+    }
     #${P.id} .fr-start {
       position: relative; isolation: isolate; overflow: hidden;
       display: flex; align-items: center; justify-content: center; gap: 9px;

@@ -14,7 +14,8 @@ const SNIPE_SETTINGS_DEFAULTS = {
   waitSeconds: 0,
   autoSell: false,
   maxPlayers: 1,
-  speed: 0
+  speed: 0,
+  maxSpendCoins: 0
 };
 
 function isNumberInRange(value, min, max) {
@@ -28,7 +29,8 @@ export function saveSnipeSettings() {
       waitSeconds: state.snipeSettings.waitSeconds,
       autoSell: state.snipeSettings.autoSell,
       maxPlayers: state.snipeSettings.maxPlayers,
-      speed: state.snipeSettings.speed
+      speed: state.snipeSettings.speed,
+      maxSpendCoins: state.snipeSettings.maxSpendCoins || 0
     }));
   } catch (e) {
     logError('SNIPE ayarları localStorage’a kaydedilemedi.', e);
@@ -71,6 +73,9 @@ export function loadSnipeSettings() {
     }
     if (Number.isInteger(savedSettings.speed) && savedSettings.speed >= 0 && savedSettings.speed <= 3) {
       loadedSettings.speed = savedSettings.speed;
+    }
+    if (Number.isSafeInteger(savedSettings.maxSpendCoins) && savedSettings.maxSpendCoins >= 0) {
+      loadedSettings.maxSpendCoins = savedSettings.maxSpendCoins;
     }
   }
 

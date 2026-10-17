@@ -267,4 +267,37 @@ describe('runAutoBuyer', () => {
     expect(idleWait).not.toHaveBeenCalled();
     expect(state.botStats.errors).toBe(1);
   });
+
+  it('stops before purchase when offer exceeds maxSpendCoins limit', async () => {
+    prepareBot([target('A', 2)], { maxSpendCoins: 1000 });
+    const idleWait = vi.fn();
+    const searchAutoBuyOffers = vi.fn(async () => ({
+      stopped: false,
+      offers: [{ tradeId: 12, price: 1500, rating: 90 }]
+    }));
+    const buyAutoOffer = vi.fn();
+
+    await runAutoBuyer(1, deps(idleWait, searchAutoBuyOffers, { buyAutoOffer }));
+
+    expect(state.botRunning).toBe(false);
+    expect(buyAutoOffer).not.toHaveBeenCalled();
+    expect(state.botStatus).toContain('Harcama limiti aşılacak');
+  });
+
+  it('stops when cumulative spend reaches maxSpendCoins', async () => {
+    prepareBot([target('A', 3)], { maxSpendCoins: 1000, maxPlayers: 5 });
+    const idleWait = vi.fn(async () => true);
+    let nextTradeId = 13;
+    const searchAutoBuyOffers = vi.fn(async () => ({
+      stopped: false,
+      offers: [{ tradeId: nextTradeId++, price: 500, rating: 90 }]
+    }));
+    const buyAutoOffer = vi.fn(async () => ({ success: true }));
+
+    await runAutoBuyer(1, deps(idleWait, searchAutoBuyOffers, { buyAutoOffer }));
+
+    expect(state.botRunning).toBe(false);
+    expect(state.botStats.bought).toBe(2);
+    expect(state.botStatus).toContain('Harcama limiti doldu');
+  });
 });

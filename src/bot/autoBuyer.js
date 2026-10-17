@@ -76,6 +76,7 @@ export async function runAutoBuyer(token, deps = {}) {
   };
   let cycles = 0;
   let bought = 0;
+  let totalSpent = 0;
   const attemptedTrades = new Set();
   const loggedMatches = new Set();
   const newlyResolvedTargets = new Set();
@@ -101,6 +102,10 @@ export async function runAutoBuyer(token, deps = {}) {
             stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
             return;
           }
+          if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
+            stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
+            return;
+          }
           setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
           incrementStat('searches');
           if (newlyResolvedTargets.has(target) && !loggedMatches.has(target)) {
@@ -114,6 +119,10 @@ export async function runAutoBuyer(token, deps = {}) {
             addBotLog(target.name + ': Buy Now sınırında uygun ilan bulunamadı.', 'info');
           } else {
             attemptedTrades.add(offer.tradeId);
+            if (settings.maxSpendCoins > 0 && totalSpent + offer.price > settings.maxSpendCoins) {
+              stopAutoBuyer('Harcama limiti aşılacak: ' + (totalSpent + offer.price).toLocaleString('tr-TR') + ' > ' + settings.maxSpendCoins.toLocaleString('tr-TR') + ' coin.');
+              return;
+            }
             const balance = coinBalance();
             if (balance && offer.price > balance) {
               throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
@@ -128,6 +137,7 @@ export async function runAutoBuyer(token, deps = {}) {
             if (token !== state.botToken || !state.botRunning) return;
             if (purchase.success) {
               bought++;
+              totalSpent += offer.price;
               incrementStat('bought');
               addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'success' });
             } else {
@@ -160,6 +170,10 @@ export async function runAutoBuyer(token, deps = {}) {
             stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
             return;
           }
+          if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
+            stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
+            return;
+          }
           if (hasMoreSearches && state.botRunning && token === state.botToken) {
             const baseDelay = speedDelay[settings.speed] || 4000;
             const jitter = jitterMs(searchJitterRange);
@@ -168,11 +182,15 @@ export async function runAutoBuyer(token, deps = {}) {
             await idle(baseDelay + jitter, token, 'search');
           }
         }
-        if (bought >= settings.maxPlayers) break;
+        if (bought >= settings.maxPlayers || (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins)) break;
       }
       if (!state.botRunning || token !== state.botToken) return;
       if (bought >= settings.maxPlayers) {
         stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
+        return;
+      }
+      if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
+        stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
         return;
       }
       if (settings.repeat > 0 && cycles >= settings.repeat) {

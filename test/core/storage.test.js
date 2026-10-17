@@ -26,7 +26,8 @@ const defaults = {
   waitSeconds: 0,
   autoSell: false,
   maxPlayers: 1,
-  speed: 0
+  speed: 0,
+  maxSpendCoins: 0
 };
 
 function loadRecord(record) {
@@ -78,7 +79,8 @@ describe('snipe settings storage', () => {
       waitSeconds: 25,
       autoSell: true,
       maxPlayers: 8,
-      speed: 2
+      speed: 2,
+      maxSpendCoins: 0
     });
   });
 
@@ -119,13 +121,22 @@ describe('snipe settings storage', () => {
     expect(state.snipeSettings).not.toHaveProperty('unexpected');
   });
 
+  it('defaults maxSpendCoins when the saved value is negative or not an integer', () => {
+    loadRecord({ maxSpendCoins: -100 });
+    expect(state.snipeSettings.maxSpendCoins).toBe(0);
+
+    loadRecord({ maxSpendCoins: '50000' });
+    expect(state.snipeSettings.maxSpendCoins).toBe(0);
+  });
+
   it('round-trips settings through localStorage', () => {
     Object.assign(state.snipeSettings, {
       repeat: 12,
       waitSeconds: 45,
       autoSell: true,
       maxPlayers: 6,
-      speed: 3
+      speed: 3,
+      maxSpendCoins: 250000
     });
     saveSnipeSettings();
     Object.assign(state.snipeSettings, defaults);
@@ -137,7 +148,8 @@ describe('snipe settings storage', () => {
       waitSeconds: 45,
       autoSell: true,
       maxPlayers: 6,
-      speed: 3
+      speed: 3,
+      maxSpendCoins: 250000
     });
   });
 });
