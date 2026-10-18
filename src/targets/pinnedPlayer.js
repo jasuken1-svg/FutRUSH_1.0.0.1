@@ -5,7 +5,8 @@ import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { visibleElement } from '../utils/dom.js';
 import { parseFutbinPrice } from '../utils/format.js';
-import { findDuplicateTarget, mergeTargetPlayers } from './targetOps.js';
+import { fetchFutbinPlayerId } from '../futbin/playerLookup.js';
+import { findDuplicateTarget, mergeTargetPlayers, targetEaIdKey } from './targetOps.js';
 import { saveTargets } from './targetStore.js';
 import { setTargetStatus } from './targetStatus.js';
 
@@ -21,12 +22,17 @@ export function selectedPinnedPlayer() {
   const ratingMatch = String(ratingText).match(/\b(\d{2})\b/) || String(selected?.textContent || '').match(/\b(\d{2})\b/);
   const rating = ratingMatch ? Number(ratingMatch[1]) : 0;
   if (!name) return { error: 'Oyuncu adı bulunamadı. Önce oyuncuyu arama alanından seçin.' };
-  const idNode = selected?.matches('[data-definition-id], [data-resource-id], [data-player-id]')
-    ? selected
-    : selected?.querySelector('[data-definition-id], [data-resource-id], [data-player-id]') || playerInput?.closest('[data-definition-id], [data-resource-id], [data-player-id]');
+  const selectedCardAttribute = (attribute) => {
+    const selector = '[' + attribute + ']';
+    return selected?.matches(selector) ? selected : selected?.querySelector(selector);
+  };
+  const definitionId = selectedCardAttribute('data-definition-id')?.getAttribute('data-definition-id');
+  const resourceId = selectedCardAttribute('data-resource-id')?.getAttribute('data-resource-id');
   const playerImage = selected?.querySelector('img[src*="/players/"]');
   const imageId = playerImage?.getAttribute('src')?.match(/\/players\/(\d+)/i)?.[1];
-  const rawEaId = Number(idNode?.getAttribute('data-definition-id') || idNode?.getAttribute('data-resource-id') || idNode?.getAttribute('data-player-id') || playerInput?.dataset?.definitionId || playerInput?.dataset?.resourceId || imageId) || 0;
+  const rawEaId = [definitionId, resourceId, imageId]
+    .map(Number)
+    .find((id) => Number.isSafeInteger(id) && id > 0) || 0;
   const eaId = rawEaId > 0 ? rawEaId & 0xffffff : 0;
   return { selected, name, rating, eaId };
 }
@@ -51,7 +57,7 @@ export function selectedBuyNowPrice(selected) {
   return price > 0 ? Math.round(price) : 0;
 }
 
-export function addPinnedPlayerToTargets() {
+export async function addPinnedPlayerToTargets() {
   const player = selectedPinnedPlayer();
   if (player.error) {
     setTargetStatus({ type: 'error', message: player.error });
@@ -67,12 +73,38 @@ export function addPinnedPlayerToTargets() {
     console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: Buy Now fiyatı okunamadı.');
     return;
   }
-  const added = mergeTargetPlayers([{ name: player.name, rating: player.rating, eaId: player.eaId, price, futbinId: null }]);
+  setTargetStatus({ type: 'loading', message: player.name + ' kart kimliği FutBIN ile eşleştiriliyor...' });
+  emit('targets:changed');
+  const lookupTarget = {
+    name: player.name,
+    rating: player.rating,
+    selectedCardId: player.eaId
+  };
+  let eaId;
+  try {
+    eaId = await fetchFutbinPlayerId(lookupTarget);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setTargetStatus({ type: 'error', message: 'Seçili kart FutBIN ile eşleştirilemedi: ' + message });
+    emit('targets:changed');
+    console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: kart kimliği eşleştirilemedi.', error);
+    return;
+  }
+  const rating = Number(player.rating) || Number(lookupTarget.rating) || 0;
+  const targetIdentity = { name: player.name, rating, futbinId: null };
+  const added = mergeTargetPlayers([{
+    ...targetIdentity,
+    eaId,
+    eaIdTargetKey: targetEaIdKey(targetIdentity),
+    price
+  }]);
   if (added) {
-    setTargetStatus({ type: 'success', message: player.name + (player.rating ? ' (' + player.rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' });
+    setTargetStatus({ type: 'success', message: player.name + (rating ? ' (' + rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' });
   } else {
-    const duplicate = findDuplicateTarget(state.targets, { name: player.name, rating: player.rating }, { matchFutbinId: false });
+    const duplicate = findDuplicateTarget(state.targets, targetIdentity, { matchFutbinId: false });
     if (duplicate) {
+      duplicate.eaId = eaId;
+      duplicate.eaIdTargetKey = targetEaIdKey(duplicate);
       duplicate.buyNow = price;
       duplicate.price = price;
       saveTargets();

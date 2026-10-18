@@ -35,7 +35,7 @@ export function findDuplicateTarget(targets, candidate, { matchFutbinId = true }
   );
 }
 
-function targetEaIdKey(target) {
+export function targetEaIdKey(target) {
   return JSON.stringify([
     String(target.name),
     Number(target.rating),

@@ -3,6 +3,16 @@
 
 import { normalizePlayerName } from '../utils/strings.js';
 
+const SPECIAL_OFFSET = 0x1000000;
+const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
+
+function isStandardRow(row) {
+  const resourceId = Number(row.resource_id);
+  const playerId = Number(row.playerid);
+  const id = resourceId > 0 ? resourceId : playerId;
+  return id > 0 && id < SPECIAL_OFFSET;
+}
+
 export function fetchFutbinPlayerId(target) {
   return new Promise((resolve, reject) => {
     if (typeof GM_xmlhttpRequest !== 'function') {
@@ -13,6 +23,8 @@ export function fetchFutbinPlayerId(target) {
     const targetName = String(target.name || '').trim();
     const wantedName = normalizePlayerName(targetName);
     const wantedFutbinId = String(target.futbinId || '');
+    const selectedCardId = eaIdFrom(target.selectedCardId);
+    const preferStandard = target.preferStandard !== false && !selectedCardId;
     const fallbackTerms = wantedFutbinId
       ? [...new Set(targetName.split(/\s+/).reverse().filter((part) => part.length >= 3))].slice(0, 3)
       : [];
@@ -26,7 +38,9 @@ export function fetchFutbinPlayerId(target) {
         });
         const detail = target.futbinId
           ? ' FutBIN kart kimliği ' + target.futbinId + ' ve oyuncu adı eşleşmedi.'
-          : ' Oyuncu adı: ' + String(target.name || '(boş)') + (target.rating ? ', reyting: ' + target.rating : '') + '.';
+          : selectedCardId
+            ? ' Seçili kart kimliği ' + selectedCardId + ', oyuncu adı ve reytingle eşleşmedi.'
+            : ' Oyuncu adı: ' + String(target.name || '(boş)') + (target.rating ? ', reyting: ' + target.rating : '') + '.';
         reject(new Error('FutBIN yanıtında eşleşen EA oyuncu kimliği bulunamadı.' + detail));
         return;
       }
@@ -44,22 +58,46 @@ export function fetchFutbinPlayerId(target) {
             const payload = JSON.parse(response.responseText || '');
             if (!payload || !Array.isArray(payload.data)) throw new Error('FutBIN API data listesi bulunamadı.');
             lastRows = payload.data;
+            const hasSelectedEaMatch = selectedCardId && payload.data.some((row) =>
+              row && (eaIdFrom(row.resource_id) === selectedCardId || eaIdFrom(row.playerid) === selectedCardId)
+            );
             const candidates = payload.data
               .filter((row) => row && (Number(row.resource_id) > 0 || Number(row.playerid) > 0))
               .map((row) => {
                 const names = [row.playername, row.common_name].map(normalizePlayerName).filter(Boolean);
                 const exactFutbinId = wantedFutbinId && String(row.ID || row.id || '') === wantedFutbinId;
-                if (index > 0 && !exactFutbinId) return { row, score: 0 };
+                const resourceId = eaIdFrom(row.resource_id);
+                const playerId = eaIdFrom(row.playerid);
+                const selectedResourceMatches = selectedCardId && resourceId === selectedCardId;
+                const selectedPlayerMatches = selectedCardId && playerId === selectedCardId;
+                if (selectedCardId && !selectedResourceMatches && !selectedPlayerMatches) return { row, score: 0 };
+                if (index > 0 && !selectedCardId && !exactFutbinId) return { row, score: 0 };
                 const exactName = names.includes(wantedName);
                 const partialName = wantedName.length >= 3 && names.some((name) => name.includes(wantedName) || wantedName.includes(name));
                 const ratingMatches = !target.rating || Number(row.rating) === Number(target.rating);
-                const score = exactFutbinId ? 1000 : exactName && ratingMatches ? 100 : exactName ? 80 : partialName && ratingMatches ? 40 : 0;
+                const nameScore = exactName
+                  ? (ratingMatches ? 100 : 80)
+                  : partialName
+                    ? (ratingMatches ? 40 : 20)
+                    : 0;
+                const standardScore = preferStandard && nameScore > 0 && isStandardRow(row)
+                  ? 1200 + nameScore
+                  : 0;
+                const score = selectedResourceMatches
+                  ? 3000 + nameScore
+                  : selectedPlayerMatches
+                    ? 2000 + nameScore
+                    : standardScore
+                      ? standardScore
+                    : exactFutbinId && !selectedCardId && !hasSelectedEaMatch
+                      ? 1000
+                      : nameScore;
                 return { row, score };
               })
               .filter((entry) => entry.score > 0)
               .sort((a, b) => b.score - a.score);
             const candidate = candidates[0]?.row;
-            const eaId = Number(candidate?.playerid) || ((Number(candidate?.resource_id) || 0) & 0xffffff);
+            const eaId = eaIdFrom(candidate?.resource_id) || eaIdFrom(candidate?.playerid);
             if (!eaId) {
               search(index + 1);
               return;
