@@ -32,6 +32,7 @@ initAll();
 initDomEvents();
 sync();
 
-if (typeof __DEV__ !== 'undefined' && __DEV__) {
-  window.__FUTRUSH__ = { state, CONFIG, registry };
+const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : (typeof window !== 'undefined' ? window : null);
+if (win) {
+  win.__FUTRUSH__ = { state, CONFIG, registry };
 }

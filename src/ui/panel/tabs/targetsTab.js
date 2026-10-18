@@ -7,6 +7,8 @@ import { buyNowStep, floorPrice } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
+import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
+import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
 
 let statusRemovalTimer = null;
 
@@ -135,6 +137,74 @@ export function renderTargetContent(content) {
     if (previousStatus) status.replaceWith(previousStatus);
     updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
     const list = content.querySelector('.fr-target-list');
+
+    if (state.pendingCandidates && Array.isArray(state.pendingCandidates.candidates) && state.pendingCandidates.candidates.length) {
+      const selector = document.createElement('div');
+      selector.className = 'fr-candidate-selector';
+      selector.setAttribute('role', 'region');
+      selector.setAttribute('aria-label', 'Aday kart seçimi');
+
+      const header = document.createElement('div');
+      header.className = 'fr-candidate-header';
+      const headerTitle = document.createElement('span');
+      headerTitle.textContent = state.pendingCandidates.name + ' — Kart Sürümü:';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'fr-candidate-cancel';
+      cancelBtn.textContent = '×';
+      cancelBtn.setAttribute('aria-label', 'Seçimi iptal et');
+      cancelBtn.addEventListener('click', () => {
+        state.pendingCandidates = null;
+        setTargetStatus({ type: 'info', message: 'Kart seçimi iptal edildi.' });
+        emit('targets:changed');
+      });
+      header.append(headerTitle, cancelBtn);
+      selector.appendChild(header);
+
+      const candidateList = document.createElement('div');
+      candidateList.className = 'fr-candidate-list';
+
+      state.pendingCandidates.candidates.forEach((candidate) => {
+        const card = document.createElement('div');
+        card.className = 'fr-candidate-card';
+
+        const title = document.createElement('div');
+        title.className = 'fr-candidate-title';
+        const name = document.createElement('span');
+        name.className = 'fr-candidate-name';
+        name.textContent = candidate.name;
+        const rating = document.createElement('span');
+        rating.className = 'fr-candidate-rating';
+        rating.textContent = String(candidate.rating || '—');
+        title.append(name, rating);
+
+        const badge = document.createElement('div');
+        badge.className = 'fr-candidate-badge';
+        badge.textContent = candidate.versionLabel || 'Özel';
+
+        const meta = document.createElement('div');
+        meta.className = 'fr-candidate-meta';
+        meta.textContent = 'FutBIN ' + candidate.futbinId + ' · resource ' + candidate.eaId;
+
+        const priceEl = document.createElement('div');
+        priceEl.className = 'fr-candidate-price';
+        priceEl.textContent = formatFutbinRowPrice(candidate.raw, getPlatform());
+
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'fr-candidate-btn';
+        selectBtn.textContent = 'Bu kartı ekle';
+        selectBtn.addEventListener('click', () => {
+          commitCandidateTarget(candidate, state.pendingCandidates.price);
+        });
+
+        card.append(title, badge, meta, priceEl, selectBtn);
+        candidateList.appendChild(card);
+      });
+
+      selector.appendChild(candidateList);
+      content.querySelector('.fr-target-view').insertBefore(selector, list);
+    }
     if (!state.targets.length) {
       const empty = document.createElement('div');
       empty.className = 'fr-target-empty';

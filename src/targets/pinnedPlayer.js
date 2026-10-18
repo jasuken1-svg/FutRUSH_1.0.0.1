@@ -5,7 +5,10 @@ import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { visibleElement } from '../utils/dom.js';
 import { parseFutbinPrice } from '../utils/format.js';
-import { fetchFutbinPlayerId } from '../futbin/playerLookup.js';
+import { fetchFutbinPlayerId, queryFutbinPlayersByName } from '../futbin/playerLookup.js';
+import { filterCandidates } from '../futbin/candidateMatcher.js';
+import { toBaseId } from '../futbin/eaId.js';
+import { extractSearchIntent } from './searchIntent.js';
 import { findDuplicateTarget, mergeTargetPlayers, targetEaIdKey } from './targetOps.js';
 import { saveTargets } from './targetStore.js';
 import { setTargetStatus } from './targetStatus.js';
@@ -57,15 +60,79 @@ export function selectedBuyNowPrice(selected) {
   return price > 0 ? Math.round(price) : 0;
 }
 
+export function commitCandidateTarget(candidate, price) {
+  const rating = Number(candidate.rating) || 0;
+  const targetIdentity = {
+    name: candidate.name,
+    rating,
+    futbinId: candidate.futbinId || null,
+    eaId: candidate.eaId,
+    playerId: candidate.playerId,
+    raretype: candidate.raretype,
+    versionLabel: candidate.versionLabel,
+    isHolo: candidate.isHolo,
+    versionKnown: true
+  };
+
+  // Eski versiyonu bilinmeyen (placeholder / base) ayni oyuncu kaydini temizle
+  const candidateBaseId = toBaseId(candidate.eaId || candidate.playerId);
+  if (candidateBaseId > 0) {
+    const staleIndex = state.targets.findIndex((t) =>
+      !t.versionKnown && toBaseId(t.eaId || t.playerId) === candidateBaseId
+    );
+    if (staleIndex !== -1) {
+      state.targets.splice(staleIndex, 1);
+    }
+  }
+
+  const added = mergeTargetPlayers([{
+    ...targetIdentity,
+    eaIdTargetKey: targetEaIdKey(targetIdentity),
+    price,
+    buyNow: price
+  }]);
+  state.pendingCandidates = null;
+  if (added) {
+    setTargetStatus({
+      type: 'success',
+      message: candidate.name + (rating ? ' (' + rating + ')' : '') + (candidate.versionLabel ? ' [' + candidate.versionLabel + ']' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.'
+    });
+  } else {
+    const duplicate = findDuplicateTarget(state.targets, targetIdentity, { matchFutbinId: false });
+    if (duplicate) {
+      duplicate.eaId = candidate.eaId;
+      duplicate.playerId = candidate.playerId;
+      duplicate.versionKnown = true;
+      duplicate.rating = rating;
+      duplicate.raretype = candidate.raretype;
+      duplicate.versionLabel = candidate.versionLabel;
+      duplicate.isHolo = candidate.isHolo;
+      duplicate.eaIdTargetKey = targetEaIdKey(duplicate);
+      duplicate.buyNow = price;
+      duplicate.price = price;
+      saveTargets();
+      setTargetStatus({
+        type: 'success',
+        message: candidate.name + ' zaten listede; sürüm ve Buy Now fiyatı güncellendi.'
+      });
+    }
+  }
+  emit('targets:changed');
+}
+
 export async function addPinnedPlayerToTargets() {
+  const intent = extractSearchIntent();
   const player = selectedPinnedPlayer();
-  if (player.error) {
-    setTargetStatus({ type: 'error', message: player.error });
+  const name = intent.name || player.name;
+  if (!name) {
+    const error = player.error || 'Oyuncu adı bulunamadı. Önce oyuncuyu arama alanından seçin.';
+    setTargetStatus({ type: 'error', message: error });
     emit('targets:changed');
-    console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', player.error);
+    console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', error);
     return;
   }
-  const price = selectedBuyNowPrice(player.selected);
+
+  const price = intent.buyNow || selectedBuyNowPrice(player.selected);
   if (!price) {
     const message = 'Seçili oyuncu için Buy Now fiyatı bulunamadı. Arama filtresindeki en yüksek Buy Now fiyatını belirleyin.';
     setTargetStatus({ type: 'error', message });
@@ -73,16 +140,33 @@ export async function addPinnedPlayerToTargets() {
     console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: Buy Now fiyatı okunamadı.');
     return;
   }
-  setTargetStatus({ type: 'loading', message: player.name + ' kart kimliği FutBIN ile eşleştiriliyor...' });
-  emit('targets:changed');
+
+  const wantsSpecial = intent.quality === 'SP' || (Array.isArray(intent.rarityIds) && intent.rarityIds.length > 0);
   const lookupTarget = {
-    name: player.name,
+    name,
     rating: player.rating,
     selectedCardId: player.eaId
   };
-  let eaId;
+  if (intent.playerId) {
+    lookupTarget.playerId = intent.playerId;
+  }
+  if (intent.quality) {
+    lookupTarget.quality = intent.quality;
+  }
+  if (wantsSpecial) {
+    lookupTarget.wantsSpecial = true;
+    lookupTarget.rarityIds = intent.rarityIds;
+    lookupTarget.returnDetails = true;
+  }
+
+  console.log('[FutRUSH] Hedef ekleme intent: ' + JSON.stringify({ name, price, playerId: lookupTarget.playerId, rarityIds: lookupTarget.rarityIds, quality: intent.quality }));
+  setTargetStatus({ type: 'loading', message: name + ' kart kimliği FutBIN ile eşleştiriliyor...' });
+  emit('targets:changed');
+
+  let res;
   try {
-    eaId = await fetchFutbinPlayerId(lookupTarget);
+    res = await fetchFutbinPlayerId(lookupTarget);
+    console.log('[FutRUSH] fetchFutbinPlayerId response: ' + JSON.stringify(res));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setTargetStatus({ type: 'error', message: 'Seçili kart FutBIN ile eşleştirilemedi: ' + message });
@@ -90,16 +174,34 @@ export async function addPinnedPlayerToTargets() {
     console.warn('[FutRUSH] Oyuncu hedefe eklenemedi: kart kimliği eşleştirilemedi.', error);
     return;
   }
+
+  if (res && typeof res === 'object' && res.status === 'ambiguous') {
+    state.pendingCandidates = {
+      name,
+      price,
+      candidates: res.candidates
+    };
+    setTargetStatus({ type: 'info', message: name + ' için ' + res.candidates.length + ' farklı kart bulundu. Lütfen sürümü seçin.' });
+    emit('targets:changed');
+    return;
+  }
+
+  const candidate = (res && typeof res === 'object' && res.candidate) ? res.candidate : null;
+  if (candidate) {
+    commitCandidateTarget(candidate, price);
+    return;
+  }
+
+  const eaId = typeof res === 'number' ? res : (res?.eaId || 0);
   const rating = Number(player.rating) || Number(lookupTarget.rating) || 0;
-  const targetIdentity = { name: player.name, rating, futbinId: null };
+  const targetIdentity = { name, rating, futbinId: null, eaId };
   const added = mergeTargetPlayers([{
     ...targetIdentity,
-    eaId,
     eaIdTargetKey: targetEaIdKey(targetIdentity),
     price
   }]);
   if (added) {
-    setTargetStatus({ type: 'success', message: player.name + (rating ? ' (' + rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' });
+    setTargetStatus({ type: 'success', message: name + (rating ? ' (' + rating + ')' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.' });
   } else {
     const duplicate = findDuplicateTarget(state.targets, targetIdentity, { matchFutbinId: false });
     if (duplicate) {
@@ -108,7 +210,7 @@ export async function addPinnedPlayerToTargets() {
       duplicate.buyNow = price;
       duplicate.price = price;
       saveTargets();
-      setTargetStatus({ type: 'success', message: player.name + ' zaten listede; Buy Now fiyatı güncellendi.' });
+      setTargetStatus({ type: 'success', message: name + ' zaten listede; Buy Now fiyatı güncellendi.' });
     }
   }
   emit('targets:changed');

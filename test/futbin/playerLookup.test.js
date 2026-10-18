@@ -127,8 +127,7 @@ describe('fetchFutbinPlayerId', () => {
 
     await expect(fetchFutbinPlayerId({
       name: 'Esmee Brugts',
-      rating: 84,
-      futbinId: '515'
+      rating: 84
     })).resolves.toBe(267530);
   });
 

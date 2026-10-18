@@ -259,6 +259,20 @@ export const panelCss = `
     #${P.id} .fr-target-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 3px 2px 1px; scrollbar-width: none; }
     #${P.id} .fr-target-list::-webkit-scrollbar { display: none; }
     #${P.id} .fr-target-empty { margin: auto; color: #90a2ad; font-size: 12px; text-align: center; }
+    #${P.id} .fr-candidate-selector { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(0,229,255,.35); border-radius: 7px; background: rgba(0,30,50,.65); margin-bottom: 6px; }
+    #${P.id} .fr-candidate-header { display: flex; align-items: center; justify-content: space-between; color: #00e5ff; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    #${P.id} .fr-candidate-cancel { border: 0; background: transparent; color: #ff5261; font-size: 16px; font-weight: 700; cursor: pointer; padding: 0 4px; }
+    #${P.id} .fr-candidate-list { display: flex; flex-direction: column; gap: 6px; }
+    #${P.id} .fr-candidate-card { padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: rgba(4,12,22,.6); display: flex; flex-direction: column; gap: 3px; }
+    #${P.id} .fr-candidate-title { display: flex; align-items: center; justify-content: space-between; }
+    #${P.id} .fr-candidate-name { color: #ffd447; font-size: 12px; font-weight: 700; }
+    #${P.id} .fr-candidate-rating { color: #fff; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.1); padding: 1px 4px; border-radius: 4px; }
+    #${P.id} .fr-candidate-badge { color: #00e5ff; font-size: 10px; font-weight: 600; }
+    #${P.id} .fr-candidate-meta { color: #8da2ae; font-size: 9px; font-variant-numeric: tabular-nums; }
+    #${P.id} .fr-candidate-price { color: #8de8b5; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    #${P.id} .fr-candidate-btn { margin-top: 4px; padding: 4px 8px; border: 1px solid rgba(0,229,255,.5); border-radius: 5px; color: #040c16; background: #00e5ff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: filter .15s ease; }
+    #${P.id} .fr-candidate-btn:hover { filter: brightness(1.15); }
+    #${P.id} .fr-candidate-btn:active { transform: scale(.98); }
     #${P.id} .fr-target-card { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(4,12,22,.48); }
     #${P.id} .fr-target-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     #${P.id} .fr-target-name { overflow: hidden; color: #ffd447; font-size: 13px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; }

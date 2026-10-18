@@ -7,6 +7,7 @@ import { pageStorage } from '../utils/dom.js';
 
 const PREFS_KEY = 'futrush-prefs';
 const DEFAULT_PREFS = {
+  platform: 'ps',
   targetAdd: {
     priceSource: 'ea',
     discountRate: 0.1,
@@ -18,6 +19,16 @@ const DEFAULT_PREFS = {
   debug: false
 };
 
+let activePlatform = 'ps';
+
+export function getPlatform() {
+  return activePlatform;
+}
+
+export function setPlatform(platform) {
+  activePlatform = platform === 'pc' ? 'pc' : 'ps';
+}
+
 function validRange(value, minimum) {
   return Array.isArray(value)
     && value.length === 2
@@ -28,6 +39,7 @@ function validRange(value, minimum) {
 
 export function validatePrefs(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const platform = source.platform === 'pc' ? 'pc' : 'ps';
   const targetAdd = source.targetAdd && typeof source.targetAdd === 'object' && !Array.isArray(source.targetAdd)
     ? source.targetAdd
     : {};
@@ -57,6 +69,7 @@ export function validatePrefs(raw) {
     : defaults.outlierRatio;
 
   return {
+    platform,
     targetAdd: { priceSource, discountRate, maxSearches, searchGapMs, actionGapMs, outlierRatio },
     debug: typeof source.debug === 'boolean' ? source.debug : DEFAULT_PREFS.debug
   };
@@ -104,6 +117,8 @@ export function savePrefs(raw) {
 
 export function applyPrefs(raw) {
   const prefs = validatePrefs(raw);
+  activePlatform = prefs.platform;
+  CONFIG.futbin.platform = prefs.platform === 'pc' ? 'pc' : 'console';
   Object.assign(CONFIG.targetAdd, prefs.targetAdd);
   setLogLevel(prefs.debug ? 'debug' : 'info');
   return prefs;

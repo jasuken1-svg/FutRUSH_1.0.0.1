@@ -33,6 +33,7 @@ function settingMarkup(label, key, control, hint) {
 
 function makePrefsFromControls(body) {
   const targetAdd = {};
+  let platform = currentPrefs?.platform || 'ps';
   body.querySelectorAll('[data-pref]').forEach((input) => {
     const [key, index] = input.dataset.pref.split('.');
     if (index !== undefined) {
@@ -40,6 +41,8 @@ function makePrefsFromControls(body) {
       targetAdd[key][Number(index)] = Number(input.value);
     } else if (key === 'debug') {
       return;
+    } else if (key === 'platform') {
+      platform = input.value;
     } else if (key === 'priceSource') {
       targetAdd[key] = input.value;
     } else if (key === 'outlierRatio') {
@@ -49,6 +52,7 @@ function makePrefsFromControls(body) {
     }
   });
   return {
+    platform,
     targetAdd: { ...currentPrefs.targetAdd, ...targetAdd },
     debug: body.querySelector('[data-pref="debug"]').checked
   };
@@ -68,6 +72,10 @@ function restoreControls(body, key) {
   }
   const input = body.querySelector('[data-pref="' + key + '"]');
   if (!input) return;
+  if (key === 'platform') {
+    input.value = currentPrefs.platform;
+    return;
+  }
   input.value = String(key === 'debug' ? currentPrefs.debug : currentPrefs.targetAdd[key]);
   if (key === 'debug') input.checked = currentPrefs.debug;
 }
@@ -88,6 +96,7 @@ function handlePrefChange(event) {
   if (input.dataset.pref === 'debug') raw.debug = input.checked;
   const next = validatePrefs(raw);
   const changedValue = key === 'debug' ? raw.debug !== next.debug
+    : key === 'platform' ? raw.platform !== next.platform
     : JSON.stringify(raw.targetAdd[key]) !== JSON.stringify(next.targetAdd[key]);
   if (changedValue) {
     restoreControls(activeBody, key);
@@ -204,6 +213,7 @@ export function renderSettingsBody(body) {
     '<div class="fr-settings-content">' +
       '<section class="fr-settings-card"><h2>Hedef ekleme</h2>' +
         settingMarkup('Fiyat kaynağı', 'priceSource', '<select class="fr-settings-control" id="__ID__" data-pref="priceSource"><option value="ea"' + (targetAdd.priceSource === 'ea' ? ' selected' : '') + '>EA</option><option value="futbin"' + (targetAdd.priceSource === 'futbin' ? ' selected' : '') + '>FutBIN</option></select>', 'EA piyasa fiyatını veya FutBIN fiyatını kullanır.') +
+        settingMarkup('Platform', 'platform', '<select class="fr-settings-control" id="__ID__" data-pref="platform"><option value="ps"' + (currentPrefs.platform === 'ps' ? ' selected' : '') + '>PS</option><option value="pc"' + (currentPrefs.platform === 'pc' ? ' selected' : '') + '>PC</option></select>', 'FutBIN fiyat referansı için platform seçimi.') +
         settingMarkup('İndirim oranı / Kâr marjı', 'discountRate', '<select class="fr-settings-control" id="__ID__" data-pref="discountRate">' + discountOptions + '</select>', 'Piyasa fiyatından düşülecek indirim / kâr marjı oranı.') +
         settingMarkup('Maksimum arama sayısı', 'maxSearches', '<select class="fr-settings-control" id="__ID__" data-pref="maxSearches">' + searchOptions + '</select>', 'EA aramasında kullanılacak en fazla deneme sayısı.') +
         settingMarkup('Arama aralığı (ms)', 'searchGapMs', '<div class="fr-settings-range"><label>Min<input class="fr-settings-control" id="__ID__" data-pref="searchGapMs.0" type="number" step="1" value="' + targetAdd.searchGapMs[0] + '"></label><label>Max<input class="fr-settings-control" data-pref="searchGapMs.1" type="number" step="1" value="' + targetAdd.searchGapMs[1] + '"></label></div>', 'Düşük aralık EA’nın hata vermesine yol açabilir.') +

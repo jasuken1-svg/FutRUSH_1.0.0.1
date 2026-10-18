@@ -6,15 +6,29 @@ import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';
 import { debug, warnOnce } from '../core/logger.js';
 
-export function makeAutoBuyCriteria(eaId, maxBuy) {
+export function makeAutoBuyCriteria(targetOrId, maxBuy) {
   const Criteria = pageWindow.UTSearchCriteriaDTO;
   if (typeof Criteria !== 'function') throw new Error('EA arama ölçütleri hazır değil. Web App’i yenileyip tekrar deneyin.');
   const criteria = new Criteria();
   criteria.type = 'player';
-  criteria.maskedDefId = Number(eaId) & 0xffffff;
+  const rawId = typeof targetOrId === 'object' && targetOrId !== null
+    ? (targetOrId.eaId || targetOrId.playerId)
+    : targetOrId;
+  criteria.maskedDefId = Number(rawId) & 0xffffff;
   criteria.maxBuy = Number(maxBuy);
   criteria.offset = 0;
   criteria.count = 21;
+
+  if (typeof targetOrId === 'object' && targetOrId !== null) {
+    const raretype = Number(targetOrId.raretype);
+    if (raretype > 0) {
+      criteria.level = 'SP';
+      criteria.rarities = [raretype];
+    } else if (Array.isArray(targetOrId.rarityIds) && targetOrId.rarityIds.length > 0) {
+      criteria.level = 'SP';
+      criteria.rarities = targetOrId.rarityIds.map(Number);
+    }
+  }
   return criteria;
 }
 
@@ -28,7 +42,7 @@ export async function searchAutoBuyOffers(target, eaId, token) {
     }
   }
   const maxBuy = Math.max(1, Math.floor(Number(target.buyNow) || 0));
-  const criteria = makeAutoBuyCriteria(eaId, maxBuy);
+  const criteria = makeAutoBuyCriteria(target || eaId, maxBuy);
   const response = await observeEaRequest(service.searchTransferMarket(criteria, 1), 18000);
   if (token !== state.botToken || !state.botRunning) return { stopped: true, offers: [] };
   if (!response.success) {
@@ -43,9 +57,15 @@ export async function searchAutoBuyOffers(target, eaId, token) {
     }
     const tradeId = Number(auction?.tradeId) || 0;
     const price = Number(auction?.buyNowPrice) || 0;
-    const itemBaseId = (Number(item?.definitionId) || 0) & 0xffffff;
+    const defId = Number(item?.definitionId) || 0;
+    const itemBaseId = defId & 0xffffff;
     const rating = Number(item?.rating) || 0;
-    if (!auction || !tradeId || auction.tradeOwner || itemBaseId !== Number(eaId) || !price || price > maxBuy || (target.rating && rating !== Number(target.rating))) return null;
+    const targetEaId = Number(target?.eaId || eaId) || 0;
+    const targetBaseId = targetEaId & 0xffffff;
+
+    if (!auction || !tradeId || auction.tradeOwner || itemBaseId !== targetBaseId || !price || price > maxBuy) return null;
+    if (target.rating && rating !== Number(target.rating)) return null;
+    if (target.versionKnown && targetEaId > 0xffffff && defId !== targetEaId) return null;
     return { item, auction, price, rating, tradeId };
   }).filter(Boolean).sort((a, b) => a.price - b.price || (Number(b.auction.expires) || 0) - (Number(a.auction.expires) || 0));
   return { stopped: false, offers };

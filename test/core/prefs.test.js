@@ -24,6 +24,7 @@ import { CONFIG } from '../../src/core/config.js';
 import { applyPrefs, loadPrefs, resetPrefs, savePrefs, validatePrefs } from '../../src/core/prefs.js';
 
 const defaults = {
+  platform: 'ps',
   targetAdd: {
     priceSource: 'ea',
     discountRate: 0.1,
@@ -129,7 +130,7 @@ describe('prefs storage and application', () => {
   });
 
   it('loads a valid stored record', () => {
-    const saved = { targetAdd: { ...defaults.targetAdd, priceSource: 'futbin', maxSearches: 8 }, debug: true };
+    const saved = { platform: 'ps', targetAdd: { ...defaults.targetAdd, priceSource: 'futbin', maxSearches: 8 }, debug: true };
     storage.set('futrush-prefs', JSON.stringify(saved));
 
     expect(loadPrefs()).toEqual(saved);
@@ -137,6 +138,7 @@ describe('prefs storage and application', () => {
 
   it('round-trips preferences through storage', () => {
     const prefs = {
+      platform: 'ps',
       targetAdd: { priceSource: 'futbin', discountRate: 0.15, maxSearches: 3, searchGapMs: [800, 1400], actionGapMs: [400, 700], outlierRatio: 0.75 },
       debug: true
     };

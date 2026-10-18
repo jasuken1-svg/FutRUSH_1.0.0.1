@@ -8,6 +8,7 @@ import { saveSavedTargetLists, saveTargets } from './targetStore.js';
 import { setTargetStatus } from './targetStatus.js';
 import { CONFIG } from '../core/config.js';
 import { MIN_BIN, roundDownToStep } from '../ea/priceSteps.js';
+import { toBaseId } from '../futbin/eaId.js';
 
 export function applyTargetAddDiscount(player, discountRate = CONFIG.targetAdd.discountRate) {
   const rate = typeof discountRate === 'number' && Number.isFinite(discountRate) && discountRate >= 0 && discountRate < 1
@@ -150,7 +151,9 @@ export function mergeTargetPlayers(players) {
       price: player.price,
       searches: 3,
       buyNow: player.price,
-      futbinId
+      futbinId,
+      playerId: player.playerId || toBaseId(player.eaId),
+      versionKnown: Boolean(player.versionKnown)
     });
     added++;
   });

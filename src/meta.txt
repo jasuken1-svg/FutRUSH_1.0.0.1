@@ -8,7 +8,9 @@
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
+// @connect      *
 // @connect      futbin.com
 // @connect      www.futbin.com
 // @connect      futbin.org
+// @connect      www.futbin.org
 // ==/UserScript==

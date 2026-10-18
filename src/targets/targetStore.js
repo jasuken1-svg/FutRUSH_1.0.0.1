@@ -4,6 +4,7 @@
 import { state } from '../core/state.js';
 import { pageStorage } from '../utils/dom.js';
 import { warn, warnOnce } from '../core/logger.js';
+import { idOf, toBaseId } from '../futbin/eaId.js';
 
 export function saveTargets() {
   try {
@@ -24,11 +25,16 @@ export function normalizeTarget(item, mode) {
     const price = Math.max(1, Math.round(Number(item.price)));
     const rating = Math.round(Number(item.rating));
     const futbinId = item.futbinId == null ? null : String(item.futbinId);
+    const eaId = idOf(item.eaId);
+    const playerId = idOf(item.playerId) || toBaseId(eaId);
+    const versionKnown = typeof item.versionKnown === 'boolean' ? item.versionKnown : false;
     return {
       id: String(item.id || (futbinId ? 'futbin:' + futbinId : item.name + ':' + rating)),
       name: item.name,
       rating,
-      eaId: Number(item.eaId) || 0,
+      eaId,
+      playerId,
+      versionKnown,
       eaIdTargetKey: typeof item.eaIdTargetKey === 'string' ? item.eaIdTargetKey : null,
       price,
       searches: Math.max(1, Math.round(Number(item.searches) || 3)),
@@ -40,11 +46,16 @@ export function normalizeTarget(item, mode) {
   if (mode === 'savedList') {
     // Saved rows only require a positive price; their ID fallback and price rounding stay legacy-compatible.
     if (!item || typeof item.name !== 'string' || !(Number(item.price) > 0)) return null;
+    const eaId = idOf(item.eaId);
+    const playerId = idOf(item.playerId) || toBaseId(eaId);
+    const versionKnown = typeof item.versionKnown === 'boolean' ? item.versionKnown : false;
     return {
       id: String(item.id || item.futbinId || item.name + ':' + item.rating),
       name: item.name,
       rating: Math.round(Number(item.rating) || 0),
-      eaId: Number(item.eaId) || 0,
+      eaId,
+      playerId,
+      versionKnown,
       eaIdTargetKey: typeof item.eaIdTargetKey === 'string' ? item.eaIdTargetKey : null,
       price: Math.round(Number(item.price)),
       searches: Math.max(1, Math.round(Number(item.searches) || 3)),
