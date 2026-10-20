@@ -304,70 +304,86 @@ export const panelCss = `
     #${P.id} .fr-candidate-card { padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: rgba(4,12,22,.6); display: flex; align-items: center; gap: 10px; }
     #${P.id} .fr-ea-card {
       position: relative; user-select: none; display: flex; flex-direction: column;
-      align-items: center; justify-content: flex-start; border-radius: 5px; overflow: hidden;
-      box-shadow: 0 2px 7px rgba(0,0,0,.5); flex-shrink: 0; background: rgba(0,0,0,.25);
+      align-items: center; justify-content: flex-start; border-radius: 6px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.5); flex-shrink: 0; background: rgba(0,0,0,.25);
+      container-type: inline-size; width: 66px; height: 96px; flex: 0 0 66px;
     }
-    #${P.id} .fr-ea-card-thumb,
-    #${P.id} .fr-ea-card.fr-target-thumb-wrap { width: 50px; height: 74px; flex: 0 0 50px; }
     #${P.id} .fr-ea-card-preview,
-    #${P.id} .fr-ea-card.fr-candidate-card-preview { width: 66px; height: 96px; flex: 0 0 66px; }
-    #${P.id} .fr-ea-card-bg { position: absolute; inset: 0; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; z-index: 1; }
-    
+    #${P.id} .fr-ea-card-thumb,
+    #${P.id} .fr-ea-card.fr-candidate-card-preview,
+    #${P.id} .fr-ea-card.fr-target-thumb-wrap { width: 66px; height: 96px; flex: 0 0 66px; }
+    #${P.id} .fr-ea-card-bg,
+    #${P.id} .fr-ea-card .fr-target-thumb-bg,
+    #${P.id} .fr-ea-card .fr-candidate-card-bg {
+      position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; opacity: 1;
+    }
+
     /* 1. Sol Üst: Reyting & Mevki */
-    #${P.id} .fr-ea-card-top-left { position: absolute; top: 5%; left: 7%; display: flex; flex-direction: column; align-items: center; z-index: 3; line-height: 1; pointer-events: none; }
-    #${P.id} .fr-ea-card-thumb .fr-ea-card-rating { font-size: 11px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.5px; }
-    #${P.id} .fr-ea-card-preview .fr-ea-card-rating { font-size: 14px; font-weight: 900; color: #fff; text-shadow: 0 1px 3px #000, 0 0 2px #000; letter-spacing: -0.5px; }
-    #${P.id} .fr-ea-card-thumb .fr-ea-card-pos { font-size: 7px; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px; }
-    #${P.id} .fr-ea-card-preview .fr-ea-card-pos { font-size: 9px; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px; }
-    
+    #${P.id} .fr-ea-card-top-left {
+      position: absolute; top: 13%; left: 16%; display: flex; flex-direction: column; align-items: center; z-index: 3; line-height: 0.95; pointer-events: none;
+    }
+    #${P.id} .fr-ea-card-rating,
+    #${P.id} .fr-ea-card .fr-candidate-card-rating {
+      font-size: 16cqw; line-height: 0.95; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.5px;
+    }
+    #${P.id} .fr-ea-card-pos,
+    #${P.id} .fr-ea-card .fr-candidate-card-pos {
+      font-size: 10.5cqw; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px;
+    }
+
     /* 2. Oyuncu Portresi */
     #${P.id} .fr-ea-card-player-img,
     #${P.id} .fr-ea-card .fr-ea-card-player-img.fr-target-thumb,
     #${P.id} .fr-ea-card .fr-ea-card-player-img.fr-candidate-player-img {
-      position: absolute; top: 4%; right: 0; width: 72%; height: 55%; object-fit: contain;
+      position: absolute; top: 11%; right: 10%; width: 62%; height: 47%; object-fit: contain;
       z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
       border-radius: 0; background: transparent; margin: 0; flex: none;
     }
-    
+
     /* 3. İsim Şeridi */
     #${P.id} .fr-ea-card-name-plate {
-      position: absolute; top: 59%; left: 3%; right: 3%; height: 11%; z-index: 3;
+      position: absolute; top: 57%; left: 12%; right: 12%; height: 10%; z-index: 3;
       display: flex; align-items: center; justify-content: center; pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.68) 20%, rgba(0,0,0,0.68) 80%, transparent);
+      border-radius: 2px;
     }
-    #${P.id} .fr-ea-card-thumb .fr-ea-card-name {
-      font-size: 6px; font-weight: 800; text-transform: uppercase; color: #fff;
-      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.15px;
+    #${P.id} .fr-ea-card-name {
+      font-size: 10.5cqw; font-weight: 800; text-transform: uppercase; color: #fff;
+      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.2px; padding: 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
-    #${P.id} .fr-ea-card-preview .fr-ea-card-name {
-      font-size: 7.5px; font-weight: 800; text-transform: uppercase; color: #fff;
-      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.15px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    
+
     /* 4. 6 İstatistik Strip (Tek Satır 6 Sütun) */
     #${P.id} .fr-ea-card-stats-grid {
-      position: absolute; top: 71%; left: 3%; right: 3%; height: 13%;
+      position: absolute; top: 67.5%; left: 12%; right: 12%; height: 14%;
       display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
-      justify-items: center; z-index: 3; pointer-events: none;
+      justify-items: center; column-gap: 1px; z-index: 3; pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.55) 15%, rgba(0,0,0,0.55) 85%, transparent);
+      border-radius: 2px;
     }
     #${P.id} .fr-ea-stat-item {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       line-height: 1; min-width: 0;
     }
-    #${P.id} .fr-ea-card-thumb .fr-ea-stat-lbl { font-size: 4px; font-weight: 700; color: #b8c8d4; text-shadow: 0 1px 1px #000; letter-spacing: -0.2px; }
-    #${P.id} .fr-ea-card-thumb .fr-ea-stat-val { font-size: 5.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; margin-top: 1px; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-ea-card-preview .fr-ea-stat-lbl { font-size: 5.5px; font-weight: 700; color: #b8c8d4; text-shadow: 0 1px 1px #000; letter-spacing: -0.2px; }
-    #${P.id} .fr-ea-card-preview .fr-ea-stat-val { font-size: 7.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; margin-top: 1px; font-variant-numeric: tabular-nums; }
-    
+    #${P.id} .fr-ea-stat-lbl {
+      font-size: 6.8cqw; font-weight: 700; letter-spacing: -0.3px; color: #dbe7f0; line-height: 1;
+      text-shadow: 0 1px 1px #000;
+    }
+    #${P.id} .fr-ea-stat-val {
+      font-size: 9.8cqw; font-weight: 900; color: #fff; line-height: 1.05;
+      text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums;
+    }
+
     /* 5. Alt Armalar (Ülke, Lig, Kulüp) */
     #${P.id} .fr-ea-card-bottom-crests {
-      position: absolute; top: 85%; bottom: 3%; left: 0; right: 0;
-      display: flex; align-items: center; justify-content: center; gap: 4px;
+      position: absolute; top: 81.5%; bottom: auto; height: 10%; left: 18%; right: 18%;
+      display: flex; align-items: center; justify-content: center; gap: 4cqw;
       z-index: 3; pointer-events: none;
     }
-    #${P.id} .fr-ea-card-thumb .fr-ea-crest { max-width: 9px; max-height: 8px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
-    #${P.id} .fr-ea-card-preview .fr-ea-crest { max-width: 12px; max-height: 11px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+    #${P.id} .fr-ea-crest {
+      width: 13cqw; height: 11cqw; max-width: none; max-height: none; object-fit: contain;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.7));
+    }
 
     #${P.id} .fr-candidate-card-preview {
       position: relative; width: 66px; height: 96px; flex: 0 0 66px;
@@ -376,7 +392,7 @@ export const panelCss = `
       box-shadow: 0 2px 8px rgba(0,0,0,.5);
     }
     #${P.id} .fr-candidate-card-bg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: .9; }
-    #${P.id} .fr-candidate-player-img { width: 48px; height: 48px; object-fit: contain; position: relative; z-index: 1; margin-top: 10px; }
+    #${P.id} .fr-candidate-player-img { width: 48px; height: 48px; object-fit: contain; position: relative; z-index: 1; margin: 0; }
     #${P.id} .fr-candidate-card-rating { position: absolute; top: 3px; left: 4px; font-size: 13px; font-weight: 800; color: #ffd447; text-shadow: 0 1px 3px #000; z-index: 3; line-height: 1; }
     #${P.id} .fr-candidate-card-pos { position: absolute; top: 17px; left: 4px; font-size: 9px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; z-index: 3; line-height: 1; }
     #${P.id} .fr-card-holo-shimmer {
@@ -396,11 +412,14 @@ export const panelCss = `
       50% { background-position: 100% 100%; }
       100% { background-position: 250% 250%; }
     }
-    #${P.id} .fr-candidate-body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
+    #${P.id} .fr-candidate-body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 4px; }
     #${P.id} .fr-candidate-title { display: flex; align-items: center; justify-content: space-between; }
     #${P.id} .fr-candidate-name { color: #ffd447; font-size: 12px; font-weight: 700; }
     #${P.id} .fr-candidate-rating { color: #fff; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.1); padding: 1px 4px; border-radius: 4px; }
-    #${P.id} .fr-candidate-badge { color: #00e5ff; font-size: 10px; font-weight: 600; }
+    #${P.id} .fr-candidate-badge {
+      display: inline-flex; align-self: flex-start; width: fit-content;
+      padding: 1px 6px; border-radius: 4px; color: #00e5ff; font-size: 10px; font-weight: 600;
+    }
     #${P.id} .fr-candidate-badge-holo {
       background: linear-gradient(90deg, rgba(0,229,255,.25), rgba(255,100,200,.25));
       border: 1px solid rgba(0,229,255,.5);
@@ -412,25 +431,31 @@ export const panelCss = `
     #${P.id} .fr-candidate-btn { margin-top: 4px; padding: 4px 8px; border: 1px solid rgba(0,229,255,.5); border-radius: 5px; color: #040c16; background: #00e5ff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: filter .15s ease; }
     #${P.id} .fr-candidate-btn:hover { filter: brightness(1.15); }
     #${P.id} .fr-candidate-btn:active { transform: scale(.98); }
-    #${P.id} .fr-target-card { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(4,12,22,.48); }
-    #${P.id} .fr-target-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    #${P.id} .fr-target-card {
+      display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+      padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(4,12,22,.48);
+    }
+    #${P.id} .fr-target-card-body {
+      display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 8px;
+    }
+    #${P.id} .fr-target-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
     #${P.id} .fr-target-thumb-wrap {
-      position: relative; width: 42px; height: 58px; flex: 0 0 42px;
+      position: relative; width: 66px; height: 96px; flex: 0 0 66px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,.05); border-radius: 5px; overflow: hidden;
-      box-shadow: 0 1px 5px rgba(0,0,0,.4);
+      background: rgba(255,255,255,.05); border-radius: 6px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.4);
     }
     #${P.id} .fr-target-thumb-bg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: .85; }
-    #${P.id} .fr-target-thumb { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,.05); flex: 0 0 36px; position: relative; z-index: 1; margin-top: 8px; }
+    #${P.id} .fr-target-thumb { object-fit: contain; border-radius: 0; background: transparent; position: relative; z-index: 1; margin: 0; }
     #${P.id} .fr-target-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     #${P.id} .fr-target-name { overflow: hidden; color: #ffd447; font-size: 13px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
     #${P.id} .fr-target-meta-line { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
     #${P.id} .fr-target-rating { color: #c8d7df; font-size: 10px; font-weight: 700; }
-    #${P.id} .fr-target-version-badge { font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
+    #${P.id} .fr-target-version-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
     #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
-    #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+    #${P.id} .fr-target-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     #${P.id} .fr-target-control-title { margin-bottom: 3px; color: #aebfc8; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-align: center; text-transform: uppercase; }
-    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 60px; }
+    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 6px; }
     #${P.id} .fr-target-counter-editable { gap: 6px; }
     #${P.id} .fr-target-counter button { width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 15px; line-height: 1; cursor: pointer; }
     #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }

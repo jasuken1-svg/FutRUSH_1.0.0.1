@@ -81,12 +81,20 @@ export function saveTargetSnapshot(listName) {
     return false;
   }
   const snapshot = state.targets.map((player) => ({
-    id: player.id, name: player.name, rating: player.rating, eaId: player.eaId || 0,
+    id: player.id, name: player.name, commonName: player.commonName || player.name,
+    rating: player.rating, position: player.position || '', eaId: player.eaId || 0,
     eaIdTargetKey: player.eaIdTargetKey || null, price: player.price,
     searches: player.searches, buyNow: player.buyNow, futbinId: player.futbinId,
     versionLabel: player.versionLabel || '',
     playerImageUrl: player.playerImageUrl || '',
-    promoImageUrl: player.promoImageUrl || ''
+    promoImageUrl: player.promoImageUrl || '',
+    holographicAnimationUrl: player.holographicAnimationUrl || '',
+    stats: player.stats || null,
+    nationImageUrl: player.nationImageUrl || '',
+    leagueImageUrl: player.leagueImageUrl || '',
+    clubImageUrl: player.clubImageUrl || '',
+    raretype: player.raretype != null ? player.raretype : null,
+    isHolo: Boolean(player.isHolo)
   }));
   try {
     const name = String(listName || '').trim();
@@ -145,13 +153,23 @@ export function mergeTargetPlayers(players) {
       if (player.playerImageUrl && !duplicate.playerImageUrl) duplicate.playerImageUrl = player.playerImageUrl;
       if (player.promoImageUrl && !duplicate.promoImageUrl) duplicate.promoImageUrl = player.promoImageUrl;
       if (player.versionLabel && !duplicate.versionLabel) duplicate.versionLabel = player.versionLabel;
+      if (player.commonName && !duplicate.commonName) duplicate.commonName = player.commonName;
+      if (player.position && !duplicate.position) duplicate.position = player.position;
+      if (player.stats && !duplicate.stats) duplicate.stats = player.stats;
+      if (player.nationImageUrl && !duplicate.nationImageUrl) duplicate.nationImageUrl = player.nationImageUrl;
+      if (player.leagueImageUrl && !duplicate.leagueImageUrl) duplicate.leagueImageUrl = player.leagueImageUrl;
+      if (player.clubImageUrl && !duplicate.clubImageUrl) duplicate.clubImageUrl = player.clubImageUrl;
+      if (player.holographicAnimationUrl && !duplicate.holographicAnimationUrl) duplicate.holographicAnimationUrl = player.holographicAnimationUrl;
+      if (player.isHolo) duplicate.isHolo = true;
       return;
     }
     const futbinId = player.futbinId == null ? null : String(player.futbinId);
     state.targets.push({
       id: futbinId ? 'futbin:' + futbinId : nameKey + ':' + player.rating,
       name: player.name,
+      commonName: player.commonName || player.name,
       rating: player.rating,
+      position: player.position || '',
       eaId: Number(player.eaId) || 0,
       eaIdTargetKey: player.eaIdTargetKey || null,
       price: player.price,
@@ -163,6 +181,11 @@ export function mergeTargetPlayers(players) {
       versionLabel: player.versionLabel || '',
       playerImageUrl: player.playerImageUrl || '',
       promoImageUrl: player.promoImageUrl || '',
+      holographicAnimationUrl: player.holographicAnimationUrl || '',
+      stats: player.stats || null,
+      nationImageUrl: player.nationImageUrl || '',
+      leagueImageUrl: player.leagueImageUrl || '',
+      clubImageUrl: player.clubImageUrl || '',
       raretype: player.raretype != null ? player.raretype : null,
       isHolo: Boolean(player.isHolo)
     });

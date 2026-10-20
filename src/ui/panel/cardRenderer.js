@@ -3,15 +3,15 @@
 
 import { loadFutbinImage, applyFutbinBgImage } from '../../futbin/imageLoader.js';
 
-export function createEaCardElement(item, { size = 'thumb' } = {}) {
+export function createEaCardElement(item, { size = 'preview' } = {}) {
   const card = document.createElement('div');
-  const sizeClass = size === 'preview' ? 'fr-ea-card-preview fr-candidate-card-preview' : 'fr-ea-card-thumb fr-target-thumb-wrap';
+  const sizeClass = size === 'thumb' ? 'fr-ea-card-thumb fr-target-thumb-wrap' : 'fr-ea-card-preview fr-candidate-card-preview fr-target-thumb-wrap';
   card.className = `fr-ea-card ${sizeClass}` + (item.isHolo ? ' fr-ea-card-holo' : '');
 
   // 1. Arka plan şablonu (Promo/Gold/TOTW vb.)
   if (item.promoImageUrl) {
     const bg = document.createElement('div');
-    bg.className = size === 'preview' ? 'fr-ea-card-bg fr-candidate-card-bg' : 'fr-ea-card-bg fr-target-thumb-bg';
+    bg.className = 'fr-ea-card-bg fr-candidate-card-bg fr-target-thumb-bg';
     applyFutbinBgImage(bg, item.promoImageUrl);
     card.appendChild(bg);
   }
@@ -36,14 +36,14 @@ export function createEaCardElement(item, { size = 'thumb' } = {}) {
 
   if (item.rating) {
     const rating = document.createElement('div');
-    rating.className = size === 'preview' ? 'fr-ea-card-rating fr-candidate-card-rating' : 'fr-ea-card-rating';
+    rating.className = 'fr-ea-card-rating fr-candidate-card-rating';
     rating.textContent = String(item.rating);
     topLeft.appendChild(rating);
   }
 
   if (item.position) {
     const pos = document.createElement('div');
-    pos.className = size === 'preview' ? 'fr-ea-card-pos fr-candidate-card-pos' : 'fr-ea-card-pos';
+    pos.className = 'fr-ea-card-pos fr-candidate-card-pos';
     pos.textContent = String(item.position).toUpperCase();
     topLeft.appendChild(pos);
   }
@@ -52,7 +52,7 @@ export function createEaCardElement(item, { size = 'thumb' } = {}) {
   // 4. Oyuncu Portresi
   if (item.playerImageUrl) {
     const playerImg = document.createElement('img');
-    playerImg.className = size === 'preview' ? 'fr-ea-card-player-img fr-candidate-player-img' : 'fr-ea-card-player-img fr-target-thumb';
+    playerImg.className = 'fr-ea-card-player-img fr-candidate-player-img fr-target-thumb';
     playerImg.alt = item.name || '';
     loadFutbinImage(playerImg, item.playerImageUrl);
     card.appendChild(playerImg);

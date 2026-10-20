@@ -300,12 +300,17 @@ export function renderTargetContent(content) {
       const card = document.createElement('div');
       card.className = 'fr-target-card';
       card.setAttribute('role', 'listitem');
+
+      if (player.playerImageUrl || player.promoImageUrl) {
+        const previewCard = createEaCardElement(player, { size: 'preview' });
+        card.appendChild(previewCard);
+      }
+
+      const body = document.createElement('div');
+      body.className = 'fr-target-card-body';
+
       const head = document.createElement('div');
       head.className = 'fr-target-card-head';
-      if (player.playerImageUrl || player.promoImageUrl) {
-        const thumbCard = createEaCardElement(player, { size: 'thumb' });
-        head.appendChild(thumbCard);
-      }
       const info = document.createElement('div');
       info.className = 'fr-target-info';
       const name = document.createElement('div');
@@ -335,7 +340,7 @@ export function renderTargetContent(content) {
         renderTargetContent(content);
       });
       head.append(info, remove);
-      card.appendChild(head);
+      body.appendChild(head);
 
       const controls = document.createElement('div');
       controls.className = 'fr-target-controls';
@@ -401,7 +406,8 @@ export function renderTargetContent(content) {
         group.append(title, counter);
         controls.appendChild(group);
       });
-      card.appendChild(controls);
+      body.appendChild(controls);
+      card.appendChild(body);
 
       list.appendChild(card);
     });
