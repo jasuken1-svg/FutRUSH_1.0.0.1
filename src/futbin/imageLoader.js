@@ -88,6 +88,8 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
       imgElement.onerror = () => {
         if (fallbackUrl && imgElement.src !== fallbackUrl) {
           imgElement.src = fallbackUrl;
+        } else {
+          imgElement.style.opacity = '0';
         }
       };
       imgElement.src = trimmed || fallbackUrl;

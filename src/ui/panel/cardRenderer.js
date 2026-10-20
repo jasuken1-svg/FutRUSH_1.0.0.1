@@ -67,28 +67,18 @@ export function createEaCardElement(item, { size = 'thumb' } = {}) {
   namePlate.appendChild(nameSpan);
   card.appendChild(namePlate);
 
-  // 6. 6 Temel İstatistik (PAC, SHO, PAS, DRI, DEF, PHY)
+  // 6. 6 Temel İstatistik (PAC, SHO, PAS, DRI, DEF, PHY) - EA Tek Satır 6 Sütun
   if (item.stats && (item.stats.pac > 0 || item.stats.dri > 0)) {
     const statsGrid = document.createElement('div');
     statsGrid.className = 'fr-ea-card-stats-grid';
-
-    const col1 = document.createElement('div');
-    col1.className = 'fr-ea-stat-col';
-    col1.append(
+    statsGrid.append(
       createStatRow(item.stats.pac, 'PAC'),
       createStatRow(item.stats.sho, 'SHO'),
-      createStatRow(item.stats.pas, 'PAS')
-    );
-
-    const col2 = document.createElement('div');
-    col2.className = 'fr-ea-stat-col';
-    col2.append(
+      createStatRow(item.stats.pas, 'PAS'),
       createStatRow(item.stats.dri, 'DRI'),
       createStatRow(item.stats.def, 'DEF'),
       createStatRow(item.stats.phy, 'PHY')
     );
-
-    statsGrid.append(col1, col2);
     card.appendChild(statsGrid);
   }
 
@@ -129,13 +119,13 @@ export function createEaCardElement(item, { size = 'thumb' } = {}) {
 
 function createStatRow(val, label) {
   const row = document.createElement('div');
-  row.className = 'fr-ea-stat';
-  const valEl = document.createElement('span');
-  valEl.className = 'fr-ea-stat-val';
-  valEl.textContent = String(val || '0');
+  row.className = 'fr-ea-stat fr-ea-stat-item';
   const lblEl = document.createElement('span');
   lblEl.className = 'fr-ea-stat-lbl';
   lblEl.textContent = label;
-  row.append(valEl, lblEl);
+  const valEl = document.createElement('span');
+  valEl.className = 'fr-ea-stat-val';
+  valEl.textContent = String(val || '0');
+  row.append(lblEl, valEl);
   return row;
 }

@@ -312,40 +312,62 @@ export const panelCss = `
     #${P.id} .fr-ea-card-preview,
     #${P.id} .fr-ea-card.fr-candidate-card-preview { width: 66px; height: 96px; flex: 0 0 66px; }
     #${P.id} .fr-ea-card-bg { position: absolute; inset: 0; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; z-index: 1; }
-    #${P.id} .fr-ea-card-top-left { position: absolute; top: 6%; left: 7%; display: flex; flex-direction: column; align-items: center; z-index: 3; line-height: 1; pointer-events: none; }
+    
+    /* 1. Sol Üst: Reyting & Mevki */
+    #${P.id} .fr-ea-card-top-left { position: absolute; top: 5%; left: 7%; display: flex; flex-direction: column; align-items: center; z-index: 3; line-height: 1; pointer-events: none; }
     #${P.id} .fr-ea-card-thumb .fr-ea-card-rating { font-size: 11px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.5px; }
     #${P.id} .fr-ea-card-preview .fr-ea-card-rating { font-size: 14px; font-weight: 900; color: #fff; text-shadow: 0 1px 3px #000, 0 0 2px #000; letter-spacing: -0.5px; }
     #${P.id} .fr-ea-card-thumb .fr-ea-card-pos { font-size: 7px; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px; }
     #${P.id} .fr-ea-card-preview .fr-ea-card-pos { font-size: 9px; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px; }
+    
+    /* 2. Oyuncu Portresi */
     #${P.id} .fr-ea-card-player-img,
     #${P.id} .fr-ea-card .fr-ea-card-player-img.fr-target-thumb,
     #${P.id} .fr-ea-card .fr-ea-card-player-img.fr-candidate-player-img {
-      position: absolute; top: 6%; right: 2%; width: 70%; height: 53%; object-fit: contain;
+      position: absolute; top: 4%; right: 0; width: 72%; height: 55%; object-fit: contain;
       z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
       border-radius: 0; background: transparent; margin: 0; flex: none;
     }
+    
+    /* 3. İsim Şeridi */
     #${P.id} .fr-ea-card-name-plate {
-      position: absolute; top: 57%; left: 4%; right: 4%; z-index: 3;
-      text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
+      position: absolute; top: 59%; left: 3%; right: 3%; height: 11%; z-index: 3;
+      display: flex; align-items: center; justify-content: center; pointer-events: none;
     }
-    #${P.id} .fr-ea-card-thumb .fr-ea-card-name { font-size: 6.5px; font-weight: 800; text-transform: uppercase; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: .2px; display: block; overflow: hidden; text-overflow: ellipsis; }
-    #${P.id} .fr-ea-card-preview .fr-ea-card-name { font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: .3px; display: block; overflow: hidden; text-overflow: ellipsis; }
+    #${P.id} .fr-ea-card-thumb .fr-ea-card-name {
+      font-size: 6px; font-weight: 800; text-transform: uppercase; color: #fff;
+      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.15px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    #${P.id} .fr-ea-card-preview .fr-ea-card-name {
+      font-size: 7.5px; font-weight: 800; text-transform: uppercase; color: #fff;
+      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.15px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    
+    /* 4. 6 İstatistik Strip (Tek Satır 6 Sütun) */
     #${P.id} .fr-ea-card-stats-grid {
-      position: absolute; top: 69%; left: 6%; right: 6%; display: flex; justify-content: space-around;
+      position: absolute; top: 71%; left: 3%; right: 3%; height: 13%;
+      display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
+      justify-items: center; z-index: 3; pointer-events: none;
+    }
+    #${P.id} .fr-ea-stat-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1; min-width: 0;
+    }
+    #${P.id} .fr-ea-card-thumb .fr-ea-stat-lbl { font-size: 4px; font-weight: 700; color: #b8c8d4; text-shadow: 0 1px 1px #000; letter-spacing: -0.2px; }
+    #${P.id} .fr-ea-card-thumb .fr-ea-stat-val { font-size: 5.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; margin-top: 1px; font-variant-numeric: tabular-nums; }
+    #${P.id} .fr-ea-card-preview .fr-ea-stat-lbl { font-size: 5.5px; font-weight: 700; color: #b8c8d4; text-shadow: 0 1px 1px #000; letter-spacing: -0.2px; }
+    #${P.id} .fr-ea-card-preview .fr-ea-stat-val { font-size: 7.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; margin-top: 1px; font-variant-numeric: tabular-nums; }
+    
+    /* 5. Alt Armalar (Ülke, Lig, Kulüp) */
+    #${P.id} .fr-ea-card-bottom-crests {
+      position: absolute; top: 85%; bottom: 3%; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
       z-index: 3; pointer-events: none;
     }
-    #${P.id} .fr-ea-stat-col { display: flex; flex-direction: column; gap: 1px; }
-    #${P.id} .fr-ea-stat { display: flex; align-items: center; gap: 2px; line-height: 1; }
-    #${P.id} .fr-ea-card-thumb .fr-ea-stat-val { font-size: 5.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-ea-card-thumb .fr-ea-stat-lbl { font-size: 4.5px; font-weight: 700; color: #b0c4de; text-shadow: 0 1px 1px #000; }
-    #${P.id} .fr-ea-card-preview .fr-ea-stat-val { font-size: 7.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
-    #${P.id} .fr-ea-card-preview .fr-ea-stat-lbl { font-size: 6px; font-weight: 700; color: #b0c4de; text-shadow: 0 1px 1px #000; }
-    #${P.id} .fr-ea-card-bottom-crests {
-      position: absolute; bottom: 4%; left: 0; right: 0; display: flex;
-      align-items: center; justify-content: center; gap: 4px; z-index: 3; pointer-events: none;
-    }
-    #${P.id} .fr-ea-card-thumb .fr-ea-crest { width: 8px; height: 8px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
-    #${P.id} .fr-ea-card-preview .fr-ea-crest { width: 11px; height: 11px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+    #${P.id} .fr-ea-card-thumb .fr-ea-crest { max-width: 9px; max-height: 8px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+    #${P.id} .fr-ea-card-preview .fr-ea-crest { max-width: 12px; max-height: 11px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
 
     #${P.id} .fr-candidate-card-preview {
       position: relative; width: 66px; height: 96px; flex: 0 0 66px;
