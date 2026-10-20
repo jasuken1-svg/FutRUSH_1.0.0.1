@@ -415,7 +415,8 @@ export function renderTargetContent(content) {
 
       const meta = document.createElement('div');
       meta.className = 'fr-candidate-meta';
-      meta.textContent = 'FutBIN ' + candidate.futbinId + ' · resource ' + candidate.eaId;
+      const leagueText = candidate.leagueName ? ' · ' + candidate.leagueName : '';
+      meta.textContent = 'FutBIN ' + candidate.futbinId + ' · resource ' + candidate.eaId + leagueText;
 
       const priceEl = document.createElement('div');
       priceEl.className = 'fr-candidate-price';
@@ -481,6 +482,13 @@ export function renderTargetContent(content) {
     badge.className = 'fr-target-version-badge';
     badge.textContent = effectiveVersion;
     metaLine.appendChild(badge);
+
+    if (player.leagueName) {
+      const leagueBadge = document.createElement('span');
+      leagueBadge.className = 'fr-target-league-badge';
+      leagueBadge.textContent = player.leagueName;
+      metaLine.appendChild(leagueBadge);
+    }
     info.append(name, metaLine);
 
     // Geri Al (Undo) destekli silme butonu (Bölüm 3.7)

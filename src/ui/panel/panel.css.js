@@ -6,6 +6,20 @@ import { CONFIG } from '../../core/config.js';
 const P = CONFIG.panel;
 
 export const panelCss = `
+    @font-face {
+      font-family: 'DIN Pro Condensed Medium';
+      src: local("DIN Pro Condensed Medium"),
+           local("DINPro-CondensedMedium"),
+           local("DINPro-CondMedium"),
+           local("DIN Pro Cond Medium"),
+           local("DINPro Condensed Medium"),
+           local("DIN Condensed Medium"),
+           local("DIN Pro Condensed"),
+           local("Barlow Condensed Medium");
+      font-weight: 100 900;
+      font-style: normal;
+    }
+
     /* Ana Kart ve Panel Stilleri */
     #${P.id} {
       position: fixed;
@@ -26,6 +40,44 @@ export const panelCss = `
       --fr-cyan: #00e5ff;
       --fr-green: #51d88a;
       --fr-red: #ff5261;
+
+      /* Kart Özel Değişkenleri (ÖLÇÜLER) */
+      --card-w: 105px;
+      --card-h: 152.7px;
+      --card-rating-top: 22.5%;
+      --card-rating-left: 11.5%;
+      --card-rating-size: 16cqw;
+      --card-pos-size: 8cqw;
+      --card-photo-top: 21%;
+      --card-photo-right: 19%;
+      --card-photo-w: 58.5%;
+      --card-photo-h: 58%;
+      --card-photo-shift: -7.5%;
+      --card-photo-scale: 1;
+      --card-name-top: 59%;
+      --card-name-size: 8.5cqw;
+      --card-name-weight: 100;
+      --card-stats-top: 69%;
+      --card-stats-inset: 17%;
+      --card-stat-lbl-size: 6cqw;
+      --card-stat-lbl-weight: 100;
+      --card-stat-val-size: 6cqw;
+      --card-stat-val-weight: 100;
+      --card-crest-top: 81%;
+      --card-crest-inset: 17.5%;
+      --card-crest-gap: 8.5cqw;
+      --card-nation-w: 14cqw;
+      --card-nation-h: 10.5cqw;
+      --card-league-w: 14cqw;
+      --card-league-h: 10.5cqw;
+      --card-club-w: 14cqw;
+      --card-club-h: 10.5cqw;
+      --card-ps-top: 38%;
+      --card-ps-left: 13%;
+      --card-ps-size: 11cqw;
+      --card-ps-gap: 2cqw;
+      --card-ps-display: flex;
+      --card-font: 'DIN Pro Condensed Medium', 'UltimateTeamCondensed', 'DINPro-CondensedMedium', 'DINPro-CondMedium', 'DIN Pro Cond Medium', 'DINPro Condensed Medium', 'DIN Condensed Medium', 'DIN Pro Condensed', 'Barlow Condensed Medium', 'Arial Narrow', sans-serif;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
@@ -355,19 +407,20 @@ export const panelCss = `
        OTANTİK EA KART BİLEŞENİ (.fr-ea-card) - BÖLÜM 1.3
        ============================================================== */
     #${P.id} .fr-ea-card {
-      --card-top: 11%;
-      --card-bottom: 7%;
-      --card-left: 9%;
-      --card-right: 9%;
       position: relative; user-select: none; display: flex; flex-direction: column;
       align-items: center; justify-content: flex-start; border-radius: 6px; overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,.5); flex-shrink: 0; background: rgba(0,0,0,.25);
-      container-type: inline-size; width: 84px; height: 118px; flex: 0 0 84px;
-      aspect-ratio: 84 / 118;
-      font-family: UltimateTeamCondensed, "DIN Pro Cond", sans-serif;
+      container-type: inline-size; width: var(--card-w); height: var(--card-h); flex: 0 0 var(--card-w);
+      font-family: var(--card-font);
     }
-    #${P.id} .fr-ea-card-preview { width: 84px; height: 118px; flex: 0 0 84px; }
-    #${P.id} .fr-ea-card-thumb { width: 70px; height: 98px; flex: 0 0 70px; }
+    #${P.id} .fr-ea-card-preview {
+      --card-w: 105px;
+      --card-h: 152.7px;
+    }
+    #${P.id} .fr-ea-card-thumb {
+      --card-w: 70px;
+      --card-h: 101.8px;
+    }
 
     #${P.id} .fr-ea-card.is-skeleton {
       animation: fr-card-skeleton 1.5s ease-in-out infinite alternate;
@@ -383,42 +436,47 @@ export const panelCss = `
 
     /* 1. Sol Üst: Reyting & Mevki */
     #${P.id} .fr-ea-card-top-left {
-      position: absolute; top: calc(var(--card-top) + 2%); left: calc(var(--card-left) + 4%);
-      display: flex; flex-direction: column; align-items: center; z-index: 3; line-height: 0.95; pointer-events: none;
+      position: absolute; top: var(--card-rating-top); left: var(--card-rating-left);
+      display: flex; flex-direction: column; align-items: center; z-index: 4; line-height: 0.95; pointer-events: none;
     }
     #${P.id} .fr-ea-card-rating {
-      font-size: 13.5cqw; line-height: 0.95; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.3px;
+      position: static; top: auto; left: auto;
+      font-size: var(--card-rating-size); line-height: 0.95; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.3px;
     }
     #${P.id} .fr-ea-card-pos {
-      font-size: 7.5cqw; font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px;
+      position: static; top: auto; left: auto;
+      font-size: var(--card-pos-size); font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px;
     }
 
     /* 2. Oyuncu Portresi */
     #${P.id} .fr-ea-card-player-img {
-      position: absolute; top: calc(var(--card-top) - 1%); right: var(--card-right);
-      width: 65%; height: 50%; object-fit: contain; object-position: center top;
+      position: absolute; top: var(--card-photo-top); right: var(--card-photo-right);
+      width: var(--card-photo-w); height: var(--card-photo-h); object-fit: contain; object-position: center top;
+      transform: translateY(var(--card-photo-shift)) scale(var(--card-photo-scale));
+      transform-origin: center top;
       z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
       border-radius: 0; background: transparent; margin: 0; flex: none;
     }
 
     /* 3. İsim Şeridi */
     #${P.id} .fr-ea-card-name-plate {
-      position: absolute; top: 57%; left: calc(var(--card-left) + 2%); right: calc(var(--card-right) + 2%); height: 9.5%; z-index: 3;
+      position: absolute; top: var(--card-name-top); left: 10%; right: 10%; height: 9.5%; z-index: 3;
       display: flex; align-items: center; justify-content: center; pointer-events: none;
       background: linear-gradient(90deg, transparent, rgba(0,0,0,0.68) 20%, rgba(0,0,0,0.68) 80%, transparent);
       border-radius: 2px;
     }
     #${P.id} .fr-ea-card-name {
-      font-size: 8.5cqw; font-weight: 800; text-transform: uppercase; color: #fff;
+      font-size: var(--card-name-size); font-weight: var(--card-name-weight); text-transform: uppercase; color: #fff;
+      font-family: var(--card-name-font, var(--card-font));
       text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.2px; padding: 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
 
     /* 4. 6 İstatistik Strip (Tek Satır 6 Sütun) */
     #${P.id} .fr-ea-card-stats-grid {
-      position: absolute; top: 67%; left: calc(var(--card-left) + 1%); right: calc(var(--card-right) + 1%); height: 13.5%;
+      position: absolute; top: var(--card-stats-top); left: var(--card-stats-inset); right: var(--card-stats-inset); height: 13.5%;
       display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
-      justify-items: center; column-gap: 2px; z-index: 3; pointer-events: none;
+      justify-items: center; column-gap: 1px; z-index: 3; pointer-events: none;
       background: linear-gradient(90deg, transparent, rgba(0,0,0,0.55) 15%, rgba(0,0,0,0.55) 85%, transparent);
       border-radius: 2px;
     }
@@ -427,28 +485,55 @@ export const panelCss = `
       line-height: 1; min-width: 0;
     }
     #${P.id} .fr-ea-stat-lbl {
-      font-size: 5.5cqw; font-weight: 700; letter-spacing: -0.3px; color: #dbe7f0; line-height: 1;
+      display: var(--card-stat-lbl-display, flex);
+      font-size: var(--card-stat-lbl-size); font-weight: var(--card-stat-lbl-weight); letter-spacing: -0.3px; color: #dbe7f0; line-height: 1;
+      font-family: var(--card-stat-font, var(--card-font));
       text-shadow: 0 1px 1px #000;
     }
     #${P.id} .fr-ea-stat-val {
-      font-size: 8cqw; font-weight: 900; color: #fff; line-height: 1.05;
+      font-size: var(--card-stat-val-size); font-weight: var(--card-stat-val-weight); color: #fff; line-height: 1.05;
+      font-family: var(--card-stat-font, var(--card-font));
       text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums;
     }
-    @container (max-width: 72px) {
+    @container (max-width: 75px) {
       #${P.id} .fr-ea-stat-lbl { display: none; }
-      #${P.id} .fr-ea-stat-val { font-size: 10cqw; }
+      #${P.id} .fr-ea-stat-val { font-size: 8.5cqw; }
     }
 
     /* 5. Alt Armalar (Ülke, Lig, Kulüp) */
     #${P.id} .fr-ea-card-bottom-crests {
-      position: absolute; top: 81%; bottom: auto; height: 9.5%; left: calc(var(--card-left) + 6%); right: calc(var(--card-right) + 6%);
-      display: flex; align-items: center; justify-content: center; gap: 4cqw;
+      position: absolute; top: var(--card-crest-top); bottom: auto; height: 9.5%; left: var(--card-crest-inset); right: var(--card-crest-inset);
+      display: flex; align-items: center; justify-content: center; gap: var(--card-crest-gap);
       z-index: 3; pointer-events: none;
     }
     #${P.id} .fr-ea-crest {
-      width: 11cqw; height: 10cqw; max-width: none; max-height: none; object-fit: contain;
+      max-width: none; max-height: none; object-fit: contain;
       filter: drop-shadow(0 1px 1px rgba(0,0,0,.7));
     }
+    #${P.id} .fr-ea-crest-nation { width: var(--card-nation-w); height: var(--card-nation-h); }
+    #${P.id} .fr-ea-crest-league { width: var(--card-league-w); height: var(--card-league-h); }
+    #${P.id} .fr-ea-crest-club { width: var(--card-club-w); height: var(--card-club-h); }
+
+    /* 6. PlayStyle+ Simgeleri (B4) */
+    #${P.id} .fr-ea-card-playstyles {
+      position: absolute; top: var(--card-ps-top); left: var(--card-ps-left);
+      display: var(--card-ps-display, flex); flex-direction: column; gap: var(--card-ps-gap);
+      z-index: 4; pointer-events: none;
+    }
+    #${P.id} .fr-ea-ps {
+      position: relative; box-sizing: border-box; width: var(--card-ps-size); height: var(--card-ps-size);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 30% 30%, #fff2b0, #d9a900 70%);
+      border: 1px solid #fff6c2; box-shadow: 0 1px 2px rgba(0,0,0,.7);
+      color: #3a2a00; font-weight: 900; font-size: calc(var(--card-ps-size) * 0.5); line-height: 1; pointer-events: auto;
+    }
+    #${P.id} .fr-ea-ps img { width: 80%; height: 80%; object-fit: contain; }
+    #${P.id} .fr-ea-ps::after {
+      content: '+'; position: absolute; top: -25%; right: -25%; width: 55%; height: 55%;
+      border-radius: 50%; background: #00e5ff; color: #001018; font-size: calc(var(--card-ps-size) * 0.45);
+      font-weight: 900; display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+
     #${P.id} .fr-card-holo-shimmer {
       position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
       background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.4) 38%, rgba(255,100,200,0.45) 48%, rgba(0,229,255,0.5) 58%, transparent 75%);
@@ -491,6 +576,7 @@ export const panelCss = `
     #${P.id} .fr-target-meta-line { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
     #${P.id} .fr-target-rating { color: #c8d7df; font-size: 11px; font-weight: 700; }
     #${P.id} .fr-target-version-badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
+    #${P.id} .fr-target-league-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,.08); color: #c8d7df; }
     #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
 
     #${P.id} .fr-target-controls {

@@ -6,6 +6,101 @@ import { getFutbinRowPrice } from './platform.js';
 
 export const FUTBIN_SEASON = 'fifa27';
 
+export const LEAGUE_NAMES_BY_ID = {
+  13: 'Premier League',
+  14: 'EFL Championship',
+  16: 'Ligue 1 McDonald\'s',
+  19: 'Bundesliga',
+  31: 'Serie A Enilive',
+  53: 'LALIGA EA SPORTS',
+  10: 'Eredivisie',
+  308: 'Liga Portugal',
+  68: 'Trendyol Süper Lig',
+  39: 'MLS',
+  350: 'ROSHN Saudi League',
+  50: 'Scottish Premiership',
+  4: 'Pro League',
+  2118: 'ICONS'
+};
+
+export function getLeagueName(row) {
+  if (!row) return '';
+  const directName = row.league_name || row.leagueName || row.league_title || row.leaguename;
+  if (directName) return String(directName).trim();
+  const id = Number(row.league || row.leagueId || 0);
+  return LEAGUE_NAMES_BY_ID[id] || (id > 0 ? `Lig #${id}` : '');
+}
+
+export function getLeagueImageUrls(leagueId) {
+  if (!leagueId || Number(leagueId) <= 0) return { leagueImageUrl: '', leagueImageFallbacks: [] };
+  const id = Number(leagueId);
+  const primary = `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/league/${id}.png`;
+  const fallbacks = [
+    `https://cdn.futbin.com/content/fifa26/img/league/${id}.png`,
+    `https://cdn.futbin.com/content/fifa25/img/league/${id}.png`,
+    `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/leagues/${id}.png`,
+    `https://cdn.futbin.com/content/fifa25/img/leagues/${id}.png`
+  ];
+  return { leagueImageUrl: primary, leagueImageFallbacks: fallbacks };
+}
+
+export function extractPlaystylesPlus(row) {
+  if (!row) return [];
+
+  // B4 Teşhis çıktısı: gerçek FUTBIN yanıtındaki PlayStyle alan adlarını konsola yaz
+  if (typeof console !== 'undefined' && row && typeof row === 'object') {
+    const matchedKeys = Object.keys(row).filter((k) => /play.?style/i.test(k));
+    if (matchedKeys.length > 0) {
+      console.log('[FutRUSH:PlayStyle Diagnostic]', {
+        id: row.id || row.ID,
+        name: row.playername,
+        keys: matchedKeys,
+        values: matchedKeys.map((k) => row[k])
+      });
+    }
+  }
+
+  const rawPs = row.playstyles_plus ?? row.playstylesPlus ?? row.playstyle_plus ?? row.playstyleplus ?? row.playStylesPlus;
+
+  if (Array.isArray(rawPs)) {
+    return rawPs.slice(0, 4).map((p) => {
+      if (typeof p === 'string') return { name: p.replace(/\+$/, '').trim(), iconUrl: '' };
+      return {
+        name: (p.name || p.title || p.label || '').replace(/\+$/, '').trim(),
+        iconUrl: p.icon || p.image || p.imageUrl || ''
+      };
+    }).filter((p) => p.name);
+  }
+
+  if (typeof rawPs === 'string' && rawPs.trim()) {
+    try {
+      const parsed = JSON.parse(rawPs);
+      if (Array.isArray(parsed)) return extractPlaystylesPlus({ playstyles_plus: parsed });
+    } catch (_) {}
+    return rawPs.split(/[,;|]/).map((s) => s.trim().replace(/\+$/, '')).filter(Boolean).slice(0, 4).map((name) => ({ name, iconUrl: '' }));
+  }
+
+  const generalPs = row.playstyles || row.playStyles;
+  if (Array.isArray(generalPs)) {
+    const plusItems = generalPs.filter((p) => {
+      if (typeof p === 'string') return p.includes('+') || p.endsWith('+');
+      return p.plus || p.is_plus || p.isPlus || String(p.tier || '').includes('plus') || String(p.name || '').includes('+');
+    }).slice(0, 4);
+
+    if (plusItems.length > 0) {
+      return plusItems.map((p) => {
+        if (typeof p === 'string') return { name: p.replace(/\+$/, '').trim(), iconUrl: '' };
+        return {
+          name: (p.name || p.title || '').replace(/\+$/, '').trim(),
+          iconUrl: p.icon || p.image || p.imageUrl || ''
+        };
+      });
+    }
+  }
+
+  return [];
+}
+
 export function isHolo(row) {
   return Boolean(row?.holographicAnimation);
 }
@@ -164,7 +259,9 @@ export function mapCandidate(row) {
 
   const nationImageUrl = nationId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/nation/${nationId}.png` : '';
   const clubImageUrl = clubId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/clubs/dark/${clubId}.png` : '';
-  const leagueImageUrl = leagueId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/league/${leagueId}.png` : '';
+  const { leagueImageUrl, leagueImageFallbacks } = getLeagueImageUrls(leagueId);
+  const leagueName = getLeagueName(row);
+  const playstylesPlus = extractPlaystylesPlus(row);
   const commonName = row.common_name || row.playername || '';
 
   return {
@@ -191,7 +288,10 @@ export function mapCandidate(row) {
     leagueId,
     nationImageUrl,
     clubImageUrl,
-    leagueImageUrl
+    leagueImageUrl,
+    leagueImageFallbacks,
+    leagueName,
+    playstylesPlus
   };
 }
 
@@ -235,7 +335,7 @@ export function filterCandidates(rows, intent) {
   const targetPlayerId = toBaseId(intent.playerId);
   const rarityIds = Array.isArray(intent.rarityIds) ? intent.rarityIds.map(String).filter(Boolean) : [];
   const specialRarities = rarityIds.filter((rid) => rid !== '0' && rid !== '1');
-  const wantsTotw = rarityIds.includes('3');
+  const wantsTotw = rarityIds.includes('3') || rarityIds.includes('18');
   const wantsSpecial = wantsTotw || intent.quality === 'SP' || normalizeQuality(intent.quality) === 'special' || intent.wantsSpecial === true || specialRarities.length > 0;
 
   return rows
@@ -267,7 +367,7 @@ export function filterCandidates(rows, intent) {
       if (rarityIds.length > 0) {
         const rowRaretype = String(row.raretype ?? '');
         const matchesRarity = rarityIds.some((rid) => {
-          if (rid === '3') {
+          if (rid === '3' || rid === '18') {
             return isTotwCard(row);
           }
           return rowRaretype === rid;

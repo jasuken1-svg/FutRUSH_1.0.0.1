@@ -103,6 +103,9 @@ export function commitCandidateTarget(candidate, price) {
     nationImageUrl: candidate.nationImageUrl || '',
     clubImageUrl: candidate.clubImageUrl || '',
     leagueImageUrl: candidate.leagueImageUrl || '',
+    leagueImageFallbacks: Array.isArray(candidate.leagueImageFallbacks) ? candidate.leagueImageFallbacks : [],
+    leagueName: candidate.leagueName || '',
+    playstylesPlus: Array.isArray(candidate.playstylesPlus) ? candidate.playstylesPlus : [],
     versionKnown: true
   };
 
@@ -148,6 +151,9 @@ export function commitCandidateTarget(candidate, price) {
       duplicate.nationImageUrl = candidate.nationImageUrl || duplicate.nationImageUrl || '';
       duplicate.clubImageUrl = candidate.clubImageUrl || duplicate.clubImageUrl || '';
       duplicate.leagueImageUrl = candidate.leagueImageUrl || duplicate.leagueImageUrl || '';
+      duplicate.leagueImageFallbacks = Array.isArray(candidate.leagueImageFallbacks) ? candidate.leagueImageFallbacks : (duplicate.leagueImageFallbacks || []);
+      duplicate.leagueName = candidate.leagueName || duplicate.leagueName || '';
+      duplicate.playstylesPlus = Array.isArray(candidate.playstylesPlus) ? candidate.playstylesPlus : (duplicate.playstylesPlus || []);
       duplicate.isHolo = candidate.isHolo;
       duplicate.holographicAnimationUrl = candidate.holographicAnimationUrl || duplicate.holographicAnimationUrl || '';
       duplicate.playerImageUrl = candidate.playerImageUrl || duplicate.playerImageUrl || '';
@@ -191,6 +197,9 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
           if (!target.nationImageUrl) target.nationImageUrl = matched.nationImageUrl;
           if (!target.clubImageUrl) target.clubImageUrl = matched.clubImageUrl;
           if (!target.leagueImageUrl) target.leagueImageUrl = matched.leagueImageUrl;
+          if (!target.leagueImageFallbacks && matched.leagueImageFallbacks) target.leagueImageFallbacks = matched.leagueImageFallbacks;
+          if (!target.leagueName && matched.leagueName) target.leagueName = matched.leagueName;
+          if (!target.playstylesPlus && matched.playstylesPlus) target.playstylesPlus = matched.playstylesPlus;
           if (!target.stats) target.stats = matched.stats;
           if (!target.position) target.position = matched.position;
           if (!target.futbinId) target.futbinId = matched.futbinId;
@@ -312,7 +321,10 @@ export async function addPinnedPlayerToTargets() {
     eaId,
     versionLabel,
     playerImageUrl,
-    promoImageUrl
+    promoImageUrl,
+    leagueImageFallbacks: [],
+    leagueName: '',
+    playstylesPlus: []
   };
   const added = mergeTargetPlayers([{
     ...targetIdentity,

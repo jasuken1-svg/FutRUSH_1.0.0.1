@@ -4,6 +4,57 @@
 import { loadFutbinImage, applyFutbinBgImage } from '../../futbin/imageLoader.js';
 import { CONFIG } from '../../core/config.js';
 
+const PARTICLES = new Set(['de', 'da', 'do', 'dos', 'das', 'del', 'della', 'di', 'van', 'von', 'der', 'den', 'ten', 'ter', 'le', 'la', 'el', 'al', 'bin', 'ben', 'mac', 'st']);
+const SUFFIXES = new Set(['jr', 'jr.', 'junior', 'júnior', 'filho', 'neto', 'sr', 'sr.']);
+
+export function surnameOf(full) {
+  const parts = String(full || '').trim().split(/\s+/);
+  if (parts.length < 2) return full;
+  if (SUFFIXES.has(parts[parts.length - 1].toLowerCase())) {
+    return parts.slice(-2).join(' ');
+  }
+  let i = parts.length - 1;
+  while (i > 1 && PARTICLES.has(parts[i - 1].toLowerCase())) i--;
+  return parts.slice(i).join(' ');
+}
+
+export function fitCardName(nameSpan, { nameAuto = true, nameMinScale = 70 } = {}) {
+  if (!nameSpan) return;
+  if (typeof nameSpan.clientWidth === 'number' && typeof nameSpan.scrollWidth === 'number' && nameSpan.clientWidth === 0 && nameSpan.scrollWidth === 0) {
+    return; // gizli sekme veya test ortamı
+  }
+  const full = nameSpan.title || nameSpan.dataset.fullName || nameSpan.textContent || '';
+  nameSpan.dataset.fullName = full;
+  nameSpan.textContent = full;
+  nameSpan.style.removeProperty('font-size');
+
+  if (nameAuto) {
+    const isOverflowing = () => nameSpan.scrollWidth > nameSpan.clientWidth + 1;
+    if (isOverflowing()) {
+      nameSpan.textContent = surnameOf(full);
+      if (isOverflowing()) {
+        const baseSizeCqw = 8.5;
+        for (let s = 95; s >= nameMinScale; s -= 5) {
+          nameSpan.style.setProperty('font-size', (baseSizeCqw * s / 100).toFixed(2) + 'cqw');
+          if (!isOverflowing()) break;
+        }
+      }
+    }
+  }
+}
+
+// Font geç yüklenirse isimleri yeniden boyutlandır
+if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    document.querySelectorAll('.fr-ea-card-name').forEach((span) => {
+      fitCardName(span, {
+        nameAuto: CONFIG.nameAuto !== false,
+        nameMinScale: typeof CONFIG.nameMinScale === 'number' ? CONFIG.nameMinScale : 70
+      });
+    });
+  }).catch(() => {});
+}
+
 export function createEaCardElement(item, { size = 'preview' } = {}) {
   const card = document.createElement('div');
   const sizeClass = size === 'thumb' ? 'fr-ea-card-thumb' : 'fr-ea-card-preview';
@@ -54,6 +105,29 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
   }
   card.appendChild(topLeft);
 
+  // 3.5 Sol Taraf: PlayStyle+ Simgeleri (B4: en fazla 4, altın daire + "+" rozeti)
+  if (showImages && Array.isArray(item.playstylesPlus) && item.playstylesPlus.length > 0) {
+    const psWrap = document.createElement('div');
+    psWrap.className = 'fr-ea-card-playstyles';
+    item.playstylesPlus.slice(0, 4).forEach((ps) => {
+      const psEl = document.createElement('div');
+      psEl.className = 'fr-ea-ps';
+      const psName = typeof ps === 'string' ? ps : (ps.name || '');
+      psEl.title = psName ? `${psName}+` : 'PlayStyle+';
+      const iconUrl = typeof ps === 'object' ? (ps.iconUrl || ps.icon || '') : '';
+      if (iconUrl) {
+        const iconImg = document.createElement('img');
+        iconImg.alt = psName;
+        loadFutbinImage(iconImg, iconUrl);
+        psEl.appendChild(iconImg);
+      } else {
+        psEl.textContent = (psName.slice(0, 2) || 'PS').toUpperCase();
+      }
+      psWrap.appendChild(psEl);
+    });
+    card.appendChild(psWrap);
+  }
+
   // 4. Oyuncu Portresi
   if (showImages && item.playerImageUrl) {
     const playerImg = document.createElement('img');
@@ -68,9 +142,22 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
   namePlate.className = 'fr-ea-card-name-plate';
   const nameSpan = document.createElement('span');
   nameSpan.className = 'fr-ea-card-name';
-  nameSpan.textContent = item.displayName || item.commonName || item.name || '';
+  const fullName = item.displayName || item.commonName || item.name || '';
+  nameSpan.textContent = fullName;
+  nameSpan.title = item.name || fullName;
+  namePlate.title = item.name || fullName;
   namePlate.appendChild(nameSpan);
   card.appendChild(namePlate);
+
+  // İsim sığmazsa soyada kısaltma ve küçültme (B1)
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      fitCardName(nameSpan, {
+        nameAuto: CONFIG.nameAuto !== false,
+        nameMinScale: typeof CONFIG.nameMinScale === 'number' ? CONFIG.nameMinScale : 70
+      });
+    });
+  }
 
   // 6. 6 Temel İstatistik (Outfield: PAC/SHO/PAS/DRI/DEF/PHY, GK: DIV/HAN/KIC/REF/SPE/POS)
   if (item.stats && (item.stats.pac > 0 || item.stats.dri > 0 || item.stats.div > 0)) {
@@ -100,7 +187,7 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
   }
 
   // 7. En Alt: Ülke, Lig ve Kulüp Armaları
-  if (showImages && (item.nationImageUrl || item.leagueImageUrl || item.clubImageUrl)) {
+  if (showImages && (item.nationImageUrl || item.leagueImageUrl || item.clubImageUrl || (item.leagueImageFallbacks && item.leagueImageFallbacks.length > 0))) {
     const crests = document.createElement('div');
     crests.className = 'fr-ea-card-bottom-crests';
 
@@ -112,11 +199,14 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
       crests.appendChild(nationImg);
     }
 
-    if (item.leagueImageUrl) {
+    if (item.leagueImageUrl || (item.leagueImageFallbacks && item.leagueImageFallbacks.length > 0)) {
       const leagueImg = document.createElement('img');
       leagueImg.className = 'fr-ea-crest fr-ea-crest-league';
-      leagueImg.alt = 'League';
-      loadFutbinImage(leagueImg, item.leagueImageUrl);
+      leagueImg.alt = item.leagueName || 'League';
+      if (item.leagueName) {
+        leagueImg.title = item.leagueName;
+      }
+      loadFutbinImage(leagueImg, item.leagueImageUrl, item.leagueImageFallbacks || []);
       crests.appendChild(leagueImg);
     }
 

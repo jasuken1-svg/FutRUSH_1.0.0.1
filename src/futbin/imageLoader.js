@@ -169,59 +169,79 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
   imgElement.loading = 'lazy';
   imgElement.crossOrigin = 'anonymous';
 
-  const requestedUrl = (url || fallbackUrl || '').trim();
-  if (!requestedUrl) {
+  const fallbackList = Array.isArray(fallbackUrl)
+    ? fallbackUrl.filter((u) => typeof u === 'string' && u.trim())
+    : (typeof fallbackUrl === 'string' && fallbackUrl.trim() ? [fallbackUrl.trim()] : []);
+
+  const primaryUrl = (url || '').trim();
+  const allUrls = primaryUrl ? [primaryUrl, ...fallbackList] : fallbackList;
+  const requestedKey = allUrls.join(';');
+
+  if (allUrls.length === 0) {
     imgElement.src = '';
     imgElement.style.opacity = '0';
     return;
   }
 
   // Yeniden kullanılan img elementlerinde eski yanıtın üstüne yazmaması için istek kimliği
-  imgElement.dataset.futbinRequested = requestedUrl;
+  imgElement.dataset.futbinRequested = requestedKey;
 
-  const applySrc = (targetUrl, isFallback = false) => {
+  const tryUrl = (index) => {
+    if (index >= allUrls.length) {
+      if (imgElement.dataset.futbinRequested === requestedKey) {
+        imgElement.style.opacity = '0';
+      }
+      return;
+    }
+    const targetUrl = allUrls[index];
     fetchImageBlobUrl(targetUrl).then((dataUrl) => {
-      if (imgElement.dataset.futbinRequested !== requestedUrl) return;
-
+      if (imgElement.dataset.futbinRequested !== requestedKey) return;
       if (dataUrl) {
         imgElement.src = dataUrl;
         imgElement.style.opacity = '1';
-      } else if (!isFallback && fallbackUrl && fallbackUrl !== targetUrl) {
-        // Birincil URL başarısız oldu, fallback URL'yi GM ile indir
-        applySrc(fallbackUrl, true);
       } else {
-        // GM ile her ikisi de başarısız olduysa gizle, hotlink ile CSP hatası üretme
-        imgElement.style.opacity = '0';
+        tryUrl(index + 1);
       }
     });
   };
 
-  applySrc(url || fallbackUrl);
+  tryUrl(0);
 }
 
 export function applyFutbinBgImage(element, url, fallbackUrl = '') {
   if (!element) return;
-  const targetUrl = (url || fallbackUrl || '').trim();
-  if (!targetUrl) {
+  const fallbackList = Array.isArray(fallbackUrl)
+    ? fallbackUrl.filter((u) => typeof u === 'string' && u.trim())
+    : (typeof fallbackUrl === 'string' && fallbackUrl.trim() ? [fallbackUrl.trim()] : []);
+
+  const primaryUrl = (url || '').trim();
+  const allUrls = primaryUrl ? [primaryUrl, ...fallbackList] : fallbackList;
+  const requestedKey = allUrls.join(';');
+
+  if (allUrls.length === 0) {
     element.style.backgroundImage = 'none';
     return;
   }
 
-  element.dataset.futbinBgRequested = targetUrl;
+  element.dataset.futbinBgRequested = requestedKey;
 
-  const applyBg = (u, isFallback = false) => {
-    fetchImageBlobUrl(u).then((dataUrl) => {
-      if (element.dataset.futbinBgRequested !== targetUrl) return;
-
+  const tryUrl = (index) => {
+    if (index >= allUrls.length) {
+      if (element.dataset.futbinBgRequested === requestedKey) {
+        element.style.backgroundImage = 'none';
+      }
+      return;
+    }
+    const targetUrl = allUrls[index];
+    fetchImageBlobUrl(targetUrl).then((dataUrl) => {
+      if (element.dataset.futbinBgRequested !== requestedKey) return;
       if (dataUrl) {
         element.style.backgroundImage = `url("${dataUrl}")`;
-      } else if (!isFallback && fallbackUrl && fallbackUrl !== u) {
-        applyBg(fallbackUrl, true);
       } else {
-        element.style.backgroundImage = 'none';
+        tryUrl(index + 1);
       }
     });
   };
 
-  applyBg(url || fallbackUrl);
+  tryUrl(0);
 }
