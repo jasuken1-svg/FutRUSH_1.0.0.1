@@ -9,8 +9,7 @@ import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
-import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
-import { loadFutbinImage, applyFutbinBgImage } from '../../../futbin/imageLoader.js';
+import { searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { createEaCardElement } from '../cardRenderer.js';
 
 let statusRemovalTimer = null;

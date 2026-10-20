@@ -17,7 +17,7 @@ function arrayBufferToBase64DataUrl(buffer, contentType = 'image/png') {
   }
   const base64 = typeof btoa === 'function'
     ? btoa(binary)
-    : (typeof Buffer !== 'undefined' ? Buffer.from(binary, 'binary').toString('base64') : '');
+    : (typeof globalThis.Buffer !== 'undefined' ? globalThis.Buffer.from(binary, 'binary').toString('base64') : '');
   return `data:${contentType};base64,${base64}`;
 }
 
