@@ -5,8 +5,9 @@ import { emit, on } from '../core/events.js';
 import { error as logError } from '../core/logger.js';
 import { state } from '../core/state.js';
 import { applyPrefs, loadPrefs, savePrefs, validatePrefs } from '../core/prefs.js';
-import { saveSnipeSettings } from '../core/storage.js';
+import { pageStorage, saveSnipeSettings } from '../core/storage.js';
 import { saveSavedTargetLists, saveTargets } from '../targets/targetStore.js';
+import { CONFIG } from '../core/config.js';
 
 const SNIPE_DEFAULTS = { repeat: 0, waitSeconds: [15, 35], autoSell: false, maxPlayers: 1, speed: 0, maxSpendCoins: 0 };
 const CONFIRM_DELAY_MS = 4000;
@@ -43,6 +44,8 @@ function makePrefsFromControls(body) {
       return;
     } else if (key === 'platform') {
       platform = input.value;
+    } else if (key === 'showCardImages') {
+      return;
     } else if (key === 'priceSource') {
       targetAdd[key] = input.value;
     } else if (key === 'outlierRatio') {
@@ -76,6 +79,10 @@ function restoreControls(body, key) {
     input.value = currentPrefs.platform;
     return;
   }
+  if (key === 'showCardImages') {
+    input.value = String(CONFIG.showCardImages !== false);
+    return;
+  }
   input.value = String(key === 'debug' ? currentPrefs.debug : currentPrefs.targetAdd[key]);
   if (key === 'debug') input.checked = currentPrefs.debug;
 }
@@ -92,11 +99,20 @@ function validationMessage(key) {
 function handlePrefChange(event) {
   const input = event.currentTarget;
   const [key] = input.dataset.pref.split('.');
+  if (key === 'showCardImages') {
+    CONFIG.showCardImages = input.value === 'true';
+    try {
+      pageStorage().setItem('futrush-show-card-images', String(CONFIG.showCardImages));
+    } catch (e) {}
+    emit('targets:changed');
+    return;
+  }
   const raw = makePrefsFromControls(activeBody);
   if (input.dataset.pref === 'debug') raw.debug = input.checked;
   const next = validatePrefs(raw);
   const changedValue = key === 'debug' ? raw.debug !== next.debug
     : key === 'platform' ? raw.platform !== next.platform
+    : key === 'showCardImages' ? raw.showCardImages !== next.showCardImages
     : JSON.stringify(raw.targetAdd[key]) !== JSON.stringify(next.targetAdd[key]);
   if (changedValue) {
     restoreControls(activeBody, key);
@@ -214,6 +230,7 @@ export function renderSettingsBody(body) {
       '<section class="fr-settings-card"><h2>Hedef ekleme</h2>' +
         settingMarkup('Fiyat kaynağı', 'priceSource', '<select class="fr-settings-control" id="__ID__" data-pref="priceSource"><option value="ea"' + (targetAdd.priceSource === 'ea' ? ' selected' : '') + '>EA</option><option value="futbin"' + (targetAdd.priceSource === 'futbin' ? ' selected' : '') + '>FutBIN</option></select>', 'EA piyasa fiyatını veya FutBIN fiyatını kullanır.') +
         settingMarkup('Platform', 'platform', '<select class="fr-settings-control" id="__ID__" data-pref="platform"><option value="ps"' + (currentPrefs.platform === 'ps' ? ' selected' : '') + '>PS</option><option value="pc"' + (currentPrefs.platform === 'pc' ? ' selected' : '') + '>PC</option></select>', 'FutBIN fiyat referansı için platform seçimi.') +
+        settingMarkup('Oyuncu Kart Görseli', 'showCardImages', '<select class="fr-settings-control" id="__ID__" data-pref="showCardImages"><option value="true"' + (CONFIG.showCardImages !== false ? ' selected' : '') + '>Açık (Görselleri Yükle)</option><option value="false"' + (CONFIG.showCardImages === false ? ' selected' : '') + '>Kapalı (Görselleri Gizle)</option></select>', 'Kapalı olduğunda kart görselleri gizlenir ve gereksiz istek yapılmaz.') +
         settingMarkup('İndirim oranı / Kâr marjı', 'discountRate', '<select class="fr-settings-control" id="__ID__" data-pref="discountRate">' + discountOptions + '</select>', 'Piyasa fiyatından düşülecek indirim / kâr marjı oranı.') +
         settingMarkup('Maksimum arama sayısı', 'maxSearches', '<select class="fr-settings-control" id="__ID__" data-pref="maxSearches">' + searchOptions + '</select>', 'EA aramasında kullanılacak en fazla deneme sayısı.') +
         settingMarkup('Arama aralığı (ms)', 'searchGapMs', '<div class="fr-settings-range"><label>Min<input class="fr-settings-control" id="__ID__" data-pref="searchGapMs.0" type="number" step="1" value="' + targetAdd.searchGapMs[0] + '"></label><label>Max<input class="fr-settings-control" data-pref="searchGapMs.1" type="number" step="1" value="' + targetAdd.searchGapMs[1] + '"></label></div>', 'Düşük aralık EA’nın hata vermesine yol açabilir.') +

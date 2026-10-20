@@ -4,6 +4,7 @@
 import { P } from './config.js';
 import { state } from './state.js';
 import { pageStorage } from '../utils/dom.js';
+export { pageStorage };
 import { error as logError } from './logger.js';
 import { warn as logWarn } from './logger.js';
 import { applyPrefs, loadPrefs } from './prefs.js';

@@ -52,13 +52,15 @@ export function normalizeTarget(item, mode) {
         pas: Number(item.stats.pas) || 0,
         dri: Number(item.stats.dri) || 0,
         def: Number(item.stats.def) || 0,
-        phy: Number(item.stats.phy) || 0
+        phy: Number(item.stats.phy) || 0,
+        labels: Array.isArray(item.stats.labels) ? item.stats.labels : null
       } : null,
       nationImageUrl: item.nationImageUrl || '',
       clubImageUrl: item.clubImageUrl || '',
       leagueImageUrl: item.leagueImageUrl || '',
       raretype: item.raretype != null ? item.raretype : null,
-      isHolo: Boolean(item.isHolo)
+      isHolo: Boolean(item.isHolo),
+      searchDisabled: Boolean(item.searchDisabled)
     };
   }
 
@@ -92,13 +94,15 @@ export function normalizeTarget(item, mode) {
         pas: Number(item.stats.pas) || 0,
         dri: Number(item.stats.dri) || 0,
         def: Number(item.stats.def) || 0,
-        phy: Number(item.stats.phy) || 0
+        phy: Number(item.stats.phy) || 0,
+        labels: Array.isArray(item.stats.labels) ? item.stats.labels : null
       } : null,
       nationImageUrl: item.nationImageUrl || '',
       clubImageUrl: item.clubImageUrl || '',
       leagueImageUrl: item.leagueImageUrl || '',
       raretype: item.raretype != null ? item.raretype : null,
-      isHolo: Boolean(item.isHolo)
+      isHolo: Boolean(item.isHolo),
+      searchDisabled: Boolean(item.searchDisabled)
     };
   }
 

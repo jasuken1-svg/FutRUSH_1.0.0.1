@@ -2,6 +2,7 @@
 // Bagimlilik: yalnizca uygulama genelinde tuketilen sabit degerler.
 
 export const CONFIG = {
+  showCardImages: true,
   ui: {
     statusHoldMs: 3000,
     statusErrorHoldMs: 6000

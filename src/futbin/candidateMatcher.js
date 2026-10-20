@@ -4,8 +4,18 @@
 import { idOf, toBaseId } from './eaId.js';
 import { getFutbinRowPrice } from './platform.js';
 
+export const FUTBIN_SEASON = 'fifa27';
+
 export function isHolo(row) {
   return Boolean(row?.holographicAnimation);
+}
+
+export function isTotwCard(row) {
+  if (!row) return false;
+  const raretype = Number(row.raretype ?? -1);
+  if (raretype === 3 || raretype === 18) return true;
+  const version = String(row.version || row.rare_name || row.card_type || '');
+  return /totw|team of the week/i.test(version);
 }
 
 function parsePromoFromUrl(url) {
@@ -19,17 +29,16 @@ function parsePromoFromUrl(url) {
 export function getVersionLabel(row) {
   const holo = isHolo(row);
   const raretype = Number(row?.raretype ?? 0);
-  const isSpecial = isSpecialCard(row);
 
   if (raretype === 3) {
     return holo ? 'TOTW (Holo)' : 'TOTW (Standart)';
   }
 
-  if (!isSpecial) {
+  if (!isSpecialCard(row)) {
     return 'Base';
   }
 
-  // Ozel / promo kartlar (raretype !== 3)
+  // Ozel / promo kartlar (raretype !== 3 && !== 18)
   const rawVersion = String(row?.version || row?.rare_name || '').trim();
   let promoName = rawVersion;
   if (!promoName && row?.cardImage) {
@@ -53,12 +62,18 @@ export function isSpecialCard(row) {
   return (raretype !== 0 && raretype !== 1) || Boolean(row.holographicAnimation);
 }
 
+export function formatCardDisplayName(name, commonName) {
+  const raw = (commonName || name || '').trim();
+  if (!raw || raw.length <= 14) return raw;
+  const parts = raw.split(/\s+/);
+  return parts[parts.length - 1] || raw;
+}
+
 export function resolveFutbinImageUrl(rawUrl, fallback = '') {
   if (typeof rawUrl !== 'string' || !rawUrl.trim()) return fallback;
   const trimmed = rawUrl.trim();
-  // Eger sadece sayi veya p12345 gibi ID geldiyse tam CDN URL'sine donustur
   if (/^p?\d+$/i.test(trimmed)) {
-    return `https://cdn.futbin.com/content/fifa27/img/players/${trimmed}.png`;
+    return `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/players/${trimmed}.png`;
   }
   if (trimmed.startsWith('//')) {
     return 'https:' + trimmed;
@@ -102,15 +117,25 @@ export function mapCandidate(row) {
   const position = String(row.position || '').trim();
 
   const rawPlayerImg = row.specialPlayerImage || row.normalPlayerImage || row.image || row.special_img || row.playerimage || row.player_image || row.card_image || '';
-  const fallbackPlayerImg = (eaId && eaId > 0 && eaId >= 0x1000000)
-    ? `https://cdn.futbin.com/content/fifa27/img/players/p${eaId}.png`
-    : (baseId ? `https://cdn.futbin.com/content/fifa27/img/players/${baseId}.png` : '');
-  const playerImageUrl = resolveFutbinImageUrl(rawPlayerImg, fallbackPlayerImg);
+  const playerImageFallbackUrl = (eaId && eaId > 0 && eaId >= 0x1000000)
+    ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/players/p${eaId}.png`
+    : (baseId ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/players/${baseId}.png` : '');
+  const playerImageUrl = resolveFutbinImageUrl(rawPlayerImg, playerImageFallbackUrl);
 
   const rawPromoImg = row.cardImage || row.rare_card_image || row.rare_image || row.version_image || '';
-  const fallbackPromoImg = (raretype && raretype > 0)
-    ? `https://cdn.futbin.com/content/fifa27/img/cards/hd/${raretype}_card.png`
-    : (rating >= 75 ? 'https://cdn.futbin.com/content/fifa27/img/cards/hd/0_gold.png' : '');
+  const fallbackPromoImg = (raretype && raretype > 1)
+    ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/${raretype}_card.png`
+    : (raretype === 1
+      ? (rating >= 75
+        ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/1_gold_rare.png`
+        : (rating >= 65
+          ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/1_silver_rare.png`
+          : `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/1_bronze_rare.png`))
+      : (rating >= 75
+        ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/0_gold.png`
+        : (rating >= 65
+          ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/0_silver.png`
+          : `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/cards/hd/0_bronze.png`)));
   const promoImageUrl = resolveFutbinImageUrl(rawPromoImg, fallbackPromoImg);
 
   const rawHoloAnim = row.holographicAnimation || row.card_animation || '';
@@ -118,22 +143,28 @@ export function mapCandidate(row) {
 
   const price = getFutbinRowPrice(row) || 0;
 
-  const stats = (row.pac != null || row.sho != null) ? {
-    pac: Number(row.pac) || 0,
-    sho: Number(row.sho) || 0,
-    pas: Number(row.pas) || 0,
-    dri: Number(row.dri) || 0,
-    def: Number(row.def) || 0,
-    phy: Number(row.phy) || 0
+  const isGk = position.toUpperCase() === 'GK' || position.toUpperCase() === 'KL';
+  const statLabels = isGk
+    ? ['DIV', 'HAN', 'KIC', 'REF', 'SPE', 'POS']
+    : ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
+
+  const stats = (row.pac != null || row.sho != null || row.div != null) ? {
+    pac: Number(isGk ? (row.div ?? row.pac) : (row.pac ?? 0)) || 0,
+    sho: Number(isGk ? (row.han ?? row.sho) : (row.sho ?? 0)) || 0,
+    pas: Number(isGk ? (row.kic ?? row.pas) : (row.pas ?? 0)) || 0,
+    dri: Number(isGk ? (row.ref ?? row.dri) : (row.dri ?? 0)) || 0,
+    def: Number(isGk ? (row.spe ?? row.def) : (row.def ?? 0)) || 0,
+    phy: Number(isGk ? (row.pos ?? row.phy) : (row.phy ?? 0)) || 0,
+    labels: statLabels
   } : null;
 
   const nationId = Number(row.nation) || 0;
   const clubId = Number(row.club) || 0;
   const leagueId = Number(row.league) || 0;
 
-  const nationImageUrl = nationId > 0 ? `https://cdn.futbin.com/content/fifa27/img/nation/${nationId}.png` : '';
-  const clubImageUrl = clubId > 0 ? `https://cdn.futbin.com/content/fifa27/img/clubs/dark/${clubId}.png` : '';
-  const leagueImageUrl = leagueId > 0 ? `https://cdn.futbin.com/content/fifa25/img/league/${leagueId}.png` : '';
+  const nationImageUrl = nationId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/nation/${nationId}.png` : '';
+  const clubImageUrl = clubId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/clubs/dark/${clubId}.png` : '';
+  const leagueImageUrl = leagueId > 0 ? `https://cdn.futbin.com/content/${FUTBIN_SEASON}/img/league/${leagueId}.png` : '';
   const commonName = row.common_name || row.playername || '';
 
   return {
@@ -143,6 +174,7 @@ export function mapCandidate(row) {
     playerId,
     name: commonName || row.playername || '',
     commonName,
+    displayName: formatCardDisplayName(row.playername, commonName),
     rating,
     position,
     raretype,
@@ -150,6 +182,7 @@ export function mapCandidate(row) {
     holographicAnimationUrl,
     versionLabel: getVersionLabel(row),
     playerImageUrl,
+    playerImageFallbackUrl,
     promoImageUrl,
     price,
     stats,
@@ -158,8 +191,7 @@ export function mapCandidate(row) {
     leagueId,
     nationImageUrl,
     clubImageUrl,
-    leagueImageUrl,
-    raw: row
+    leagueImageUrl
   };
 }
 
@@ -202,8 +234,9 @@ export function filterCandidates(rows, intent) {
 
   const targetPlayerId = toBaseId(intent.playerId);
   const rarityIds = Array.isArray(intent.rarityIds) ? intent.rarityIds.map(String).filter(Boolean) : [];
+  const specialRarities = rarityIds.filter((rid) => rid !== '0' && rid !== '1');
   const wantsTotw = rarityIds.includes('3');
-  const wantsSpecial = wantsTotw || intent.quality === 'SP' || normalizeQuality(intent.quality) === 'special' || intent.wantsSpecial === true || rarityIds.length > 0;
+  const wantsSpecial = wantsTotw || intent.quality === 'SP' || normalizeQuality(intent.quality) === 'special' || intent.wantsSpecial === true || specialRarities.length > 0;
 
   return rows
     .filter((row) => {
@@ -233,10 +266,9 @@ export function filterCandidates(rows, intent) {
       // Spesifik promo / nadirlik seçilmişse:
       if (rarityIds.length > 0) {
         const rowRaretype = String(row.raretype ?? '');
-        const version = String(row.version ?? row.card_type ?? '');
         const matchesRarity = rarityIds.some((rid) => {
           if (rid === '3') {
-            return rowRaretype === '3' || rowRaretype === '18' || /totw|team of the week/i.test(version);
+            return isTotwCard(row);
           }
           return rowRaretype === rid;
         });

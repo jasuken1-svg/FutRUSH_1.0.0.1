@@ -82,6 +82,7 @@ export async function runAutoBuyer(token, deps = {}) {
   const newlyResolvedTargets = new Set();
   try {
     for (const target of state.targets) {
+      if (target.searchDisabled) continue;
       if (token !== state.botToken || !state.botRunning) return;
       const needsResolution = !hasCurrentTargetEaId(target);
       await resolveId(target);
@@ -94,6 +95,7 @@ export async function runAutoBuyer(token, deps = {}) {
       cycles++;
       for (let targetIndex = 0; targetIndex < state.targets.length; targetIndex++) {
         const target = state.targets[targetIndex];
+        if (target.searchDisabled) continue;
         const eaId = Number(target.eaId) || 0;
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -165,7 +167,7 @@ export async function runAutoBuyer(token, deps = {}) {
               }
             }
           }
-          const hasMoreSearches = attempt < attempts || targetIndex < state.targets.length - 1;
+          const hasMoreSearches = attempt < attempts || state.targets.slice(targetIndex + 1).some((t) => !t.searchDisabled);
           if (bought >= settings.maxPlayers) {
             stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
             return;

@@ -8,11 +8,16 @@ import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
-import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
-import { searchUniquePlayers } from '../../../futbin/playerLookup.js';
+import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../targets/pinnedPlayer.js';
+import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { createEaCardElement } from '../cardRenderer.js';
+import { CONFIG } from '../../../core/config.js';
+import { roundDownToStep } from '../../../ea/priceSteps.js';
 
 let statusRemovalTimer = null;
+let isHydrating = false;
+let isUpdatingPrices = false;
+let lastPriceUpdateTime = null;
 
 function renderStatus(status, targetLoading) {
   const normalized = normalizeTargetStatus(status) || (targetLoading ? {
@@ -28,59 +33,101 @@ function cancelStatusRemoval(statusElement) {
     clearTimeout(statusRemovalTimer);
     statusRemovalTimer = null;
   }
-  statusElement.classList.remove('fr-target-status-exiting');
+}
+
+function attachHoldRepeat(button, onTrigger) {
+  let timer = null;
+  let interval = null;
+  let isHolding = false;
+
+  const stop = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (interval) {
+      clearInterval(interval);
+      interval = null;
+    }
+    setTimeout(() => { isHolding = false; }, 0);
+  };
+
+  const start = (e) => {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    isHolding = true;
+    stop();
+    onTrigger(e);
+    timer = setTimeout(() => {
+      interval = setInterval(() => {
+        onTrigger(e);
+      }, 70);
+    }, 350);
+  };
+
+  button.addEventListener('mousedown', start);
+  button.addEventListener('mouseup', stop);
+  button.addEventListener('mouseleave', stop);
+  button.addEventListener('touchstart', start, { passive: true });
+  button.addEventListener('touchend', stop);
+  button.addEventListener('touchcancel', stop);
+
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!isHolding) {
+      onTrigger(e);
+    }
+  });
 }
 
 export function updateTargetStatus(statusElement, status, targetLoading) {
   const normalized = renderStatus(status, targetLoading);
   if (!normalized) {
-    if (statusElement.classList.contains('fr-target-status-exiting')) return;
     statusElement.hidden = true;
+    statusElement.removeAttribute('data-type');
+    statusElement.replaceChildren();
     return;
   }
+
   cancelStatusRemoval(statusElement);
-  const previousMessage = statusElement.dataset.message;
-  const previousType = statusElement.dataset.type;
+  statusElement.classList.remove('fr-target-status-exiting');
   statusElement.hidden = false;
-  statusElement.dataset.type = normalized.type;
+
+  const previousType = statusElement.getAttribute('data-type');
+  const previousMessage = statusElement.querySelector('.fr-target-status-message')?.textContent;
+  statusElement.setAttribute('data-type', normalized.type);
+
+  let icon = statusElement.querySelector('.fr-target-status-icon');
+  if (!icon) {
+    icon = document.createElement('span');
+    icon.className = 'fr-target-status-icon';
+    statusElement.appendChild(icon);
+  }
+  icon.dataset.type = normalized.type;
 
   let main = statusElement.querySelector('.fr-target-status-main');
   if (!main) {
     main = document.createElement('div');
     main.className = 'fr-target-status-main';
-    const icon = document.createElement('span');
-    icon.className = 'fr-target-status-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    const message = document.createElement('span');
+    const message = document.createElement('div');
     message.className = 'fr-target-status-message';
-    const meta = document.createElement('span');
-    meta.className = 'fr-target-status-meta';
-    const source = document.createElement('span');
-    source.className = 'fr-target-source';
-    const progress = document.createElement('span');
-    progress.className = 'fr-target-progress-label';
-    meta.append(source, progress);
-    main.append(icon, message, meta);
+    const progressLabel = document.createElement('div');
+    progressLabel.className = 'fr-target-progress-label';
+    progressLabel.hidden = true;
+    const source = document.createElement('div');
+    source.className = 'fr-target-status-source';
+    main.append(message, progressLabel, source);
     statusElement.appendChild(main);
   }
 
-  const icon = main.querySelector('.fr-target-status-icon');
-  icon.dataset.type = normalized.type;
-  icon.textContent = normalized.type === 'loading' ? '' : normalized.type === 'success' ? '✓' : normalized.type === 'error' ? '!' : '·';
   const message = main.querySelector('.fr-target-status-message');
-  if (previousMessage !== normalized.message || !message.textContent) {
+  if (message.textContent !== normalized.message) {
     message.textContent = normalized.message;
     message.classList.remove('fr-status-message-enter');
     void message.offsetWidth;
     message.classList.add('fr-status-message-enter');
   }
-  statusElement.dataset.message = normalized.message;
 
-  const source = main.querySelector('.fr-target-source');
-  const sourceLabels = { ea: 'EA', futbin: 'FutBIN', mixed: 'EA+FutBIN' };
-  const sourceLabel = sourceLabels[normalized.source] || '';
-  source.textContent = sourceLabel;
-  source.hidden = !sourceLabel;
+  const source = main.querySelector('.fr-target-status-source');
   source.dataset.source = normalized.source || '';
 
   const progressLabel = main.querySelector('.fr-target-progress-label');
@@ -131,292 +178,508 @@ export function expireTargetStatus(content) {
 }
 
 export function renderTargetContent(content) {
-    const previousStatus = content.querySelector('.fr-target-status');
-    content.innerHTML =
-      '<div class="fr-target-view"><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
-      '<div class="fr-target-actions"><button class="fr-target-action fr-target-save" type="button" data-filter-mode="save">Kaydet</button><button class="fr-target-action fr-target-load" type="button" data-filter-mode="load">Yükle</button></div></div>';
-    const status = content.querySelector('.fr-target-status');
-    if (previousStatus) status.replaceWith(previousStatus);
-    updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
-    const targetView = content.querySelector('.fr-target-view');
-    const list = content.querySelector('.fr-target-list');
+  const previousStatus = content.querySelector('.fr-target-status');
+  content.innerHTML =
+    '<div class="fr-target-view"><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
+    '<div class="fr-target-actions"><button class="fr-target-action fr-target-save" type="button" data-filter-mode="save">Kaydet</button><button class="fr-target-action fr-target-load" type="button" data-filter-mode="load">Yükle</button></div></div>';
+  const status = content.querySelector('.fr-target-status');
+  if (previousStatus) status.replaceWith(previousStatus);
+  updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
+  const targetView = content.querySelector('.fr-target-view');
+  const list = content.querySelector('.fr-target-list');
 
-    // FutBIN Oyuncu Arama Arayuzu
-    const searchBox = document.createElement('div');
-    searchBox.className = 'fr-target-search-box';
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.className = 'fr-target-search-input';
-    searchInput.placeholder = 'Oyuncu Ara (FutBIN)...';
-    searchInput.setAttribute('aria-label', 'Oyuncu Ara (FutBIN)');
-    const searchResults = document.createElement('div');
-    searchResults.className = 'fr-target-search-results';
-    searchResults.hidden = true;
-    searchBox.append(searchInput, searchResults);
-
-    let searchTimer = null;
-    searchInput.addEventListener('input', () => {
-      if (searchTimer) clearTimeout(searchTimer);
-      const query = searchInput.value.trim();
-      if (query.length < 3) {
-        searchResults.hidden = true;
-        searchResults.replaceChildren();
-        return;
-      }
-      searchTimer = setTimeout(async () => {
-        try {
-          const players = await searchUniquePlayers(query);
-          if (searchInput.value.trim() !== query) return;
-          searchResults.replaceChildren();
-          if (!players.length) {
-            const emptyItem = document.createElement('div');
-            emptyItem.className = 'fr-search-item-empty';
-            emptyItem.textContent = 'Sonuç bulunamadı.';
-            searchResults.appendChild(emptyItem);
-          } else {
-            players.forEach((player) => {
-              const item = document.createElement('div');
-              item.className = 'fr-search-result-item fr-search-player-item';
-              item.setAttribute('role', 'button');
-              item.setAttribute('tabindex', '0');
-
-              const nameEl = document.createElement('div');
-              nameEl.className = 'fr-search-item-name';
-              nameEl.textContent = player.name;
-
-              const ratingBadge = document.createElement('span');
-              ratingBadge.className = 'fr-search-player-rating-badge';
-              ratingBadge.textContent = String(player.baseRating || player.highestRating || '');
-
-              item.append(nameEl, ratingBadge);
-              item.addEventListener('click', () => {
-                state.pendingCandidates = {
-                  name: player.name,
-                  candidates: player.versions,
-                  price: player.baseCard?.price || player.versions[0]?.price || 0
-                };
-                searchInput.value = '';
-                searchResults.hidden = true;
-                searchResults.replaceChildren();
-                renderTargetContent(content);
-              });
-              searchResults.appendChild(item);
-            });
-          }
-          searchResults.hidden = false;
-        } catch (e) {
-          console.warn('[FutRUSH] Oyuncu arama hatası:', e);
-        }
-      }, 300);
+  // Arka planda eksik görsel/stat alanlarını FUTBIN'den tamamla (Bölüm 1.2)
+  if (!isHydrating && state.targets.some((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl))) {
+    isHydrating = true;
+    hydrateTargetsWithFutbin().then(() => {
+      isHydrating = false;
+      renderTargetContent(content);
+    }).catch(() => {
+      isHydrating = false;
     });
+  }
 
-    targetView.insertBefore(searchBox, list);
+  // FutBIN Oyuncu Arama Arayuzu
+  const searchBox = document.createElement('div');
+  searchBox.className = 'fr-target-search-box';
+  const searchRow = document.createElement('div');
+  searchRow.className = 'fr-target-search-row';
 
-    if (state.pendingCandidates && Array.isArray(state.pendingCandidates.candidates) && state.pendingCandidates.candidates.length) {
-      const selector = document.createElement('div');
-      selector.className = 'fr-candidate-selector';
-      selector.setAttribute('role', 'region');
-      selector.setAttribute('aria-label', 'Aday kart seçimi');
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'fr-target-search-input';
+  searchInput.placeholder = 'Oyuncu Ara (FutBIN)...';
+  searchInput.setAttribute('aria-label', 'Oyuncu Ara (FutBIN)');
 
-      const header = document.createElement('div');
-      header.className = 'fr-candidate-header';
-      const headerTitle = document.createElement('span');
-      headerTitle.textContent = state.pendingCandidates.name + ' — Kart Sürümü:';
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'fr-candidate-cancel';
-      cancelBtn.textContent = '×';
-      cancelBtn.setAttribute('aria-label', 'Seçimi iptal et');
-      cancelBtn.addEventListener('click', () => {
-        state.pendingCandidates = null;
-        setTargetStatus({ type: 'info', message: 'Kart seçimi iptal edildi.' });
-        emit('targets:changed');
-      });
-      header.append(headerTitle, cancelBtn);
-      selector.appendChild(header);
+  const updatePricesBtn = document.createElement('button');
+  updatePricesBtn.type = 'button';
+  updatePricesBtn.className = 'fr-target-update-prices-btn';
+  updatePricesBtn.textContent = lastPriceUpdateTime
+    ? `🔄 Fiyat Güncelle (${lastPriceUpdateTime})`
+    : '🔄 Fiyat Güncelle';
+  updatePricesBtn.setAttribute('title', 'Tüm hedef oyuncuların FutBIN fiyatlarını güncelle');
 
-      const candidateList = document.createElement('div');
-      candidateList.className = 'fr-candidate-list';
-
-      state.pendingCandidates.candidates.forEach((candidate) => {
-        const card = document.createElement('div');
-        card.className = 'fr-candidate-card';
-
-        if (candidate.promoImageUrl || candidate.playerImageUrl) {
-          const cardPreview = createEaCardElement(candidate, { size: 'preview' });
-          card.appendChild(cardPreview);
-        }
-
-        const body = document.createElement('div');
-        body.className = 'fr-candidate-body';
-
-        const title = document.createElement('div');
-        title.className = 'fr-candidate-title';
-        const name = document.createElement('span');
-        name.className = 'fr-candidate-name';
-        name.textContent = candidate.name;
-        const rating = document.createElement('span');
-        rating.className = 'fr-candidate-rating';
-        rating.textContent = String(candidate.rating || '—');
-        title.append(name, rating);
-
-        const badge = document.createElement('div');
-        badge.className = 'fr-candidate-badge' + (candidate.isHolo ? ' fr-candidate-badge-holo' : '');
-        badge.textContent = candidate.versionLabel || 'Özel';
-
-        const meta = document.createElement('div');
-        meta.className = 'fr-candidate-meta';
-        meta.textContent = 'FutBIN ' + candidate.futbinId + ' · resource ' + candidate.eaId;
-
-        const priceEl = document.createElement('div');
-        priceEl.className = 'fr-candidate-price';
-        priceEl.textContent = formatFutbinRowPrice(candidate.raw, getPlatform());
-
-        const selectBtn = document.createElement('button');
-        selectBtn.type = 'button';
-        selectBtn.className = 'fr-candidate-btn';
-        selectBtn.textContent = 'Bu kartı ekle';
-        selectBtn.addEventListener('click', () => {
-          commitCandidateTarget(candidate, candidate.price || state.pendingCandidates.price);
-          renderTargetContent(content);
-        });
-
-        body.append(title, badge, meta, priceEl, selectBtn);
-        card.appendChild(body);
-        candidateList.appendChild(card);
-      });
-
-      selector.appendChild(candidateList);
-      content.querySelector('.fr-target-view').insertBefore(selector, list);
-    }
+  updatePricesBtn.addEventListener('click', async () => {
+    if (isUpdatingPrices) return;
     if (!state.targets.length) {
-      const empty = document.createElement('div');
-      empty.className = 'fr-target-empty';
-      empty.textContent = 'Henüz oyuncu hedefi yok.';
-      list.appendChild(empty);
+      setTargetStatus({ type: 'info', message: 'Güncellenecek hedef oyuncu bulunmuyor.' });
+      return;
     }
-    state.targets.forEach((player, index) => {
-      const card = document.createElement('div');
-      card.className = 'fr-target-card';
-      card.setAttribute('role', 'listitem');
+    isUpdatingPrices = true;
+    updatePricesBtn.classList.add('is-updating');
+    updatePricesBtn.textContent = '⏳ Güncelleniyor...';
+    setTargetStatus({ type: 'loading', message: 'Fiyatlar FutBIN üzerinden güncelleniyor...' });
+    let updatedCount = 0;
+    try {
+      const discountRate = (typeof CONFIG.targetAdd?.discountRate === 'number' && Number.isFinite(CONFIG.targetAdd.discountRate) && CONFIG.targetAdd.discountRate >= 0 && CONFIG.targetAdd.discountRate < 1)
+        ? CONFIG.targetAdd.discountRate
+        : 0.1;
 
-      if (player.playerImageUrl || player.promoImageUrl) {
-        const previewCard = createEaCardElement(player, { size: 'preview' });
-        card.appendChild(previewCard);
+      for (const target of state.targets) {
+        const versions = await searchPlayerAllVersions(target.name);
+        if (Array.isArray(versions) && versions.length) {
+          const matched = versions.find((v) =>
+            (target.eaId && v.eaId === target.eaId) ||
+            (target.futbinId && String(v.futbinId) === String(target.futbinId)) ||
+            (target.rating && v.rating === target.rating)
+          ) || versions[0];
+          if (matched) {
+            const oldPrice = Number(target.price) || 0;
+            const futbinPrice = Number(matched.price) || 0;
+            if (futbinPrice > 0) {
+              target.price = futbinPrice;
+              target.buyNow = Math.max(150, roundDownToStep(futbinPrice * (1 - discountRate)));
+              target.priceTrend = oldPrice > 0 ? (futbinPrice > oldPrice ? 'up' : (futbinPrice < oldPrice ? 'down' : 'same')) : 'same';
+              updatedCount++;
+            }
+            if (!target.playerImageUrl && matched.playerImageUrl) target.playerImageUrl = matched.playerImageUrl;
+            if (!target.promoImageUrl && matched.promoImageUrl) target.promoImageUrl = matched.promoImageUrl;
+            if (!target.playerImageFallbackUrl && matched.playerImageFallbackUrl) target.playerImageFallbackUrl = matched.playerImageFallbackUrl;
+            if (!target.nationImageUrl && matched.nationImageUrl) target.nationImageUrl = matched.nationImageUrl;
+            if (!target.clubImageUrl && matched.clubImageUrl) target.clubImageUrl = matched.clubImageUrl;
+            if (!target.leagueImageUrl && matched.leagueImageUrl) target.leagueImageUrl = matched.leagueImageUrl;
+            if (!target.stats && matched.stats) target.stats = matched.stats;
+            if (!target.position && matched.position) target.position = matched.position;
+            if (!target.futbinId && matched.futbinId) target.futbinId = matched.futbinId;
+            if (!target.versionLabel && matched.versionLabel) target.versionLabel = matched.versionLabel;
+          }
+        }
+      }
+      lastPriceUpdateTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      saveTargets();
+      setTargetStatus({ type: 'success', message: `${updatedCount} oyuncunun fiyatı ve SATIN AL hedefleri kâr marjına göre güncellendi.` });
+    } catch (err) {
+      setTargetStatus({ type: 'error', message: 'Fiyat güncelleme sırasında hata oluştu.' });
+    } finally {
+      isUpdatingPrices = false;
+      updatePricesBtn.classList.remove('is-updating');
+      renderTargetContent(content);
+    }
+  });
+
+  searchRow.append(searchInput, updatePricesBtn);
+  const searchResults = document.createElement('div');
+  searchResults.className = 'fr-target-search-results';
+  searchResults.hidden = true;
+  searchBox.append(searchRow, searchResults);
+
+  let searchTimer = null;
+  searchInput.addEventListener('input', () => {
+    if (searchTimer) clearTimeout(searchTimer);
+    const query = searchInput.value.trim();
+    if (query.length < 3) {
+      searchResults.hidden = true;
+      searchResults.replaceChildren();
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      try {
+        const players = await searchUniquePlayers(query);
+        if (searchInput.value.trim() !== query) return;
+        searchResults.replaceChildren();
+        if (!players.length) {
+          const emptyItem = document.createElement('div');
+          emptyItem.className = 'fr-search-item-empty';
+          emptyItem.textContent = 'Sonuç bulunamadı.';
+          searchResults.appendChild(emptyItem);
+        } else {
+          players.forEach((player) => {
+            const item = document.createElement('div');
+            item.className = 'fr-search-result-item fr-search-player-item';
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'fr-search-item-name';
+            nameEl.textContent = player.name;
+
+            const ratingBadge = document.createElement('span');
+            ratingBadge.className = 'fr-search-player-rating-badge';
+            ratingBadge.textContent = String(player.baseRating || player.highestRating || '');
+
+            item.append(nameEl, ratingBadge);
+            item.addEventListener('click', () => {
+              state.pendingCandidates = {
+                name: player.name,
+                candidates: player.versions,
+                price: player.baseCard?.price || player.highestCard?.price || 0
+              };
+              renderTargetContent(content);
+            });
+            searchResults.appendChild(item);
+          });
+        }
+        searchResults.hidden = false;
+      } catch (err) {
+        searchResults.hidden = true;
+      }
+    }, 300);
+  });
+
+  targetView.insertBefore(searchBox, list);
+
+  // Üstte Özet Çubuğu (Bölüm 3.4)
+  if (state.targets.length > 0) {
+    const summaryBar = document.createElement('div');
+    summaryBar.className = 'fr-target-summary-bar';
+    const totalCount = state.targets.length;
+    let totalCoinsNeeded = 0;
+    let totalEstProfit = 0;
+    state.targets.forEach((t) => {
+      const buy = Number(t.buyNow) || 0;
+      const searches = Number(t.searches) || 1;
+      const fbPrice = Number(t.price) || 0;
+      totalCoinsNeeded += buy * searches;
+      if (fbPrice > 0) {
+        totalEstProfit += (Math.round(fbPrice * 0.95) - buy) * searches;
+      }
+    });
+    summaryBar.innerHTML = `
+      <span class="fr-summary-item">Hedef: <strong class="fr-summary-val">${totalCount}</strong></span>
+      <span class="fr-summary-item">Gereken: <strong class="fr-summary-val">${totalCoinsNeeded.toLocaleString('tr-TR')}</strong></span>
+      <span class="fr-summary-item">Tahmini Kâr: <strong class="fr-summary-val fr-summary-profit">${totalEstProfit > 0 ? '+' : ''}${totalEstProfit.toLocaleString('tr-TR')}</strong></span>
+    `;
+    targetView.insertBefore(summaryBar, list);
+  }
+
+  // Aday Kart Seçici (Pending Candidates)
+  if (state.pendingCandidates && Array.isArray(state.pendingCandidates.candidates)) {
+    const selector = document.createElement('div');
+    selector.className = 'fr-candidate-selector';
+
+    const header = document.createElement('div');
+    header.className = 'fr-candidate-header';
+    const headerTitle = document.createElement('span');
+    headerTitle.textContent = state.pendingCandidates.name + ' Sürümünü Seçin:';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'fr-candidate-cancel';
+    cancelBtn.textContent = '×';
+    cancelBtn.setAttribute('aria-label', 'Seçimi iptal et');
+    cancelBtn.addEventListener('click', () => {
+      state.pendingCandidates = null;
+      setTargetStatus({ type: 'info', message: 'Kart seçimi iptal edildi.' });
+      emit('targets:changed');
+    });
+    header.append(headerTitle, cancelBtn);
+    selector.appendChild(header);
+
+    const candidateList = document.createElement('div');
+    candidateList.className = 'fr-candidate-list';
+
+    state.pendingCandidates.candidates.forEach((candidate) => {
+      const card = document.createElement('div');
+      card.className = 'fr-candidate-card';
+
+      if (candidate.promoImageUrl || candidate.playerImageUrl) {
+        const cardPreview = createEaCardElement(candidate, { size: 'thumb' });
+        card.appendChild(cardPreview);
       }
 
       const body = document.createElement('div');
-      body.className = 'fr-target-card-body';
+      body.className = 'fr-candidate-body';
 
-      const head = document.createElement('div');
-      head.className = 'fr-target-card-head';
-      const info = document.createElement('div');
-      info.className = 'fr-target-info';
-      const name = document.createElement('div');
-      name.className = 'fr-target-name';
-      name.textContent = player.name;
-      const metaLine = document.createElement('div');
-      metaLine.className = 'fr-target-meta-line';
+      const title = document.createElement('div');
+      title.className = 'fr-candidate-title';
+      const name = document.createElement('span');
+      name.className = 'fr-candidate-name';
+      name.textContent = candidate.name;
       const rating = document.createElement('span');
-      rating.className = 'fr-target-rating';
-      rating.textContent = player.rating ? String(player.rating) : '—';
-      metaLine.appendChild(rating);
+      rating.className = 'fr-candidate-rating';
+      rating.textContent = String(candidate.rating || '—');
+      title.append(name, rating);
 
-      const effectiveVersion = player.versionLabel || (player.rating >= 75 ? 'Gold' : player.rating >= 65 ? 'Silver' : player.rating > 0 ? 'Bronze' : 'Base');
-      const badge = document.createElement('span');
-      badge.className = 'fr-target-version-badge';
-      badge.textContent = effectiveVersion;
-      metaLine.appendChild(badge);
-      info.append(name, metaLine);
-      const remove = document.createElement('button');
-      remove.className = 'fr-target-remove';
-      remove.type = 'button';
-      remove.textContent = '×';
-      remove.setAttribute('aria-label', player.name + ' hedefini sil');
-      remove.addEventListener('click', () => {
-        state.targets.splice(index, 1);
-        saveTargets();
+      const badge = document.createElement('div');
+      badge.className = 'fr-candidate-badge' + (candidate.isHolo ? ' fr-candidate-badge-holo' : '');
+      badge.textContent = candidate.versionLabel || 'Özel';
+
+      const meta = document.createElement('div');
+      meta.className = 'fr-candidate-meta';
+      meta.textContent = 'FutBIN ' + candidate.futbinId + ' · resource ' + candidate.eaId;
+
+      const priceEl = document.createElement('div');
+      priceEl.className = 'fr-candidate-price';
+      const candidatePriceVal = Number(candidate.price) || 0;
+      priceEl.textContent = candidatePriceVal > 0
+        ? `${getPlatform().toUpperCase()} fiyat: ${candidatePriceVal.toLocaleString('tr-TR')}`
+        : (candidate.raw ? formatFutbinRowPrice(candidate.raw, getPlatform()) : 'Fiyat yok');
+
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'fr-candidate-btn';
+      selectBtn.textContent = 'Bu kartı ekle';
+      selectBtn.addEventListener('click', () => {
+        commitCandidateTarget(candidate, candidate.price || state.pendingCandidates.price);
         renderTargetContent(content);
       });
-      head.append(info, remove);
-      body.appendChild(head);
 
-      const controls = document.createElement('div');
-      controls.className = 'fr-target-controls';
-      [
-        { key: 'searches', label: 'TUR SAYISI', step: 1, min: 1 },
-        { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 150 }
-      ].forEach((control) => {
-        const group = document.createElement('div');
-        const title = document.createElement('div');
-        title.className = 'fr-target-control-title';
-        title.textContent = control.label;
-        const counter = document.createElement('div');
-        counter.className = 'fr-target-counter fr-target-counter-editable';
-        const minus = document.createElement('button');
-        minus.type = 'button';
-        minus.textContent = '−';
-        minus.setAttribute('aria-label', control.label + ' azalt');
-        const formatVal = (k, v) => k === 'buyNow' ? Number(v).toLocaleString('tr-TR') : String(v);
-        const parseVal = (k, s) => {
-          if (k === 'buyNow') {
-            const clean = String(s || '').replace(/[.\s]/g, '').replace(/,/g, '.');
-            return clean === '' ? NaN : Number(clean);
-          }
-          return s === '' ? NaN : Number(s);
-        };
-        const value = document.createElement('input');
-        value.className = 'fr-target-counter-input';
-        value.type = 'text';
-        value.inputMode = 'numeric';
-        value.setAttribute('aria-label', control.label + ' değeri');
-        value.value = formatVal(control.key, player[control.key]);
-        const plus = document.createElement('button');
-        plus.type = 'button';
-        plus.textContent = '+';
-        plus.setAttribute('aria-label', control.label + ' artır');
-        const change = (direction) => {
-          const current = Number(player[control.key]);
-          const step = control.key === 'buyNow'
-            ? buyNowStep(Math.max(0, current + direction))
-            : control.step;
-          player[control.key] = Math.max(control.min, current + direction * step);
-          saveTargets();
-          value.value = formatVal(control.key, player[control.key]);
-        };
-        value.addEventListener('change', () => {
-          const enteredValue = parseVal(control.key, value.value);
-          const completedValue = control.key === 'buyNow' ? floorPrice(enteredValue) : enteredValue;
-          if (!Number.isSafeInteger(enteredValue) || enteredValue < control.min || completedValue < control.min) {
-            value.value = formatVal(control.key, player[control.key]);
-            setTargetStatus({
-              type: 'error',
-              message: control.label + ' için ' + control.min + ' veya daha büyük bir tam sayı girin.'
-            });
-            return;
-          }
-          player[control.key] = completedValue;
-          value.value = formatVal(control.key, completedValue);
-          saveTargets();
-        });
-        minus.addEventListener('click', () => change(-1));
-        plus.addEventListener('click', () => change(1));
-        counter.append(minus, value, plus);
-        group.append(title, counter);
-        controls.appendChild(group);
-      });
-      body.appendChild(controls);
+      body.append(title, badge, meta, priceEl, selectBtn);
       card.appendChild(body);
+      candidateList.appendChild(card);
+    });
 
-      list.appendChild(card);
-    });
-    content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {
-      if (!state.targets.length) {
-        setTargetStatus({ type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' });
-        renderTargetContent(content);
-        return;
-      }
-      emit('ui:open-save-dialog');
-    });
-    content.querySelector('[data-filter-mode="load"]').addEventListener('click', () => emit('ui:open-filter-modal', { mode: 'load' }));
+    selector.appendChild(candidateList);
+    content.querySelector('.fr-target-view').insertBefore(selector, list);
   }
+
+  if (!state.targets.length) {
+    const empty = document.createElement('div');
+    empty.className = 'fr-target-empty';
+    empty.textContent = 'Henüz oyuncu hedefi yok.';
+    list.appendChild(empty);
+  }
+
+  state.targets.forEach((player, index) => {
+    const card = document.createElement('div');
+    card.className = 'fr-target-card';
+    card.setAttribute('role', 'listitem');
+
+    if (player.playerImageUrl || player.promoImageUrl) {
+      const previewCard = createEaCardElement(player, { size: 'preview' });
+      card.appendChild(previewCard);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'fr-target-card-body';
+
+    const head = document.createElement('div');
+    head.className = 'fr-target-card-head';
+    const info = document.createElement('div');
+    info.className = 'fr-target-info';
+    const name = document.createElement('div');
+    name.className = 'fr-target-name';
+    name.textContent = player.name;
+    const metaLine = document.createElement('div');
+    metaLine.className = 'fr-target-meta-line';
+    const rating = document.createElement('span');
+    rating.className = 'fr-target-rating';
+    rating.textContent = player.rating ? String(player.rating) : '—';
+    metaLine.appendChild(rating);
+
+    const effectiveVersion = player.versionLabel || (player.rating >= 75 ? 'Gold' : player.rating >= 65 ? 'Silver' : player.rating > 0 ? 'Bronze' : 'Base');
+    const badge = document.createElement('span');
+    badge.className = 'fr-target-version-badge';
+    badge.textContent = effectiveVersion;
+    metaLine.appendChild(badge);
+    info.append(name, metaLine);
+
+    // Geri Al (Undo) destekli silme butonu (Bölüm 3.7)
+    const remove = document.createElement('button');
+    remove.className = 'fr-target-remove';
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', player.name + ' hedefini sil');
+    remove.addEventListener('click', () => {
+      const [deletedPlayer] = state.targets.splice(index, 1);
+      saveTargets();
+      renderTargetContent(content);
+
+      const existingToast = document.querySelector('.fr-undo-toast');
+      if (existingToast) existingToast.remove();
+
+      const toast = document.createElement('div');
+      toast.className = 'fr-undo-toast';
+      toast.innerHTML = `<span>${deletedPlayer.name} silindi.</span>`;
+      const undoBtn = document.createElement('button');
+      undoBtn.type = 'button';
+      undoBtn.className = 'fr-undo-btn';
+      undoBtn.textContent = 'Geri Al';
+      undoBtn.addEventListener('click', () => {
+        state.targets.splice(index, 0, deletedPlayer);
+        saveTargets();
+        toast.remove();
+        renderTargetContent(content);
+      });
+      toast.appendChild(undoBtn);
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4500);
+    });
+
+    head.append(info, remove);
+    body.appendChild(head);
+
+    const controls = document.createElement('div');
+    controls.className = 'fr-target-controls';
+    [
+      { key: 'searches', label: 'TUR SAYISI', step: 1, min: 1 },
+      { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 150 }
+    ].forEach((control) => {
+      const group = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'fr-target-control-title';
+      title.textContent = control.label;
+
+      let subhead = null;
+      if (control.key === 'buyNow') {
+        subhead = document.createElement('div');
+        subhead.className = 'fr-target-subhead';
+
+        const searchToggle = document.createElement('button');
+        searchToggle.type = 'button';
+        const isSearchActive = !player.searchDisabled;
+        searchToggle.className = 'fr-target-search-toggle ' + (isSearchActive ? 'is-active' : 'is-inactive');
+        searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${isSearchActive ? 'Açık' : 'Kapalı'}</span>`;
+        searchToggle.setAttribute('title', 'Aramayı Aç/Kapat');
+        searchToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          player.searchDisabled = !player.searchDisabled;
+          saveTargets();
+          const active = !player.searchDisabled;
+          searchToggle.className = 'fr-target-search-toggle ' + (active ? 'is-active' : 'is-inactive');
+          searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
+        });
+
+        const profitEl = document.createElement('div');
+        profitEl.className = 'fr-target-profit';
+        const updateProfit = (val) => {
+          const futbinPrice = Number(player.price) || 0;
+          const currentBuyNow = Number(val ?? player.buyNow) || 0;
+          if (futbinPrice > 0) {
+            const netProfit = Math.round(futbinPrice * 0.95) - currentBuyNow;
+            const sign = netProfit > 0 ? '+' : '';
+            const pct = currentBuyNow > 0 ? ((netProfit / currentBuyNow) * 100).toFixed(1) : 0;
+            const trendIcon = player.priceTrend === 'up' ? ' ↑' : (player.priceTrend === 'down' ? ' ↓' : '');
+            profitEl.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}${trendIcon} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
+            profitEl.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+          } else {
+            profitEl.textContent = 'Kâr: —';
+            profitEl.className = 'fr-target-profit';
+          }
+        };
+        updateProfit(player.buyNow);
+        subhead.append(searchToggle, profitEl);
+        group.append(subhead, title);
+      } else {
+        group.appendChild(title);
+      }
+
+      const counter = document.createElement('div');
+      counter.className = 'fr-target-counter fr-target-counter-editable';
+      const minus = document.createElement('button');
+      minus.type = 'button';
+      minus.textContent = '−';
+      minus.setAttribute('aria-label', control.label + ' azalt');
+      const formatVal = (k, v) => k === 'buyNow' ? Number(v).toLocaleString('tr-TR') : String(v);
+      const parseVal = (k, s) => {
+        if (k === 'buyNow') {
+          const clean = String(s || '').replace(/[.\s]/g, '').replace(/,/g, '.');
+          return clean === '' ? NaN : Number(clean);
+        }
+        return s === '' ? NaN : Number(s);
+      };
+      const value = document.createElement('input');
+      value.className = 'fr-target-counter-input';
+      value.type = 'text';
+      value.inputMode = 'numeric';
+      value.setAttribute('aria-label', control.label + ' değeri');
+      value.value = formatVal(control.key, player[control.key]);
+      const plus = document.createElement('button');
+      plus.type = 'button';
+      plus.textContent = '+';
+      plus.setAttribute('aria-label', control.label + ' artır');
+
+      const change = (direction, multiplier = 1) => {
+        const current = Number(player[control.key]);
+        const baseStep = control.key === 'buyNow'
+          ? buyNowStep(Math.max(0, current + direction))
+          : control.step;
+        const step = baseStep * multiplier;
+        player[control.key] = Math.max(control.min, current + direction * step);
+        saveTargets();
+        value.value = formatVal(control.key, player[control.key]);
+        if (control.key === 'buyNow') {
+          const currentSubheadProfit = group.querySelector('.fr-target-profit');
+          if (currentSubheadProfit) {
+            const futbinPrice = Number(player.price) || 0;
+            if (futbinPrice > 0) {
+              const netProfit = Math.round(futbinPrice * 0.95) - player[control.key];
+              const sign = netProfit > 0 ? '+' : '';
+              const pct = player[control.key] > 0 ? ((netProfit / player[control.key]) * 100).toFixed(1) : 0;
+              currentSubheadProfit.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
+              currentSubheadProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+            }
+          }
+        }
+      };
+
+      value.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          change(1, e.shiftKey ? 10 : 1);
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          change(-1, e.shiftKey ? 10 : 1);
+        }
+      });
+
+      value.addEventListener('change', () => {
+        const enteredValue = parseVal(control.key, value.value);
+        const completedValue = control.key === 'buyNow' ? floorPrice(enteredValue) : enteredValue;
+        if (!Number.isSafeInteger(enteredValue) || enteredValue < control.min || completedValue < control.min) {
+          value.value = formatVal(control.key, player[control.key]);
+          setTargetStatus({
+            type: 'error',
+            message: control.label + ' için ' + control.min + ' veya daha büyük bir tam sayı girin.'
+          });
+          return;
+        }
+        player[control.key] = completedValue;
+        value.value = formatVal(control.key, completedValue);
+        saveTargets();
+        if (control.key === 'buyNow') {
+          const currentSubheadProfit = group.querySelector('.fr-target-profit');
+          if (currentSubheadProfit) {
+            const futbinPrice = Number(player.price) || 0;
+            if (futbinPrice > 0) {
+              const netProfit = Math.round(futbinPrice * 0.95) - completedValue;
+              const sign = netProfit > 0 ? '+' : '';
+              const pct = completedValue > 0 ? ((netProfit / completedValue) * 100).toFixed(1) : 0;
+              currentSubheadProfit.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
+              currentSubheadProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+            }
+          }
+        }
+      });
+
+      attachHoldRepeat(minus, (e) => change(-1, e?.shiftKey ? 10 : 1));
+      attachHoldRepeat(plus, (e) => change(1, e?.shiftKey ? 10 : 1));
+      counter.append(minus, value, plus);
+      group.append(counter);
+      controls.appendChild(group);
+    });
+    body.appendChild(controls);
+    card.appendChild(body);
+
+    list.appendChild(card);
+  });
+
+  content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {
+    if (!state.targets.length) {
+      setTargetStatus({ type: 'error', message: 'Kaydedilecek oyuncu hedefi bulunmuyor.' });
+      renderTargetContent(content);
+      return;
+    }
+    emit('ui:open-save-dialog');
+  });
+  content.querySelector('[data-filter-mode="load"]').addEventListener('click', () => emit('ui:open-filter-modal', { mode: 'load' }));
+}

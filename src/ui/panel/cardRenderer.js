@@ -1,23 +1,28 @@
 // EA FC Ultimate Team otantik kart bilesenini HTML ve CSS katmanlariyla olusturur.
-// Bagimliliklar: futbin/imageLoader.
+// Bagimliliklar: futbin/imageLoader ve core/config.
 
 import { loadFutbinImage, applyFutbinBgImage } from '../../futbin/imageLoader.js';
+import { CONFIG } from '../../core/config.js';
 
 export function createEaCardElement(item, { size = 'preview' } = {}) {
   const card = document.createElement('div');
-  const sizeClass = size === 'thumb' ? 'fr-ea-card-thumb fr-target-thumb-wrap' : 'fr-ea-card-preview fr-candidate-card-preview fr-target-thumb-wrap';
-  card.className = `fr-ea-card ${sizeClass}` + (item.isHolo ? ' fr-ea-card-holo' : '');
+  const sizeClass = size === 'thumb' ? 'fr-ea-card-thumb' : 'fr-ea-card-preview';
+  const holoClass = item.isHolo ? ' fr-ea-card-holo' : '';
+  const skeletonClass = item.isSkeleton ? ' is-skeleton' : '';
+  card.className = `fr-ea-card ${sizeClass}${holoClass}${skeletonClass} fr-target-thumb-wrap`;
+
+  const showImages = CONFIG.showCardImages !== false;
 
   // 1. Arka plan şablonu (Promo/Gold/TOTW vb.)
-  if (item.promoImageUrl) {
+  if (showImages && item.promoImageUrl) {
     const bg = document.createElement('div');
-    bg.className = 'fr-ea-card-bg fr-candidate-card-bg fr-target-thumb-bg';
+    bg.className = 'fr-ea-card-bg fr-target-thumb-bg';
     applyFutbinBgImage(bg, item.promoImageUrl);
     card.appendChild(bg);
   }
 
   // 2. Holografik efekt katmanları
-  if (item.isHolo) {
+  if (showImages && item.isHolo) {
     const shimmer = document.createElement('div');
     shimmer.className = 'fr-card-holo-shimmer';
     card.appendChild(shimmer);
@@ -36,25 +41,25 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
 
   if (item.rating) {
     const rating = document.createElement('div');
-    rating.className = 'fr-ea-card-rating fr-candidate-card-rating';
+    rating.className = 'fr-ea-card-rating';
     rating.textContent = String(item.rating);
     topLeft.appendChild(rating);
   }
 
   if (item.position) {
     const pos = document.createElement('div');
-    pos.className = 'fr-ea-card-pos fr-candidate-card-pos';
+    pos.className = 'fr-ea-card-pos';
     pos.textContent = String(item.position).toUpperCase();
     topLeft.appendChild(pos);
   }
   card.appendChild(topLeft);
 
   // 4. Oyuncu Portresi
-  if (item.playerImageUrl) {
+  if (showImages && item.playerImageUrl) {
     const playerImg = document.createElement('img');
-    playerImg.className = 'fr-ea-card-player-img fr-candidate-player-img fr-target-thumb';
+    playerImg.className = 'fr-ea-card-player-img fr-target-thumb';
     playerImg.alt = item.name || '';
-    loadFutbinImage(playerImg, item.playerImageUrl);
+    loadFutbinImage(playerImg, item.playerImageUrl, item.playerImageFallbackUrl || '');
     card.appendChild(playerImg);
   }
 
@@ -63,55 +68,69 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
   namePlate.className = 'fr-ea-card-name-plate';
   const nameSpan = document.createElement('span');
   nameSpan.className = 'fr-ea-card-name';
-  nameSpan.textContent = item.commonName || item.name || '';
+  nameSpan.textContent = item.displayName || item.commonName || item.name || '';
   namePlate.appendChild(nameSpan);
   card.appendChild(namePlate);
 
-  // 6. 6 Temel İstatistik (PAC, SHO, PAS, DRI, DEF, PHY) - EA Tek Satır 6 Sütun
-  if (item.stats && (item.stats.pac > 0 || item.stats.dri > 0)) {
+  // 6. 6 Temel İstatistik (Outfield: PAC/SHO/PAS/DRI/DEF/PHY, GK: DIV/HAN/KIC/REF/SPE/POS)
+  if (item.stats && (item.stats.pac > 0 || item.stats.dri > 0 || item.stats.div > 0)) {
+    const isGk = String(item.position || '').toUpperCase() === 'GK' || String(item.position || '').toUpperCase() === 'KL';
+    const labels = item.stats.labels || (isGk
+      ? ['DIV', 'HAN', 'KIC', 'REF', 'SPE', 'POS']
+      : ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY']);
+
+    const s1 = item.stats.pac ?? 0;
+    const s2 = item.stats.sho ?? 0;
+    const s3 = item.stats.pas ?? 0;
+    const s4 = item.stats.dri ?? 0;
+    const s5 = item.stats.def ?? 0;
+    const s6 = item.stats.phy ?? 0;
+
     const statsGrid = document.createElement('div');
     statsGrid.className = 'fr-ea-card-stats-grid';
     statsGrid.append(
-      createStatRow(item.stats.pac, 'PAC'),
-      createStatRow(item.stats.sho, 'SHO'),
-      createStatRow(item.stats.pas, 'PAS'),
-      createStatRow(item.stats.dri, 'DRI'),
-      createStatRow(item.stats.def, 'DEF'),
-      createStatRow(item.stats.phy, 'PHY')
+      createStatRow(s1, labels[0] || 'PAC'),
+      createStatRow(s2, labels[1] || 'SHO'),
+      createStatRow(s3, labels[2] || 'PAS'),
+      createStatRow(s4, labels[3] || 'DRI'),
+      createStatRow(s5, labels[4] || 'DEF'),
+      createStatRow(s6, labels[5] || 'PHY')
     );
     card.appendChild(statsGrid);
   }
 
   // 7. En Alt: Ülke, Lig ve Kulüp Armaları
-  const crests = document.createElement('div');
-  crests.className = 'fr-ea-card-bottom-crests';
+  if (showImages && (item.nationImageUrl || item.leagueImageUrl || item.clubImageUrl)) {
+    const crests = document.createElement('div');
+    crests.className = 'fr-ea-card-bottom-crests';
 
-  if (item.nationImageUrl) {
-    const nationImg = document.createElement('img');
-    nationImg.className = 'fr-ea-crest fr-ea-crest-nation';
-    nationImg.alt = 'Nation';
-    loadFutbinImage(nationImg, item.nationImageUrl);
-    crests.appendChild(nationImg);
-  }
+    if (item.nationImageUrl) {
+      const nationImg = document.createElement('img');
+      nationImg.className = 'fr-ea-crest fr-ea-crest-nation';
+      nationImg.alt = 'Nation';
+      loadFutbinImage(nationImg, item.nationImageUrl);
+      crests.appendChild(nationImg);
+    }
 
-  if (item.leagueImageUrl) {
-    const leagueImg = document.createElement('img');
-    leagueImg.className = 'fr-ea-crest fr-ea-crest-league';
-    leagueImg.alt = 'League';
-    loadFutbinImage(leagueImg, item.leagueImageUrl);
-    crests.appendChild(leagueImg);
-  }
+    if (item.leagueImageUrl) {
+      const leagueImg = document.createElement('img');
+      leagueImg.className = 'fr-ea-crest fr-ea-crest-league';
+      leagueImg.alt = 'League';
+      loadFutbinImage(leagueImg, item.leagueImageUrl);
+      crests.appendChild(leagueImg);
+    }
 
-  if (item.clubImageUrl) {
-    const clubImg = document.createElement('img');
-    clubImg.className = 'fr-ea-crest fr-ea-crest-club';
-    clubImg.alt = 'Club';
-    loadFutbinImage(clubImg, item.clubImageUrl);
-    crests.appendChild(clubImg);
-  }
+    if (item.clubImageUrl) {
+      const clubImg = document.createElement('img');
+      clubImg.className = 'fr-ea-crest fr-ea-crest-club';
+      clubImg.alt = 'Club';
+      loadFutbinImage(clubImg, item.clubImageUrl);
+      crests.appendChild(clubImg);
+    }
 
-  if (crests.childElementCount > 0) {
-    card.appendChild(crests);
+    if (crests.childElementCount > 0) {
+      card.appendChild(crests);
+    }
   }
 
   return card;

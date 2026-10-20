@@ -42,8 +42,9 @@ export function extractSearchIntent({ criteria = null, doc = (typeof document !=
   const activeCriteria = criteria || getActiveMarketCriteria(pw);
 
   // Name from input
-  const playerInput = doc?.querySelector('.ut-market-search-filters-view input[placeholder*="player" i], .ut-text-input-control');
-  const name = String(playerInput?.value || '').trim().replace(/\s+/g, ' ');
+  const playerInput = doc?.querySelector('.ut-market-search-filters-view input[placeholder*="player" i], .ut-player-search.control input, .ut-player-search input, .ut-text-input-control');
+  const searchControlText = doc?.querySelector('.ut-player-search.control .btn-text, .ut-player-search .btn-text')?.textContent?.trim();
+  const name = String(playerInput?.value || searchControlText || '').trim().replace(/\s+/g, ' ');
 
   // Buy Now from inputs
   let buyNow = 0;
