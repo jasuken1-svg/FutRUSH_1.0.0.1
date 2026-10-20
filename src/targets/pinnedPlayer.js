@@ -68,7 +68,9 @@ export function commitCandidateTarget(candidate, price) {
 
   const targetIdentity = {
     name: candidate.name,
+    commonName: candidate.commonName || candidate.name,
     rating,
+    position: candidate.position || '',
     futbinId: candidate.futbinId || null,
     eaId: candidate.eaId,
     playerId: candidate.playerId || candidate.baseId,
@@ -77,6 +79,11 @@ export function commitCandidateTarget(candidate, price) {
     isHolo: candidate.isHolo,
     playerImageUrl: candidate.playerImageUrl || '',
     promoImageUrl: candidate.promoImageUrl || '',
+    holographicAnimationUrl: candidate.holographicAnimationUrl || '',
+    stats: candidate.stats || null,
+    nationImageUrl: candidate.nationImageUrl || '',
+    clubImageUrl: candidate.clubImageUrl || '',
+    leagueImageUrl: candidate.leagueImageUrl || '',
     versionKnown: true
   };
 
@@ -112,7 +119,14 @@ export function commitCandidateTarget(candidate, price) {
       duplicate.rating = rating;
       duplicate.raretype = candidate.raretype;
       duplicate.versionLabel = candidate.versionLabel;
+      duplicate.position = candidate.position || duplicate.position || '';
+      duplicate.commonName = candidate.commonName || duplicate.commonName || '';
+      duplicate.stats = candidate.stats || duplicate.stats || null;
+      duplicate.nationImageUrl = candidate.nationImageUrl || duplicate.nationImageUrl || '';
+      duplicate.clubImageUrl = candidate.clubImageUrl || duplicate.clubImageUrl || '';
+      duplicate.leagueImageUrl = candidate.leagueImageUrl || duplicate.leagueImageUrl || '';
       duplicate.isHolo = candidate.isHolo;
+      duplicate.holographicAnimationUrl = candidate.holographicAnimationUrl || duplicate.holographicAnimationUrl || '';
       duplicate.playerImageUrl = candidate.playerImageUrl || duplicate.playerImageUrl || '';
       duplicate.promoImageUrl = candidate.promoImageUrl || duplicate.promoImageUrl || '';
       duplicate.eaIdTargetKey = targetEaIdKey(duplicate);

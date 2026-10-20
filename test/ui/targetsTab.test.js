@@ -109,12 +109,12 @@ describe('player target controls', () => {
     buyNow.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
 
     expect(state.targets[0]).toMatchObject({ searches: 12, buyNow: 2100 });
-    expect(buyNow.value).toBe('2100');
+    expect(buyNow.value).toBe('2.100');
 
     buyNow.value = '111111';
     buyNow.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     expect(state.targets[0].buyNow).toBe(111000);
-    expect(buyNow.value).toBe('111000');
+    expect(buyNow.value).toBe('111.000');
   });
 
   it('rejects invalid manual values and restores the saved value', () => {
@@ -161,5 +161,45 @@ describe('player target controls', () => {
     expect(thumbBg).not.toBeNull();
     const thumbImg = thumbWrap.querySelector('.fr-target-thumb');
     expect(thumbImg).not.toBeNull();
+  });
+
+  it('renders authentic EA card structure with stats, rating, position, and badges', () => {
+    state.targets = [
+      {
+        id: 'yamal-totw',
+        name: 'Lamine Yamal',
+        commonName: 'Lamine Yamal',
+        rating: 91,
+        position: 'RW',
+        price: 2750000,
+        buyNow: 2750000,
+        searches: 3,
+        versionLabel: 'TOTW',
+        isHolo: true,
+        stats: { pac: 87, sho: 85, pas: 88, dri: 94, def: 40, phy: 63 },
+        nationImageUrl: 'https://cdn.futbin.com/content/fifa27/img/nation/45.png',
+        clubImageUrl: 'https://cdn.futbin.com/content/fifa27/img/clubs/dark/241.png',
+        leagueImageUrl: 'https://cdn.futbin.com/content/fifa25/img/league/53.png',
+        playerImageUrl: 'https://cdn.futbin.com/players/p50609291.png',
+        promoImageUrl: 'https://cdn.futbin.com/cards/hd/3_card.png'
+      }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const eaCard = content.querySelector('.fr-ea-card');
+    expect(eaCard).not.toBeNull();
+    expect(eaCard.querySelector('.fr-ea-card-rating')?.textContent).toBe('91');
+    expect(eaCard.querySelector('.fr-ea-card-pos')?.textContent).toBe('RW');
+    expect(eaCard.querySelector('.fr-ea-card-name')?.textContent).toBe('Lamine Yamal');
+    expect(eaCard.querySelector('.fr-card-holo-shimmer')).not.toBeNull();
+
+    const stats = eaCard.querySelectorAll('.fr-ea-stat');
+    expect(stats.length).toBe(6);
+    expect(stats[0].textContent).toContain('87');
+    expect(stats[0].textContent).toContain('PAC');
+
+    const crests = eaCard.querySelectorAll('.fr-ea-crest');
+    expect(crests.length).toBe(3);
   });
 });

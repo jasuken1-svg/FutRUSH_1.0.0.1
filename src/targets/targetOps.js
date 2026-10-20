@@ -83,7 +83,10 @@ export function saveTargetSnapshot(listName) {
   const snapshot = state.targets.map((player) => ({
     id: player.id, name: player.name, rating: player.rating, eaId: player.eaId || 0,
     eaIdTargetKey: player.eaIdTargetKey || null, price: player.price,
-    searches: player.searches, buyNow: player.buyNow, futbinId: player.futbinId
+    searches: player.searches, buyNow: player.buyNow, futbinId: player.futbinId,
+    versionLabel: player.versionLabel || '',
+    playerImageUrl: player.playerImageUrl || '',
+    promoImageUrl: player.promoImageUrl || ''
   }));
   try {
     const name = String(listName || '').trim();
@@ -139,6 +142,9 @@ export function mergeTargetPlayers(players) {
         duplicate.eaId = normalizedEaId(player.eaId);
         duplicate.eaIdTargetKey = player.eaIdTargetKey || null;
       }
+      if (player.playerImageUrl && !duplicate.playerImageUrl) duplicate.playerImageUrl = player.playerImageUrl;
+      if (player.promoImageUrl && !duplicate.promoImageUrl) duplicate.promoImageUrl = player.promoImageUrl;
+      if (player.versionLabel && !duplicate.versionLabel) duplicate.versionLabel = player.versionLabel;
       return;
     }
     const futbinId = player.futbinId == null ? null : String(player.futbinId);
@@ -153,7 +159,12 @@ export function mergeTargetPlayers(players) {
       buyNow: player.price,
       futbinId,
       playerId: player.playerId || toBaseId(player.eaId),
-      versionKnown: Boolean(player.versionKnown)
+      versionKnown: Boolean(player.versionKnown),
+      versionLabel: player.versionLabel || '',
+      playerImageUrl: player.playerImageUrl || '',
+      promoImageUrl: player.promoImageUrl || '',
+      raretype: player.raretype != null ? player.raretype : null,
+      isHolo: Boolean(player.isHolo)
     });
     added++;
   });

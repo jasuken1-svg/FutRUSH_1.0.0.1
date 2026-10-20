@@ -11,6 +11,7 @@ import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
 import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { loadFutbinImage, applyFutbinBgImage } from '../../../futbin/imageLoader.js';
+import { createEaCardElement } from '../cardRenderer.js';
 
 let statusRemovalTimer = null;
 
@@ -243,33 +244,7 @@ export function renderTargetContent(content) {
         card.className = 'fr-candidate-card';
 
         if (candidate.promoImageUrl || candidate.playerImageUrl) {
-          const cardPreview = document.createElement('div');
-          cardPreview.className = 'fr-search-item-card';
-          if (candidate.promoImageUrl) {
-            const bg = document.createElement('div');
-            bg.className = 'fr-search-item-card-bg';
-            applyFutbinBgImage(bg, candidate.promoImageUrl);
-            cardPreview.appendChild(bg);
-          }
-          if (candidate.playerImageUrl) {
-            const img = document.createElement('img');
-            img.className = 'fr-search-item-player-img';
-            img.alt = candidate.name;
-            loadFutbinImage(img, candidate.playerImageUrl);
-            cardPreview.appendChild(img);
-          }
-          if (candidate.rating) {
-            const r = document.createElement('div');
-            r.className = 'fr-search-item-rating';
-            r.textContent = String(candidate.rating);
-            cardPreview.appendChild(r);
-          }
-          if (candidate.position) {
-            const p = document.createElement('div');
-            p.className = 'fr-search-item-pos';
-            p.textContent = candidate.position;
-            cardPreview.appendChild(p);
-          }
+          const cardPreview = createEaCardElement(candidate, { size: 'preview' });
           card.appendChild(cardPreview);
         }
 
@@ -287,7 +262,7 @@ export function renderTargetContent(content) {
         title.append(name, rating);
 
         const badge = document.createElement('div');
-        badge.className = 'fr-candidate-badge';
+        badge.className = 'fr-candidate-badge' + (candidate.isHolo ? ' fr-candidate-badge-holo' : '');
         badge.textContent = candidate.versionLabel || 'Özel';
 
         const meta = document.createElement('div');
@@ -328,22 +303,8 @@ export function renderTargetContent(content) {
       const head = document.createElement('div');
       head.className = 'fr-target-card-head';
       if (player.playerImageUrl || player.promoImageUrl) {
-        const thumbContainer = document.createElement('div');
-        thumbContainer.className = 'fr-target-thumb-wrap';
-        if (player.promoImageUrl) {
-          const promoBg = document.createElement('div');
-          promoBg.className = 'fr-target-thumb-bg';
-          applyFutbinBgImage(promoBg, player.promoImageUrl);
-          thumbContainer.appendChild(promoBg);
-        }
-        if (player.playerImageUrl) {
-          const thumb = document.createElement('img');
-          thumb.className = 'fr-target-thumb';
-          thumb.alt = player.name;
-          loadFutbinImage(thumb, player.playerImageUrl);
-          thumbContainer.appendChild(thumb);
-        }
-        head.appendChild(thumbContainer);
+        const thumbCard = createEaCardElement(player, { size: 'thumb' });
+        head.appendChild(thumbCard);
       }
       const info = document.createElement('div');
       info.className = 'fr-target-info';
@@ -392,14 +353,20 @@ export function renderTargetContent(content) {
         minus.type = 'button';
         minus.textContent = '−';
         minus.setAttribute('aria-label', control.label + ' azalt');
+        const formatVal = (k, v) => k === 'buyNow' ? Number(v).toLocaleString('tr-TR') : String(v);
+        const parseVal = (k, s) => {
+          if (k === 'buyNow') {
+            const clean = String(s || '').replace(/[.\s]/g, '').replace(/,/g, '.');
+            return clean === '' ? NaN : Number(clean);
+          }
+          return s === '' ? NaN : Number(s);
+        };
         const value = document.createElement('input');
         value.className = 'fr-target-counter-input';
-        value.type = 'number';
-        value.min = String(control.min);
-        value.step = '1';
+        value.type = 'text';
         value.inputMode = 'numeric';
         value.setAttribute('aria-label', control.label + ' değeri');
-        value.value = String(player[control.key]);
+        value.value = formatVal(control.key, player[control.key]);
         const plus = document.createElement('button');
         plus.type = 'button';
         plus.textContent = '+';
@@ -411,13 +378,13 @@ export function renderTargetContent(content) {
             : control.step;
           player[control.key] = Math.max(control.min, current + direction * step);
           saveTargets();
-          value.value = String(player[control.key]);
+          value.value = formatVal(control.key, player[control.key]);
         };
         value.addEventListener('change', () => {
-          const enteredValue = value.value === '' ? NaN : Number(value.value);
+          const enteredValue = parseVal(control.key, value.value);
           const completedValue = control.key === 'buyNow' ? floorPrice(enteredValue) : enteredValue;
           if (!Number.isSafeInteger(enteredValue) || enteredValue < control.min || completedValue < control.min) {
-            value.value = String(player[control.key]);
+            value.value = formatVal(control.key, player[control.key]);
             setTargetStatus({
               type: 'error',
               message: control.label + ' için ' + control.min + ' veya daha büyük bir tam sayı girin.'
@@ -425,7 +392,7 @@ export function renderTargetContent(content) {
             return;
           }
           player[control.key] = completedValue;
-          value.value = String(completedValue);
+          value.value = formatVal(control.key, completedValue);
           saveTargets();
         });
         minus.addEventListener('click', () => change(-1));

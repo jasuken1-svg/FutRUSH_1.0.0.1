@@ -56,6 +56,10 @@ export function isSpecialCard(row) {
 export function resolveFutbinImageUrl(rawUrl, fallback = '') {
   if (typeof rawUrl !== 'string' || !rawUrl.trim()) return fallback;
   const trimmed = rawUrl.trim();
+  // Eger sadece sayi veya p12345 gibi ID geldiyse tam CDN URL'sine donustur
+  if (/^p?\d+$/i.test(trimmed)) {
+    return `https://cdn.futbin.com/content/fifa27/img/players/${trimmed}.png`;
+  }
   if (trimmed.startsWith('//')) {
     return 'https:' + trimmed;
   }
@@ -65,7 +69,10 @@ export function resolveFutbinImageUrl(rawUrl, fallback = '') {
     }
     return 'https://cdn.futbin.com' + trimmed;
   }
-  return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return fallback || trimmed;
 }
 
 export function sortCandidatesByPriceAsc(candidates) {
@@ -94,34 +101,64 @@ export function mapCandidate(row) {
   const raretype = Number(row.raretype ?? 0);
   const position = String(row.position || '').trim();
 
-  const rawPlayerImg = row.image || row.player_image || row.special_img || row.specialPlayerImage || row.card_image || '';
-  const fallbackPlayerImg = (eaId && eaId > 0)
+  const rawPlayerImg = row.specialPlayerImage || row.normalPlayerImage || row.image || row.special_img || row.playerimage || row.player_image || row.card_image || '';
+  const fallbackPlayerImg = (eaId && eaId > 0 && eaId >= 0x1000000)
     ? `https://cdn.futbin.com/content/fifa27/img/players/p${eaId}.png`
-    : (baseId ? `https://cdn.futbin.com/content/fifa27/img/players/p${baseId}.png` : '');
+    : (baseId ? `https://cdn.futbin.com/content/fifa27/img/players/${baseId}.png` : '');
   const playerImageUrl = resolveFutbinImageUrl(rawPlayerImg, fallbackPlayerImg);
 
-  const rawPromoImg = row.rare_image || row.version_image || row.cardImage || row.rare_card_image || '';
+  const rawPromoImg = row.cardImage || row.rare_card_image || row.rare_image || row.version_image || '';
   const fallbackPromoImg = (raretype && raretype > 0)
     ? `https://cdn.futbin.com/content/fifa27/img/cards/hd/${raretype}_card.png`
-    : '';
+    : (rating >= 75 ? 'https://cdn.futbin.com/content/fifa27/img/cards/hd/0_gold.png' : '');
   const promoImageUrl = resolveFutbinImageUrl(rawPromoImg, fallbackPromoImg);
 
+  const rawHoloAnim = row.holographicAnimation || row.card_animation || '';
+  const holographicAnimationUrl = resolveFutbinImageUrl(rawHoloAnim);
+
   const price = getFutbinRowPrice(row) || 0;
+
+  const stats = (row.pac != null || row.sho != null) ? {
+    pac: Number(row.pac) || 0,
+    sho: Number(row.sho) || 0,
+    pas: Number(row.pas) || 0,
+    dri: Number(row.dri) || 0,
+    def: Number(row.def) || 0,
+    phy: Number(row.phy) || 0
+  } : null;
+
+  const nationId = Number(row.nation) || 0;
+  const clubId = Number(row.club) || 0;
+  const leagueId = Number(row.league) || 0;
+
+  const nationImageUrl = nationId > 0 ? `https://cdn.futbin.com/content/fifa27/img/nation/${nationId}.png` : '';
+  const clubImageUrl = clubId > 0 ? `https://cdn.futbin.com/content/fifa27/img/clubs/dark/${clubId}.png` : '';
+  const leagueImageUrl = leagueId > 0 ? `https://cdn.futbin.com/content/fifa25/img/league/${leagueId}.png` : '';
+  const commonName = row.common_name || row.playername || '';
 
   return {
     futbinId,
     eaId,
     baseId,
     playerId,
-    name: row.playername || row.common_name || '',
+    name: commonName || row.playername || '',
+    commonName,
     rating,
     position,
     raretype,
     isHolo: holo,
+    holographicAnimationUrl,
     versionLabel: getVersionLabel(row),
     playerImageUrl,
     promoImageUrl,
     price,
+    stats,
+    nationId,
+    clubId,
+    leagueId,
+    nationImageUrl,
+    clubImageUrl,
+    leagueImageUrl,
     raw: row
   };
 }

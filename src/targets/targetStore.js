@@ -39,7 +39,26 @@ export function normalizeTarget(item, mode) {
       price,
       searches: Math.max(1, Math.round(Number(item.searches) || 3)),
       buyNow: Math.max(1, Math.round(Number(item.buyNow) || price)),
-      futbinId
+      futbinId,
+      position: item.position || '',
+      commonName: item.commonName || '',
+      versionLabel: item.versionLabel || '',
+      playerImageUrl: item.playerImageUrl || '',
+      promoImageUrl: item.promoImageUrl || '',
+      holographicAnimationUrl: item.holographicAnimationUrl || '',
+      stats: (item.stats && typeof item.stats === 'object') ? {
+        pac: Number(item.stats.pac) || 0,
+        sho: Number(item.stats.sho) || 0,
+        pas: Number(item.stats.pas) || 0,
+        dri: Number(item.stats.dri) || 0,
+        def: Number(item.stats.def) || 0,
+        phy: Number(item.stats.phy) || 0
+      } : null,
+      nationImageUrl: item.nationImageUrl || '',
+      clubImageUrl: item.clubImageUrl || '',
+      leagueImageUrl: item.leagueImageUrl || '',
+      raretype: item.raretype != null ? item.raretype : null,
+      isHolo: Boolean(item.isHolo)
     };
   }
 
@@ -60,7 +79,26 @@ export function normalizeTarget(item, mode) {
       price: Math.round(Number(item.price)),
       searches: Math.max(1, Math.round(Number(item.searches) || 3)),
       buyNow: Math.max(1, Math.round(Number(item.buyNow) || Number(item.price))),
-      futbinId: item.futbinId == null ? null : String(item.futbinId)
+      futbinId: item.futbinId == null ? null : String(item.futbinId),
+      position: item.position || '',
+      commonName: item.commonName || '',
+      versionLabel: item.versionLabel || '',
+      playerImageUrl: item.playerImageUrl || '',
+      promoImageUrl: item.promoImageUrl || '',
+      holographicAnimationUrl: item.holographicAnimationUrl || '',
+      stats: (item.stats && typeof item.stats === 'object') ? {
+        pac: Number(item.stats.pac) || 0,
+        sho: Number(item.stats.sho) || 0,
+        pas: Number(item.stats.pas) || 0,
+        dri: Number(item.stats.dri) || 0,
+        def: Number(item.stats.def) || 0,
+        phy: Number(item.stats.phy) || 0
+      } : null,
+      nationImageUrl: item.nationImageUrl || '',
+      clubImageUrl: item.clubImageUrl || '',
+      leagueImageUrl: item.leagueImageUrl || '',
+      raretype: item.raretype != null ? item.raretype : null,
+      isHolo: Boolean(item.isHolo)
     };
   }
 

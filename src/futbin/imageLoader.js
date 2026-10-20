@@ -1,17 +1,31 @@
-// EA Web App CSP ve Hotlink engellerini asmak icin GM_xmlhttpRequest tabanli resim yukleyici.
+// EA Web App CSP ve Hotlink engellerini asmak icin GM_xmlhttpRequest tabanli Base64 Data URL resim yukleyici.
 // Bellek onbellegi (in-memory Map cache) ile ayni resmi birden fazla kez indirmez.
 
-const imageBlobCache = new Map();
+const imageDataCache = new Map();
 
 export function clearFutbinImageCache() {
-  imageBlobCache.clear();
+  imageDataCache.clear();
+}
+
+function arrayBufferToBase64DataUrl(buffer, contentType = 'image/png') {
+  if (!buffer) return '';
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = typeof btoa === 'function'
+    ? btoa(binary)
+    : (typeof Buffer !== 'undefined' ? Buffer.from(binary, 'binary').toString('base64') : '');
+  return `data:${contentType};base64,${base64}`;
 }
 
 export function fetchImageBlobUrl(url) {
   if (!url || typeof url !== 'string') return Promise.resolve('');
   const trimmed = url.trim();
-  if (imageBlobCache.has(trimmed)) {
-    return Promise.resolve(imageBlobCache.get(trimmed));
+  if (imageDataCache.has(trimmed)) {
+    return Promise.resolve(imageDataCache.get(trimmed));
   }
 
   return new Promise((resolve) => {
@@ -23,7 +37,7 @@ export function fetchImageBlobUrl(url) {
     GM_xmlhttpRequest({
       method: 'GET',
       url: trimmed,
-      responseType: 'blob',
+      responseType: 'arraybuffer',
       timeout: 10000,
       headers: {
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
@@ -32,10 +46,13 @@ export function fetchImageBlobUrl(url) {
       onload: (res) => {
         if (res.status >= 200 && res.status < 300 && res.response) {
           try {
-            const blobUrl = URL.createObjectURL(res.response);
-            imageBlobCache.set(trimmed, blobUrl);
-            resolve(blobUrl);
-            return;
+            const contentType = res.responseHeaders?.match(/content-type:\s*([^\r\n;]+)/i)?.[1] || 'image/png';
+            const dataUrl = arrayBufferToBase64DataUrl(res.response, contentType);
+            if (dataUrl) {
+              imageDataCache.set(trimmed, dataUrl);
+              resolve(dataUrl);
+              return;
+            }
           } catch (e) {}
         }
         resolve('');
@@ -59,17 +76,15 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
   }
 
   const trimmed = url.trim();
-  if (imageBlobCache.has(trimmed)) {
-    imgElement.src = imageBlobCache.get(trimmed);
+  if (imageDataCache.has(trimmed)) {
+    imgElement.src = imageDataCache.get(trimmed);
     return;
   }
 
-  // Once GM_xmlhttpRequest ile blob cekmeyi dene (CSP ve 403 bypass)
-  fetchImageBlobUrl(trimmed).then((blobUrl) => {
-    if (blobUrl) {
-      imgElement.src = blobUrl;
+  fetchImageBlobUrl(trimmed).then((dataUrl) => {
+    if (dataUrl) {
+      imgElement.src = dataUrl;
     } else {
-      // GM basarisiz olursa dogrudan URL veya fallback ata
       imgElement.onerror = () => {
         if (fallbackUrl && imgElement.src !== fallbackUrl) {
           imgElement.src = fallbackUrl;
@@ -83,13 +98,13 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
 export function applyFutbinBgImage(element, url, fallbackUrl = '') {
   if (!element || !url) return;
   const trimmed = url.trim();
-  if (imageBlobCache.has(trimmed)) {
-    element.style.backgroundImage = 'url("' + imageBlobCache.get(trimmed) + '")';
+  if (imageDataCache.has(trimmed)) {
+    element.style.backgroundImage = 'url("' + imageDataCache.get(trimmed) + '")';
     return;
   }
 
-  fetchImageBlobUrl(trimmed).then((blobUrl) => {
-    const finalUrl = blobUrl || trimmed || fallbackUrl;
+  fetchImageBlobUrl(trimmed).then((dataUrl) => {
+    const finalUrl = dataUrl || trimmed || fallbackUrl;
     if (finalUrl && element) {
       element.style.backgroundImage = 'url("' + finalUrl + '")';
     }
