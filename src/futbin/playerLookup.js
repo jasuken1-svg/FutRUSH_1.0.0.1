@@ -3,7 +3,7 @@
 
 import { normalizePlayerName } from '../utils/strings.js';
 import { idOf, isBaseId, toBaseId } from './eaId.js';
-import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc, normalizeQuality, validateQualityFilter } from './candidateMatcher.js';
+import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc, normalizeQuality, validateQualityFilter, isSpecialCard } from './candidateMatcher.js';
 
 const SPECIAL_OFFSET = 0x1000000;
 const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
@@ -125,6 +125,65 @@ export async function searchPlayerAllVersions(name) {
   if (!Array.isArray(rows) || !rows.length) return [];
   const candidates = rows.map(mapCandidate).filter(Boolean);
   return sortCandidatesByPriceAsc(candidates);
+}
+
+export async function searchUniquePlayers(name) {
+  const rows = await queryFutbinPlayersByName(name);
+  if (!Array.isArray(rows) || !rows.length) return [];
+
+  const playerMap = new Map();
+
+  for (const row of rows) {
+    if (!row) continue;
+    const baseId = toBaseId(row.playerid || row.resource_id);
+    const candidate = mapCandidate(row);
+    if (!candidate) continue;
+
+    const groupKey = baseId > 0 ? `id_${baseId}` : `name_${normalizePlayerName(candidate.name)}`;
+    if (!playerMap.has(groupKey)) {
+      playerMap.set(groupKey, {
+        baseId,
+        name: candidate.name,
+        highestRating: candidate.rating,
+        baseRating: candidate.rating,
+        versions: [candidate]
+      });
+    } else {
+      const group = playerMap.get(groupKey);
+      group.versions.push(candidate);
+      if (candidate.rating > group.highestRating) {
+        group.highestRating = candidate.rating;
+      }
+    }
+  }
+
+  const players = Array.from(playerMap.values());
+
+  players.forEach((player) => {
+    player.versions = sortCandidatesByPriceAsc(player.versions);
+    // Base karti bul: oncelik !isSpecialCard veya versionLabel === 'Base'
+    const baseCandidate = player.versions.find((v) => !isSpecialCard(v.raw) || v.versionLabel === 'Base');
+    if (baseCandidate) {
+      player.baseRating = Number(baseCandidate.rating) || 0;
+      player.baseCard = baseCandidate;
+      if (baseCandidate.name) player.name = baseCandidate.name;
+    } else {
+      const minRating = Math.min(...player.versions.map((v) => Number(v.rating) || 0));
+      player.baseRating = minRating > 0 ? minRating : player.highestRating;
+      player.baseCard = player.versions[0];
+    }
+  });
+
+  // Oyuncu arama siralamasi her zaman Base kart yuksek reyting > dusuk reyting seklinde
+  players.sort((a, b) => {
+    const diff = (Number(b.baseRating) || 0) - (Number(a.baseRating) || 0);
+    if (diff !== 0) return diff;
+    const highestDiff = (Number(b.highestRating) || 0) - (Number(a.highestRating) || 0);
+    if (highestDiff !== 0) return highestDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  return players;
 }
 
 export function fetchFutbinPlayerId(target) {

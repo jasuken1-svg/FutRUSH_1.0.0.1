@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearFutbinSearchCache, fetchFutbinPlayerId, queryFutbinPlayersByName } from '../../src/futbin/playerLookup.js';
+import { clearFutbinSearchCache, fetchFutbinPlayerId, queryFutbinPlayersByName, searchUniquePlayers } from '../../src/futbin/playerLookup.js';
 
 let originalRequest;
 
@@ -288,5 +288,63 @@ describe('fetchFutbinPlayerId', () => {
     const res2 = await queryFutbinPlayersByName('test player');
     expect(res2).toEqual(res1);
     expect(callCount).toBe(1);
+  });
+
+  describe('searchUniquePlayers (high rating > low rating order)', () => {
+    it('groups by unique player and sorts by highest rating descending (e.g. Lamine Yamal before lower-rated players)', async () => {
+      const lamRows = [
+        { ID: '1', playername: 'Erik Lamela', rating: '77', resource_id: '101', playerid: '101', raretype: '0' },
+        { ID: '2', playername: 'Lamine Yamal', rating: '81', resource_id: '201', playerid: '201', raretype: '0' },
+        { ID: '3', playername: 'Lamine Yamal', rating: '88', resource_id: '67000201', playerid: '201', raretype: '44', version: 'Trailblazers' },
+        { ID: '4', playername: 'Lamine Yamal', rating: '84', resource_id: '67000202', playerid: '201', raretype: '3' },
+        { ID: '5', playername: 'Lamare Bogarde', rating: '68', resource_id: '301', playerid: '301', raretype: '0' }
+      ];
+
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        options.onload({
+          status: 200,
+          responseText: JSON.stringify({ data: lamRows })
+        });
+      });
+
+      const players = await searchUniquePlayers('Lam');
+
+      // Unique players grouped: 3 players (Lamine Yamal, Erik Lamela, Lamare Bogarde)
+      expect(players).toHaveLength(3);
+
+      // Sorted strictly: highest rating > lower rating
+      expect(players[0].name).toBe('Lamine Yamal');
+      expect(players[0].baseRating).toBe(81);
+      expect(players[0].highestRating).toBe(88);
+      expect(players[0].versions).toHaveLength(3);
+
+      expect(players[1].name).toBe('Erik Lamela');
+      expect(players[1].baseRating).toBe(77);
+      expect(players[1].highestRating).toBe(77);
+
+      expect(players[2].name).toBe('Lamare Bogarde');
+      expect(players[2].baseRating).toBe(68);
+      expect(players[2].highestRating).toBe(68);
+    });
+
+    it('sets baseRating to player base card rating (e.g. Alexia Putellas Segura base card 91 even if promo is 92)', async () => {
+      const putellasRows = [
+        { ID: '10', playername: 'Alexia Putellas Segura', rating: '92', resource_id: '67000100', playerid: '100', raretype: '3', version: 'TOTW' },
+        { ID: '11', playername: 'Alexia Putellas Segura', rating: '91', resource_id: '100', playerid: '100', raretype: '1' }
+      ];
+
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        options.onload({
+          status: 200,
+          responseText: JSON.stringify({ data: putellasRows })
+        });
+      });
+
+      const players = await searchUniquePlayers('Alexia Putellas');
+      expect(players).toHaveLength(1);
+      expect(players[0].name).toBe('Alexia Putellas Segura');
+      expect(players[0].baseRating).toBe(91);
+      expect(players[0].highestRating).toBe(92);
+    });
   });
 });

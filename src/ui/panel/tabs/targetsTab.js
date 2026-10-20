@@ -9,7 +9,7 @@ import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
-import { searchPlayerAllVersions } from '../../../futbin/playerLookup.js';
+import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { loadFutbinImage, applyFutbinBgImage } from '../../../futbin/imageLoader.js';
 
 let statusRemovalTimer = null;
@@ -165,75 +165,40 @@ export function renderTargetContent(content) {
       }
       searchTimer = setTimeout(async () => {
         try {
-          const versions = await searchPlayerAllVersions(query);
+          const players = await searchUniquePlayers(query);
           if (searchInput.value.trim() !== query) return;
           searchResults.replaceChildren();
-          if (!versions.length) {
+          if (!players.length) {
             const emptyItem = document.createElement('div');
             emptyItem.className = 'fr-search-item-empty';
             emptyItem.textContent = 'Sonuç bulunamadı.';
             searchResults.appendChild(emptyItem);
           } else {
-            versions.forEach((candidate) => {
+            players.forEach((player) => {
               const item = document.createElement('div');
-              item.className = 'fr-search-result-item';
+              item.className = 'fr-search-result-item fr-search-player-item';
               item.setAttribute('role', 'button');
               item.setAttribute('tabindex', '0');
 
-              const cardEl = document.createElement('div');
-              cardEl.className = 'fr-search-item-card';
-              if (candidate.promoImageUrl) {
-                const bg = document.createElement('div');
-                bg.className = 'fr-search-item-card-bg';
-                applyFutbinBgImage(bg, candidate.promoImageUrl);
-                cardEl.appendChild(bg);
-              }
-              if (candidate.playerImageUrl) {
-                const img = document.createElement('img');
-                img.className = 'fr-search-item-player-img';
-                img.alt = candidate.name;
-                loadFutbinImage(img, candidate.playerImageUrl);
-                cardEl.appendChild(img);
-              }
-              if (candidate.rating) {
-                const r = document.createElement('div');
-                r.className = 'fr-search-item-rating';
-                r.textContent = String(candidate.rating);
-                cardEl.appendChild(r);
-              }
-              if (candidate.position) {
-                const p = document.createElement('div');
-                p.className = 'fr-search-item-pos';
-                p.textContent = candidate.position;
-                cardEl.appendChild(p);
-              }
-
-              const info = document.createElement('div');
-              info.className = 'fr-search-item-info';
               const nameEl = document.createElement('div');
               nameEl.className = 'fr-search-item-name';
-              nameEl.textContent = candidate.name;
-              const badges = document.createElement('div');
-              badges.className = 'fr-search-item-badges';
-              const ver = document.createElement('span');
-              ver.className = 'fr-search-item-version';
-              ver.textContent = candidate.versionLabel || 'Kart';
-              badges.appendChild(ver);
+              nameEl.textContent = player.name;
 
-              if (candidate.price) {
-                const priceEl = document.createElement('span');
-                priceEl.className = 'fr-search-item-price';
-                priceEl.textContent = candidate.price.toLocaleString('tr-TR') + ' coin';
-                badges.appendChild(priceEl);
-              }
-              info.append(nameEl, badges);
+              const ratingBadge = document.createElement('span');
+              ratingBadge.className = 'fr-search-player-rating-badge';
+              ratingBadge.textContent = String(player.baseRating || player.highestRating || '');
 
-              item.append(cardEl, info);
+              item.append(nameEl, ratingBadge);
               item.addEventListener('click', () => {
-                commitCandidateTarget(candidate, candidate.price);
+                state.pendingCandidates = {
+                  name: player.name,
+                  candidates: player.versions,
+                  price: player.baseCard?.price || player.versions[0]?.price || 0
+                };
                 searchInput.value = '';
                 searchResults.hidden = true;
                 searchResults.replaceChildren();
+                renderTargetContent(content);
               });
               searchResults.appendChild(item);
             });
@@ -277,6 +242,40 @@ export function renderTargetContent(content) {
         const card = document.createElement('div');
         card.className = 'fr-candidate-card';
 
+        if (candidate.promoImageUrl || candidate.playerImageUrl) {
+          const cardPreview = document.createElement('div');
+          cardPreview.className = 'fr-search-item-card';
+          if (candidate.promoImageUrl) {
+            const bg = document.createElement('div');
+            bg.className = 'fr-search-item-card-bg';
+            applyFutbinBgImage(bg, candidate.promoImageUrl);
+            cardPreview.appendChild(bg);
+          }
+          if (candidate.playerImageUrl) {
+            const img = document.createElement('img');
+            img.className = 'fr-search-item-player-img';
+            img.alt = candidate.name;
+            loadFutbinImage(img, candidate.playerImageUrl);
+            cardPreview.appendChild(img);
+          }
+          if (candidate.rating) {
+            const r = document.createElement('div');
+            r.className = 'fr-search-item-rating';
+            r.textContent = String(candidate.rating);
+            cardPreview.appendChild(r);
+          }
+          if (candidate.position) {
+            const p = document.createElement('div');
+            p.className = 'fr-search-item-pos';
+            p.textContent = candidate.position;
+            cardPreview.appendChild(p);
+          }
+          card.appendChild(cardPreview);
+        }
+
+        const body = document.createElement('div');
+        body.className = 'fr-candidate-body';
+
         const title = document.createElement('div');
         title.className = 'fr-candidate-title';
         const name = document.createElement('span');
@@ -304,10 +303,12 @@ export function renderTargetContent(content) {
         selectBtn.className = 'fr-candidate-btn';
         selectBtn.textContent = 'Bu kartı ekle';
         selectBtn.addEventListener('click', () => {
-          commitCandidateTarget(candidate, state.pendingCandidates.price);
+          commitCandidateTarget(candidate, candidate.price || state.pendingCandidates.price);
+          renderTargetContent(content);
         });
 
-        card.append(title, badge, meta, priceEl, selectBtn);
+        body.append(title, badge, meta, priceEl, selectBtn);
+        card.appendChild(body);
         candidateList.appendChild(card);
       });
 

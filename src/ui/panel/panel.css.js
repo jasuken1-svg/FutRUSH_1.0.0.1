@@ -293,6 +293,7 @@ export const panelCss = `
     #${P.id} .fr-search-item-badges { display: flex; align-items: center; gap: 6px; }
     #${P.id} .fr-search-item-version { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: rgba(0,229,255,.15); color: #00e5ff; }
     #${P.id} .fr-search-item-price { font-size: 10px; font-weight: 600; color: #8de8b5; font-variant-numeric: tabular-nums; }
+    #${P.id} .fr-search-player-rating-badge { font-size: 10px; font-weight: 800; color: #ffd447; background: rgba(255,212,71,.15); padding: 1px 5px; border-radius: 4px; margin-left: auto; }
     #${P.id} .fr-target-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 3px 2px 1px; scrollbar-width: none; }
     #${P.id} .fr-target-list::-webkit-scrollbar { display: none; }
     #${P.id} .fr-target-empty { margin: auto; color: #90a2ad; font-size: 12px; text-align: center; }
@@ -300,7 +301,8 @@ export const panelCss = `
     #${P.id} .fr-candidate-header { display: flex; align-items: center; justify-content: space-between; color: #00e5ff; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
     #${P.id} .fr-candidate-cancel { border: 0; background: transparent; color: #ff5261; font-size: 16px; font-weight: 700; cursor: pointer; padding: 0 4px; }
     #${P.id} .fr-candidate-list { display: flex; flex-direction: column; gap: 6px; }
-    #${P.id} .fr-candidate-card { padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: rgba(4,12,22,.6); display: flex; flex-direction: column; gap: 3px; }
+    #${P.id} .fr-candidate-card { padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: rgba(4,12,22,.6); display: flex; align-items: center; gap: 8px; }
+    #${P.id} .fr-candidate-body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
     #${P.id} .fr-candidate-title { display: flex; align-items: center; justify-content: space-between; }
     #${P.id} .fr-candidate-name { color: #ffd447; font-size: 12px; font-weight: 700; }
     #${P.id} .fr-candidate-rating { color: #fff; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.1); padding: 1px 4px; border-radius: 4px; }
