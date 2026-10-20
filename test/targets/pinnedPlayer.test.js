@@ -112,14 +112,15 @@ describe('addPinnedPlayerToTargets', () => {
       rating: 88,
       selectedCardId: 22770
     });
-    expect(mergeTargetPlayers).toHaveBeenCalledWith([{
+    expect(mergeTargetPlayers).toHaveBeenCalledWith([expect.objectContaining({
       name: 'Player One',
       rating: 88,
       futbinId: null,
       eaId: 22770,
       eaIdTargetKey: JSON.stringify(['Player One', 88, null]),
-      price: 1200
-    }]);
+      price: 1200,
+      versionLabel: 'Gold'
+    })]);
   });
 
   it('uses a name and rating lookup when the selected card ID is unavailable', async () => {

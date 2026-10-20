@@ -326,12 +326,23 @@ export function renderTargetContent(content) {
       card.setAttribute('role', 'listitem');
       const head = document.createElement('div');
       head.className = 'fr-target-card-head';
-      if (player.playerImageUrl) {
-        const thumb = document.createElement('img');
-        thumb.className = 'fr-target-thumb';
-        thumb.alt = player.name;
-        loadFutbinImage(thumb, player.playerImageUrl);
-        head.appendChild(thumb);
+      if (player.playerImageUrl || player.promoImageUrl) {
+        const thumbContainer = document.createElement('div');
+        thumbContainer.className = 'fr-target-thumb-wrap';
+        if (player.promoImageUrl) {
+          const promoBg = document.createElement('div');
+          promoBg.className = 'fr-target-thumb-bg';
+          applyFutbinBgImage(promoBg, player.promoImageUrl);
+          thumbContainer.appendChild(promoBg);
+        }
+        if (player.playerImageUrl) {
+          const thumb = document.createElement('img');
+          thumb.className = 'fr-target-thumb';
+          thumb.alt = player.name;
+          loadFutbinImage(thumb, player.playerImageUrl);
+          thumbContainer.appendChild(thumb);
+        }
+        head.appendChild(thumbContainer);
       }
       const info = document.createElement('div');
       info.className = 'fr-target-info';
@@ -344,12 +355,12 @@ export function renderTargetContent(content) {
       rating.className = 'fr-target-rating';
       rating.textContent = player.rating ? String(player.rating) : '—';
       metaLine.appendChild(rating);
-      if (player.versionLabel) {
-        const badge = document.createElement('span');
-        badge.className = 'fr-target-version-badge';
-        badge.textContent = player.versionLabel;
-        metaLine.appendChild(badge);
-      }
+
+      const effectiveVersion = player.versionLabel || (player.rating >= 75 ? 'Gold' : player.rating >= 65 ? 'Silver' : player.rating > 0 ? 'Bronze' : 'Base');
+      const badge = document.createElement('span');
+      badge.className = 'fr-target-version-badge';
+      badge.textContent = effectiveVersion;
+      metaLine.appendChild(badge);
       info.append(name, metaLine);
       const remove = document.createElement('button');
       remove.className = 'fr-target-remove';

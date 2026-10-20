@@ -126,12 +126,47 @@ export function mapCandidate(row) {
   };
 }
 
+export function normalizeQuality(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (s === 'g' || s === 'gold' || s === 'altın' || s === 'altin') return 'gold';
+  if (s === 's' || s === 'silver' || s === 'gümüş' || s === 'gumus') return 'silver';
+  if (s === 'b' || s === 'bronze' || s === 'bronz') return 'bronze';
+  if (s === 'sp' || s === 'special' || s === 'özel' || s === 'ozel') return 'special';
+  return s;
+}
+
+export function getQualityTier(rating) {
+  const r = Number(rating) || 0;
+  if (r >= 75) return 'gold';
+  if (r >= 65) return 'silver';
+  if (r > 0) return 'bronze';
+  return null;
+}
+
+export function validateQualityFilter(cardRating, filterQuality) {
+  const normFilter = normalizeQuality(filterQuality);
+  if (!normFilter || normFilter === 'special') return null;
+  const cardTier = getQualityTier(cardRating);
+  if (!cardTier) return null;
+  if (normFilter !== cardTier) {
+    if (cardTier === 'gold') {
+      return 'Seçilen kart kalitesi (Gold) ile pazar filtreleri (Bronz/Silver) uyuşmuyor.';
+    }
+    const tierName = cardTier.charAt(0).toUpperCase() + cardTier.slice(1);
+    const filterName = normFilter.charAt(0).toUpperCase() + normFilter.slice(1);
+    return `Seçilen kart kalitesi (${tierName}) ile pazar filtreleri (${filterName}) uyuşmuyor.`;
+  }
+  return null;
+}
+
 export function filterCandidates(rows, intent) {
   if (!Array.isArray(rows) || !intent) return [];
 
   const targetPlayerId = toBaseId(intent.playerId);
-  const wantsTotw = Array.isArray(intent.rarityIds) && intent.rarityIds.map(String).includes('3');
-  const wantsSpecial = wantsTotw || intent.quality === 'SP' || intent.wantsSpecial === true;
+  const rarityIds = Array.isArray(intent.rarityIds) ? intent.rarityIds.map(String).filter(Boolean) : [];
+  const wantsTotw = rarityIds.includes('3');
+  const wantsSpecial = wantsTotw || intent.quality === 'SP' || normalizeQuality(intent.quality) === 'special' || intent.wantsSpecial === true || rarityIds.length > 0;
 
   return rows
     .filter((row) => {
@@ -140,14 +175,39 @@ export function filterCandidates(rows, intent) {
       if (targetPlayerId > 0 && rowPlayerId !== targetPlayerId) {
         return false;
       }
+
+      // Kalite uyumsuzluğu kontrolü (ör. Bronz/Silver filtresinde Gold kartlar elenmeli)
+      if (intent.quality) {
+        const rowRating = Number(row.rating) || 0;
+        const normQuality = normalizeQuality(intent.quality);
+        if (normQuality && normQuality !== 'special') {
+          const rowTier = getQualityTier(rowRating);
+          if (rowTier && rowTier !== normQuality) {
+            return false;
+          }
+        }
+      }
+
+      // Special / SP seçilmişse normal base kartlar elenmeli
       if (wantsSpecial && !isSpecialCard(row)) {
         return false;
       }
-      if (wantsTotw) {
-        const raretype = String(row.raretype ?? '');
+
+      // Spesifik promo / nadirlik seçilmişse:
+      if (rarityIds.length > 0) {
+        const rowRaretype = String(row.raretype ?? '');
         const version = String(row.version ?? row.card_type ?? '');
-        return raretype === '3' || raretype === '18' || /totw|team of the week/i.test(version) || isSpecialCard(row);
+        const matchesRarity = rarityIds.some((rid) => {
+          if (rid === '3') {
+            return rowRaretype === '3' || rowRaretype === '18' || /totw|team of the week/i.test(version);
+          }
+          return rowRaretype === rid;
+        });
+        if (!matchesRarity) {
+          return false;
+        }
       }
+
       return true;
     })
     .map(mapCandidate);

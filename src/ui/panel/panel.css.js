@@ -312,7 +312,9 @@ export const panelCss = `
     #${P.id} .fr-candidate-btn:active { transform: scale(.98); }
     #${P.id} .fr-target-card { flex: 0 0 auto; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(4,12,22,.48); }
     #${P.id} .fr-target-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    #${P.id} .fr-target-thumb { width: 30px; height: 30px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,.05); flex: 0 0 30px; }
+    #${P.id} .fr-target-thumb-wrap { position: relative; width: 30px; height: 30px; flex: 0 0 30px; display: flex; align-items: center; justify-content: center; }
+    #${P.id} .fr-target-thumb-bg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: .7; }
+    #${P.id} .fr-target-thumb { width: 30px; height: 30px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,.05); flex: 0 0 30px; position: relative; z-index: 1; }
     #${P.id} .fr-target-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     #${P.id} .fr-target-name { overflow: hidden; color: #ffd447; font-size: 13px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
     #${P.id} .fr-target-meta-line { display: flex; align-items: center; gap: 5px; margin-top: 2px; }

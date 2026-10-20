@@ -203,4 +203,20 @@ describe('candidate selection integration', () => {
     expect(versions[1].playerImageUrl).toBe('https://cdn.futbin.com/players/p67376394.png');
     expect(versions[1].promoImageUrl).toBe('https://cdn.futbin.com/cards/hd/3_team_of_the_week.png');
   });
+
+  it('rejects with quality conflict message when Gold card is searched with Bronze or Silver filter', async () => {
+    globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+      options.onload({
+        status: 200,
+        responseText: JSON.stringify({ data: brugtsData })
+      });
+    });
+
+    await expect(fetchFutbinPlayerId({
+      name: 'Esmee Brugts',
+      playerId: 267530,
+      quality: 'B',
+      returnDetails: true
+    })).rejects.toThrow('Seçilen kart kalitesi (Gold) ile pazar filtreleri (Bronz/Silver) uyuşmuyor.');
+  });
 });

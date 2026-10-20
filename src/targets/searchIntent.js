@@ -95,9 +95,18 @@ export function extractSearchIntent({ criteria = null, doc = (typeof document !=
     if (hasTotwText) rarityIds = ['3'];
   }
 
-  const quality = activeCriteria?.quality ?? activeCriteria?.level ?? activeCriteria?.category ?? (
-    Object.values(dropdownLabels).some((val) => /special/i.test(val)) ? 'SP' : null
-  );
+  let quality = activeCriteria?.quality ?? activeCriteria?.level ?? activeCriteria?.category ?? null;
+  if (!quality && doc) {
+    const qualityVal = Object.entries(dropdownLabels).find(([lbl, val]) =>
+      /kalite|quality|tier/i.test(lbl) || /gold|silver|bronze|altın|gümüş|bronz|special|özel/i.test(val)
+    )?.[1];
+    if (qualityVal) {
+      if (/special|özel/i.test(qualityVal)) quality = 'SP';
+      else if (/gold|altın/i.test(qualityVal)) quality = 'gold';
+      else if (/silver|gümüş/i.test(qualityVal)) quality = 'silver';
+      else if (/bronze|bronz/i.test(qualityVal)) quality = 'bronze';
+    }
+  }
 
   return {
     name,

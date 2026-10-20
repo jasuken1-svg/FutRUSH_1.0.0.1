@@ -6,7 +6,7 @@ import { emit } from '../core/events.js';
 import { visibleElement } from '../utils/dom.js';
 import { parseFutbinPrice } from '../utils/format.js';
 import { fetchFutbinPlayerId, queryFutbinPlayersByName } from '../futbin/playerLookup.js';
-import { filterCandidates } from '../futbin/candidateMatcher.js';
+import { filterCandidates, validateQualityFilter } from '../futbin/candidateMatcher.js';
 import { toBaseId } from '../futbin/eaId.js';
 import { extractSearchIntent } from './searchIntent.js';
 import { findDuplicateTarget, mergeTargetPlayers, targetEaIdKey } from './targetOps.js';
@@ -149,6 +149,16 @@ export async function addPinnedPlayerToTargets() {
     return;
   }
 
+  if (intent.quality && player.rating) {
+    const conflict = validateQualityFilter(player.rating, intent.quality);
+    if (conflict) {
+      setTargetStatus({ type: 'error', message: conflict });
+      emit('targets:changed');
+      console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', conflict);
+      return;
+    }
+  }
+
   const wantsSpecial = intent.quality === 'SP' || (Array.isArray(intent.rarityIds) && intent.rarityIds.length > 0);
   const lookupTarget = {
     name,
@@ -196,13 +206,23 @@ export async function addPinnedPlayerToTargets() {
 
   const candidate = (res && typeof res === 'object' && res.candidate) ? res.candidate : null;
   if (candidate) {
+    if (intent.quality) {
+      const conflict = validateQualityFilter(candidate.rating, intent.quality);
+      if (conflict) {
+        setTargetStatus({ type: 'error', message: conflict });
+        emit('targets:changed');
+        console.warn('[FutRUSH] Oyuncu hedefe eklenemedi:', conflict);
+        return;
+      }
+    }
     commitCandidateTarget(candidate, price);
     return;
   }
 
   const eaId = typeof res === 'number' ? res : (res?.eaId || 0);
   const rating = Number(player.rating) || Number(lookupTarget.rating) || 0;
-  const targetIdentity = { name, rating, futbinId: null, eaId };
+  const versionLabel = rating >= 75 ? 'Gold' : rating >= 65 ? 'Silver' : rating > 0 ? 'Bronze' : 'Base';
+  const targetIdentity = { name, rating, futbinId: null, eaId, versionLabel };
   const added = mergeTargetPlayers([{
     ...targetIdentity,
     eaIdTargetKey: targetEaIdKey(targetIdentity),

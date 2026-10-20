@@ -132,4 +132,34 @@ describe('player target controls', () => {
     expect(input.value).toBe('3');
     expect(state.targetStatus).toMatchObject({ type: 'error' });
   });
+
+  it('renders versionLabel badge and thumb wrap in target card', () => {
+    state.targets = [
+      {
+        id: 't1',
+        name: 'Michael Olise',
+        rating: 90,
+        price: 50000,
+        buyNow: 50000,
+        searches: 3,
+        versionLabel: 'Trailblazers',
+        playerImageUrl: 'https://cdn.futbin.com/players/p67246800.png',
+        promoImageUrl: 'https://cdn.futbin.com/cards/hd/44_card.png'
+      }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const card = content.querySelector('.fr-target-card');
+    const badge = card.querySelector('.fr-target-version-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Trailblazers');
+
+    const thumbWrap = card.querySelector('.fr-target-thumb-wrap');
+    expect(thumbWrap).not.toBeNull();
+    const thumbBg = thumbWrap.querySelector('.fr-target-thumb-bg');
+    expect(thumbBg).not.toBeNull();
+    const thumbImg = thumbWrap.querySelector('.fr-target-thumb');
+    expect(thumbImg).not.toBeNull();
+  });
 });

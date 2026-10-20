@@ -4,9 +4,6 @@
 const imageBlobCache = new Map();
 
 export function clearFutbinImageCache() {
-  imageBlobCache.forEach((blobUrl) => {
-    try { URL.revokeObjectURL(blobUrl); } catch (e) {}
-  });
   imageBlobCache.clear();
 }
 
@@ -19,7 +16,7 @@ export function fetchImageBlobUrl(url) {
 
   return new Promise((resolve) => {
     if (typeof GM_xmlhttpRequest !== 'function') {
-      resolve(trimmed);
+      resolve('');
       return;
     }
 
@@ -53,6 +50,8 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
   if (!imgElement) return;
   imgElement.setAttribute('referrerpolicy', 'no-referrer');
   imgElement.setAttribute('crossorigin', 'anonymous');
+  imgElement.loading = 'lazy';
+  imgElement.crossOrigin = 'anonymous';
 
   if (!url) {
     if (fallbackUrl) imgElement.src = fallbackUrl;
@@ -65,37 +64,34 @@ export function loadFutbinImage(imgElement, url, fallbackUrl = '') {
     return;
   }
 
-  imgElement.onerror = () => {
-    if (imgElement.dataset.gmAttempted) {
-      if (fallbackUrl && imgElement.src !== fallbackUrl) {
-        imgElement.src = fallbackUrl;
-      }
-      return;
+  // Once GM_xmlhttpRequest ile blob cekmeyi dene (CSP ve 403 bypass)
+  fetchImageBlobUrl(trimmed).then((blobUrl) => {
+    if (blobUrl) {
+      imgElement.src = blobUrl;
+    } else {
+      // GM basarisiz olursa dogrudan URL veya fallback ata
+      imgElement.onerror = () => {
+        if (fallbackUrl && imgElement.src !== fallbackUrl) {
+          imgElement.src = fallbackUrl;
+        }
+      };
+      imgElement.src = trimmed || fallbackUrl;
     }
-    imgElement.dataset.gmAttempted = '1';
-    fetchImageBlobUrl(trimmed).then((blobUrl) => {
-      if (blobUrl) {
-        imgElement.src = blobUrl;
-      } else if (fallbackUrl) {
-        imgElement.src = fallbackUrl;
-      }
-    });
-  };
-
-  imgElement.src = trimmed;
+  });
 }
 
-export function applyFutbinBgImage(element, url) {
+export function applyFutbinBgImage(element, url, fallbackUrl = '') {
   if (!element || !url) return;
   const trimmed = url.trim();
   if (imageBlobCache.has(trimmed)) {
     element.style.backgroundImage = 'url("' + imageBlobCache.get(trimmed) + '")';
     return;
   }
-  element.style.backgroundImage = 'url("' + trimmed + '")';
+
   fetchImageBlobUrl(trimmed).then((blobUrl) => {
-    if (blobUrl && element.isConnected) {
-      element.style.backgroundImage = 'url("' + blobUrl + '")';
+    const finalUrl = blobUrl || trimmed || fallbackUrl;
+    if (finalUrl && element) {
+      element.style.backgroundImage = 'url("' + finalUrl + '")';
     }
   });
 }

@@ -3,7 +3,7 @@
 
 import { normalizePlayerName } from '../utils/strings.js';
 import { idOf, isBaseId, toBaseId } from './eaId.js';
-import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc } from './candidateMatcher.js';
+import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc, normalizeQuality, validateQualityFilter } from './candidateMatcher.js';
 
 const SPECIAL_OFFSET = 0x1000000;
 const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
@@ -164,6 +164,24 @@ export function fetchFutbinPlayerId(target) {
         const rows = await queryFutbinPlayersByName(searches[index]);
         lastRows = rows;
         console.log('[FutRUSH:futbin] API response data length:', rows.length, 'wantsSpecial:', wantsSpecial);
+
+        if (target.quality) {
+          const normQuality = normalizeQuality(target.quality);
+          if (normQuality && normQuality !== 'special') {
+            const playerRows = targetPlayerId > 0
+              ? rows.filter((r) => toBaseId(r.playerid || r.resource_id) === targetPlayerId)
+              : rows.filter((r) => wantedName && [r.playername, r.common_name].map(normalizePlayerName).filter(Boolean).some((n) => n === wantedName || wantedName.includes(n) || n.includes(wantedName)));
+
+            if (playerRows.length > 0) {
+              const maxRating = Math.max(...playerRows.map((r) => Number(r.rating) || 0));
+              const conflict = validateQualityFilter(maxRating, target.quality);
+              if (conflict) {
+                reject(new Error(conflict));
+                return;
+              }
+            }
+          }
+        }
 
         if (wantsSpecialRarity) {
           const matched = filterCandidates(rows, {

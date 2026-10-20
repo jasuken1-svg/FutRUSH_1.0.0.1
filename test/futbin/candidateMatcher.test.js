@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { isHolo, getVersionLabel, mapCandidate, filterCandidates, resolveFutbinImageUrl, sortCandidatesByPriceAsc } from '../../src/futbin/candidateMatcher.js';
+import {
+  isHolo,
+  getVersionLabel,
+  mapCandidate,
+  filterCandidates,
+  resolveFutbinImageUrl,
+  sortCandidatesByPriceAsc,
+  normalizeQuality,
+  getQualityTier,
+  validateQualityFilter
+} from '../../src/futbin/candidateMatcher.js';
 import { scoreRow } from '../../src/futbin/playerLookup.js';
 
 describe('candidateMatcher', () => {
@@ -185,6 +195,84 @@ describe('candidateMatcher', () => {
         'Card No Price',
         'Card Zero'
       ]);
+    });
+  });
+
+  describe('quality normalization and conflict validation', () => {
+    it('normalizes quality inputs and detects tiers', () => {
+      expect(normalizeQuality('G')).toBe('gold');
+      expect(normalizeQuality('Altın')).toBe('gold');
+      expect(normalizeQuality('S')).toBe('silver');
+      expect(normalizeQuality('B')).toBe('bronze');
+      expect(normalizeQuality('SP')).toBe('special');
+
+      expect(getQualityTier(90)).toBe('gold');
+      expect(getQualityTier(75)).toBe('gold');
+      expect(getQualityTier(74)).toBe('silver');
+      expect(getQualityTier(64)).toBe('bronze');
+    });
+
+    it('returns exact error message when Gold card conflicts with Bronze/Silver filter', () => {
+      expect(validateQualityFilter(90, 'B')).toBe('Seçilen kart kalitesi (Gold) ile pazar filtreleri (Bronz/Silver) uyuşmuyor.');
+      expect(validateQualityFilter(85, 'silver')).toBe('Seçilen kart kalitesi (Gold) ile pazar filtreleri (Bronz/Silver) uyuşmuyor.');
+      expect(validateQualityFilter(75, 'bronze')).toBe('Seçilen kart kalitesi (Gold) ile pazar filtreleri (Bronz/Silver) uyuşmuyor.');
+      expect(validateQualityFilter(85, 'gold')).toBeNull();
+      expect(validateQualityFilter(85, 'SP')).toBeNull();
+      expect(validateQualityFilter(85, null)).toBeNull();
+    });
+  });
+
+  describe('strict promo and quality filtering (Michael Olise 90 scenario)', () => {
+    const oliseRows = [
+      {
+        ID: '1001',
+        playername: 'Michael Olise',
+        rating: '82',
+        resource_id: '246800',
+        playerid: '246800',
+        raretype: '0'
+      },
+      {
+        ID: '1002',
+        playername: 'Michael Olise',
+        rating: '90',
+        resource_id: '67246800',
+        playerid: '246800',
+        raretype: '44',
+        version: 'Trailblazers'
+      }
+    ];
+
+    it('strictly matches only the 90 promo Olise when Trailblazers promo is selected', () => {
+      const candidates = filterCandidates(oliseRows, {
+        playerId: 246800,
+        rarityIds: ['44'],
+        wantsSpecial: true
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].rating).toBe(90);
+      expect(candidates[0].versionLabel).toBe('Trailblazers');
+    });
+
+    it('rejects all candidates if user selected TOTW filter (raretype 3) for Trailblazers Olise', () => {
+      const candidates = filterCandidates(oliseRows, {
+        playerId: 246800,
+        rarityIds: ['3'],
+        wantsSpecial: true
+      });
+
+      expect(candidates).toHaveLength(0);
+    });
+
+    it('rejects all candidates if user selected Bronze or Silver filter for Gold Olise', () => {
+      const candidates = filterCandidates(oliseRows, {
+        playerId: 246800,
+        quality: 'B',
+        wantsSpecial: true
+      });
+
+      expect(candidates).toHaveLength(0);
     });
   });
 });
