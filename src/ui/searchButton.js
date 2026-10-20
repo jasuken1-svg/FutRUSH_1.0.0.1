@@ -33,7 +33,7 @@ export function initSearchButton() {
     document.head.appendChild(st);
   }
 
-export function layoutSearchRow(parent, resetEl, searchEl, mine) {
+function layoutSearchRow(parent, resetEl, searchEl, mine) {
     const imp = (el, o) => Object.keys(o).forEach((k) => el.style.setProperty(k, o[k], 'important'));
     imp(parent, { 'display': 'flex', 'flex-wrap': 'nowrap', 'align-items': 'stretch', 'column-gap': mine.dataset.gap + 'px' });
     // kenarlık kalınlıkları farklı olsa da üçü birebir eşit olsun: (satır - 2 boşluk) / 3
@@ -45,12 +45,12 @@ export function layoutSearchRow(parent, resetEl, searchEl, mine) {
     imp(mine, { 'height': mine.dataset.h + 'px' });
   }
 
-export function onSearchButtonClick() {
+function onSearchButtonClick() {
     showTargetsAfterQuickAdd();
     addPinnedPlayerToTargets();
   }
 
-export function showTargetsAfterQuickAdd() {
+function showTargetsAfterQuickAdd() {
     if (!panel) return null;
     if (!state.panelExpanded || state.activePanelTab !== 'targets') {
       state.panelExpanded = true;

@@ -10,7 +10,7 @@ import { panel } from '../panel/panel.js';
 import { renderTargetContent } from '../panel/tabs/targetsTab.js';
 import { filterModalCss } from './filterModal.css.js';
 
-export function openFilterModal(mode) {
+function openFilterModal(mode) {
     document.querySelector('.fr-filter-overlay')?.remove();
     state.filterDraft = { kind: state.targetFilter.kind, ratings: state.targetFilter.ratings.slice(0, 1), count: state.targetFilter.count };
     const overlay = document.createElement('div');

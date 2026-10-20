@@ -7,7 +7,7 @@ import { emit } from '../core/events.js';
 import { inTransfers } from '../ea/page.js';
 import { LOGO_SVG } from './icons.js';
 
-export const LG = CONFIG.logoButton;
+const LG = CONFIG.logoButton;
 
 export function initLogoButton() {
     const st = document.createElement('style');
@@ -26,7 +26,7 @@ export function initLogoButton() {
     document.head.appendChild(st);
   }
 
-export function findLogoAnchor() {
+function findLogoAnchor() {
     if (!inTransfers()) return null;
     return Array.from(document.querySelectorAll('button.ea-filter-bar-item-view')).find((b) =>
       LG.anchorPattern.test(b.textContent) && b.getBoundingClientRect().width > 20) || null;

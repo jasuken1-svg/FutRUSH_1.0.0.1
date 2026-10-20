@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchFutbinPlayerId } from '../../src/futbin/playerLookup.js';
+import { clearFutbinSearchCache, fetchFutbinPlayerId, queryFutbinPlayersByName } from '../../src/futbin/playerLookup.js';
 
 let originalRequest;
 
 beforeEach(() => {
+  clearFutbinSearchCache();
   originalRequest = Object.getOwnPropertyDescriptor(globalThis, 'GM_xmlhttpRequest');
 });
 
@@ -265,5 +266,27 @@ describe('fetchFutbinPlayerId', () => {
       rating: 86,
       futbinId: '740'
     })).rejects.toThrow('FutBIN kart kimliği 740');
+  });
+
+  it('queryFutbinPlayersByName caches results for 15 minutes and avoids duplicate network requests', async () => {
+    let callCount = 0;
+    globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+      callCount++;
+      options.onload({
+        status: 200,
+        responseText: JSON.stringify({
+          data: [{ ID: '100', playername: 'Test Player', rating: '85', resource_id: '100', playerid: '100' }]
+        })
+      });
+    });
+
+    const res1 = await queryFutbinPlayersByName('Test Player');
+    expect(res1).toHaveLength(1);
+    expect(callCount).toBe(1);
+
+    // Second call with same name (even case-insensitive) should use cache
+    const res2 = await queryFutbinPlayersByName('test player');
+    expect(res2).toEqual(res1);
+    expect(callCount).toBe(1);
   });
 });

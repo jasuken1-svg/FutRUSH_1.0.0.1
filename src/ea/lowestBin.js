@@ -13,7 +13,7 @@
 import { randomBetween, sleep } from '../utils/cancelToken.js';
 import { MIN_BIN, priceAbove, priceBelow, roundDownToStep, roundUpToStep } from './priceSteps.js';
 
-export const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
 const KEPT_PRICES = 10;
 
 const lowestOf = (values) => values.reduce((min, value) => (value > 0 && (min === 0 || value < min) ? value : min), 0);

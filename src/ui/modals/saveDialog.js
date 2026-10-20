@@ -5,7 +5,7 @@ import { emit, on } from '../../core/events.js';
 import { saveTargetSnapshot } from '../../targets/targetOps.js';
 import { saveDialogCss } from './saveDialog.css.js';
 
-export function openTargetSaveDialog() {
+function openTargetSaveDialog() {
     document.querySelector('.fr-target-save-overlay')?.remove();
     const overlay = document.createElement('div');
     overlay.className = 'fr-target-save-overlay';

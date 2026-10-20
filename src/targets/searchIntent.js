@@ -4,7 +4,7 @@
 import { idOf, toBaseId } from '../futbin/eaId.js';
 import { parseFutbinPrice } from '../utils/format.js';
 
-export function getActiveMarketCriteria(pw) {
+function getActiveMarketCriteria(pw) {
   const win = pw || (typeof unsafeWindow !== 'undefined' ? unsafeWindow : (typeof window !== 'undefined' ? window : null));
   if (!win) return null;
   if (typeof win.getAppMain === 'function') {

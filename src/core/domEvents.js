@@ -5,7 +5,7 @@ import { state } from './state.js';
 import { schedule } from './scheduler.js';
 import { pageWindow } from '../utils/dom.js';
 
-export function initEvents() {
+export function initDomEvents() {
   // Ana menüde Transfers dışına tıklanırsa paneli gizle
   document.addEventListener('click', (e) => {
     const item = e.target.closest && e.target.closest('[class*="tab-bar-item"]');
@@ -18,5 +18,3 @@ export function initEvents() {
   pageWindow.addEventListener('resize', schedule);
   pageWindow.addEventListener('scroll', schedule, true);
 }
-
-export const initDomEvents = initEvents;

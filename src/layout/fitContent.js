@@ -8,7 +8,7 @@ import { panel, panelShown } from '../ui/panel/panel.js';
 
 const fitted = [];
 
-export function resetFitted() {
+function resetFitted() {
   fitted.forEach((el) => {
     el.style.transform = '';
     el.style.transformOrigin = '';

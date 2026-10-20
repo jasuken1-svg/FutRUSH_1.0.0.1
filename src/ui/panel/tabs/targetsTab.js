@@ -9,6 +9,8 @@ import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget } from '../../../targets/pinnedPlayer.js';
+import { searchPlayerAllVersions } from '../../../futbin/playerLookup.js';
+import { loadFutbinImage, applyFutbinBgImage } from '../../../futbin/imageLoader.js';
 
 let statusRemovalTimer = null;
 
@@ -136,7 +138,114 @@ export function renderTargetContent(content) {
     const status = content.querySelector('.fr-target-status');
     if (previousStatus) status.replaceWith(previousStatus);
     updateTargetStatus(previousStatus || status, state.targetStatus, state.targetLoading);
+    const targetView = content.querySelector('.fr-target-view');
     const list = content.querySelector('.fr-target-list');
+
+    // FutBIN Oyuncu Arama Arayuzu
+    const searchBox = document.createElement('div');
+    searchBox.className = 'fr-target-search-box';
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'fr-target-search-input';
+    searchInput.placeholder = 'Oyuncu Ara (FutBIN)...';
+    searchInput.setAttribute('aria-label', 'Oyuncu Ara (FutBIN)');
+    const searchResults = document.createElement('div');
+    searchResults.className = 'fr-target-search-results';
+    searchResults.hidden = true;
+    searchBox.append(searchInput, searchResults);
+
+    let searchTimer = null;
+    searchInput.addEventListener('input', () => {
+      if (searchTimer) clearTimeout(searchTimer);
+      const query = searchInput.value.trim();
+      if (query.length < 3) {
+        searchResults.hidden = true;
+        searchResults.replaceChildren();
+        return;
+      }
+      searchTimer = setTimeout(async () => {
+        try {
+          const versions = await searchPlayerAllVersions(query);
+          if (searchInput.value.trim() !== query) return;
+          searchResults.replaceChildren();
+          if (!versions.length) {
+            const emptyItem = document.createElement('div');
+            emptyItem.className = 'fr-search-item-empty';
+            emptyItem.textContent = 'Sonuç bulunamadı.';
+            searchResults.appendChild(emptyItem);
+          } else {
+            versions.forEach((candidate) => {
+              const item = document.createElement('div');
+              item.className = 'fr-search-result-item';
+              item.setAttribute('role', 'button');
+              item.setAttribute('tabindex', '0');
+
+              const cardEl = document.createElement('div');
+              cardEl.className = 'fr-search-item-card';
+              if (candidate.promoImageUrl) {
+                const bg = document.createElement('div');
+                bg.className = 'fr-search-item-card-bg';
+                applyFutbinBgImage(bg, candidate.promoImageUrl);
+                cardEl.appendChild(bg);
+              }
+              if (candidate.playerImageUrl) {
+                const img = document.createElement('img');
+                img.className = 'fr-search-item-player-img';
+                img.alt = candidate.name;
+                loadFutbinImage(img, candidate.playerImageUrl);
+                cardEl.appendChild(img);
+              }
+              if (candidate.rating) {
+                const r = document.createElement('div');
+                r.className = 'fr-search-item-rating';
+                r.textContent = String(candidate.rating);
+                cardEl.appendChild(r);
+              }
+              if (candidate.position) {
+                const p = document.createElement('div');
+                p.className = 'fr-search-item-pos';
+                p.textContent = candidate.position;
+                cardEl.appendChild(p);
+              }
+
+              const info = document.createElement('div');
+              info.className = 'fr-search-item-info';
+              const nameEl = document.createElement('div');
+              nameEl.className = 'fr-search-item-name';
+              nameEl.textContent = candidate.name;
+              const badges = document.createElement('div');
+              badges.className = 'fr-search-item-badges';
+              const ver = document.createElement('span');
+              ver.className = 'fr-search-item-version';
+              ver.textContent = candidate.versionLabel || 'Kart';
+              badges.appendChild(ver);
+
+              if (candidate.price) {
+                const priceEl = document.createElement('span');
+                priceEl.className = 'fr-search-item-price';
+                priceEl.textContent = candidate.price.toLocaleString('tr-TR') + ' coin';
+                badges.appendChild(priceEl);
+              }
+              info.append(nameEl, badges);
+
+              item.append(cardEl, info);
+              item.addEventListener('click', () => {
+                commitCandidateTarget(candidate, candidate.price);
+                searchInput.value = '';
+                searchResults.hidden = true;
+                searchResults.replaceChildren();
+              });
+              searchResults.appendChild(item);
+            });
+          }
+          searchResults.hidden = false;
+        } catch (e) {
+          console.warn('[FutRUSH] Oyuncu arama hatası:', e);
+        }
+      }, 300);
+    });
+
+    targetView.insertBefore(searchBox, list);
 
     if (state.pendingCandidates && Array.isArray(state.pendingCandidates.candidates) && state.pendingCandidates.candidates.length) {
       const selector = document.createElement('div');
@@ -217,13 +326,31 @@ export function renderTargetContent(content) {
       card.setAttribute('role', 'listitem');
       const head = document.createElement('div');
       head.className = 'fr-target-card-head';
+      if (player.playerImageUrl) {
+        const thumb = document.createElement('img');
+        thumb.className = 'fr-target-thumb';
+        thumb.alt = player.name;
+        loadFutbinImage(thumb, player.playerImageUrl);
+        head.appendChild(thumb);
+      }
+      const info = document.createElement('div');
+      info.className = 'fr-target-info';
       const name = document.createElement('div');
       name.className = 'fr-target-name';
       name.textContent = player.name;
+      const metaLine = document.createElement('div');
+      metaLine.className = 'fr-target-meta-line';
       const rating = document.createElement('span');
       rating.className = 'fr-target-rating';
       rating.textContent = player.rating ? String(player.rating) : '—';
-      name.appendChild(rating);
+      metaLine.appendChild(rating);
+      if (player.versionLabel) {
+        const badge = document.createElement('span');
+        badge.className = 'fr-target-version-badge';
+        badge.textContent = player.versionLabel;
+        metaLine.appendChild(badge);
+      }
+      info.append(name, metaLine);
       const remove = document.createElement('button');
       remove.className = 'fr-target-remove';
       remove.type = 'button';
@@ -234,7 +361,7 @@ export function renderTargetContent(content) {
         saveTargets();
         renderTargetContent(content);
       });
-      head.append(name, remove);
+      head.append(info, remove);
       card.appendChild(head);
 
       const controls = document.createElement('div');

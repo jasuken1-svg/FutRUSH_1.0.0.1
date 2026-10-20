@@ -40,7 +40,7 @@ export function selectedPinnedPlayer() {
   return { selected, name, rating, eaId };
 }
 
-export function selectedBuyNowPrice(selected) {
+function selectedBuyNowPrice(selected) {
   const scoped = selected?.closest('.ut-content') || document.querySelector('.ut-content') || document;
   // EA arama formunda fiyat kontrollerinin sırası: min/max teklif, min/max Buy Now.
   const spinners = Array.from(scoped.querySelectorAll('.ut-market-search-filters-view .search-prices .ut-numeric-input-spinner-control')).filter(visibleElement);
@@ -62,20 +62,26 @@ export function selectedBuyNowPrice(selected) {
 
 export function commitCandidateTarget(candidate, price) {
   const rating = Number(candidate.rating) || 0;
+  const finalPrice = Number(price) > 0
+    ? Math.round(Number(price))
+    : (Number(candidate.price) > 0 ? Math.round(Number(candidate.price)) : (Number(candidate.raw?.ps_LCPrice) || Number(candidate.raw?.pc_LCPrice) || 10000));
+
   const targetIdentity = {
     name: candidate.name,
     rating,
     futbinId: candidate.futbinId || null,
     eaId: candidate.eaId,
-    playerId: candidate.playerId,
+    playerId: candidate.playerId || candidate.baseId,
     raretype: candidate.raretype,
     versionLabel: candidate.versionLabel,
     isHolo: candidate.isHolo,
+    playerImageUrl: candidate.playerImageUrl || '',
+    promoImageUrl: candidate.promoImageUrl || '',
     versionKnown: true
   };
 
   // Eski versiyonu bilinmeyen (placeholder / base) ayni oyuncu kaydini temizle
-  const candidateBaseId = toBaseId(candidate.eaId || candidate.playerId);
+  const candidateBaseId = toBaseId(candidate.eaId || candidate.playerId || candidate.baseId);
   if (candidateBaseId > 0) {
     const staleIndex = state.targets.findIndex((t) =>
       !t.versionKnown && toBaseId(t.eaId || t.playerId) === candidateBaseId
@@ -88,28 +94,30 @@ export function commitCandidateTarget(candidate, price) {
   const added = mergeTargetPlayers([{
     ...targetIdentity,
     eaIdTargetKey: targetEaIdKey(targetIdentity),
-    price,
-    buyNow: price
+    price: finalPrice,
+    buyNow: finalPrice
   }]);
   state.pendingCandidates = null;
   if (added) {
     setTargetStatus({
       type: 'success',
-      message: candidate.name + (rating ? ' (' + rating + ')' : '') + (candidate.versionLabel ? ' [' + candidate.versionLabel + ']' : '') + ' · Buy Now ' + price.toLocaleString('tr-TR') + ' hedeflere eklendi.'
+      message: candidate.name + (rating ? ' (' + rating + ')' : '') + (candidate.versionLabel ? ' [' + candidate.versionLabel + ']' : '') + ' · Buy Now ' + finalPrice.toLocaleString('tr-TR') + ' hedeflere eklendi.'
     });
   } else {
     const duplicate = findDuplicateTarget(state.targets, targetIdentity, { matchFutbinId: false });
     if (duplicate) {
       duplicate.eaId = candidate.eaId;
-      duplicate.playerId = candidate.playerId;
+      duplicate.playerId = candidate.playerId || candidate.baseId;
       duplicate.versionKnown = true;
       duplicate.rating = rating;
       duplicate.raretype = candidate.raretype;
       duplicate.versionLabel = candidate.versionLabel;
       duplicate.isHolo = candidate.isHolo;
+      duplicate.playerImageUrl = candidate.playerImageUrl || duplicate.playerImageUrl || '';
+      duplicate.promoImageUrl = candidate.promoImageUrl || duplicate.promoImageUrl || '';
       duplicate.eaIdTargetKey = targetEaIdKey(duplicate);
-      duplicate.buyNow = price;
-      duplicate.price = price;
+      duplicate.buyNow = finalPrice;
+      duplicate.price = finalPrice;
       saveTargets();
       setTargetStatus({
         type: 'success',

@@ -9,7 +9,7 @@ import { warnOnce } from '../core/logger.js';
 let ro = null;
 let observedContainer = null;
 
-export function syncFromHub(marketTile, onResize) {
+function syncFromHub(marketTile, onResize) {
   const tilesContainer = marketTile.parentElement;
   if (!tilesContainer) return false;
 

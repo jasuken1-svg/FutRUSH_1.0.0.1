@@ -85,13 +85,13 @@ export function initSettings() {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
   }
 
-export function openSettings() {
+function openSettings() {
     renderSettingsBody(modal.querySelector('#futrush-settings-body'));
     modal.style.display = 'block';
     navBtn.classList.add('fr-open');
 }
 
-export function closeSettings() { modal.style.display = 'none'; navBtn.classList.remove('fr-open'); }
+function closeSettings() { modal.style.display = 'none'; navBtn.classList.remove('fr-open'); }
 
 export function placeNav() {
     if (!navBtn) return;   // Ayarlar özelliği kapalıysa

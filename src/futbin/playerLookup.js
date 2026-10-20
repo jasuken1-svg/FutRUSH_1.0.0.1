@@ -3,12 +3,12 @@
 
 import { normalizePlayerName } from '../utils/strings.js';
 import { idOf, isBaseId, toBaseId } from './eaId.js';
-import { filterCandidates, mapCandidate } from './candidateMatcher.js';
+import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc } from './candidateMatcher.js';
 
 const SPECIAL_OFFSET = 0x1000000;
 const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
 
-export function isStandardRow(row) {
+function isStandardRow(row) {
   const resourceId = Number(row.resource_id);
   const playerId = Number(row.playerid);
   const id = resourceId > 0 ? resourceId : playerId;
@@ -73,15 +73,27 @@ export function scoreRow(row, {
   return nameScore;
 }
 
+const searchCache = new Map();
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+export function clearFutbinSearchCache() {
+  searchCache.clear();
+}
+
 export function queryFutbinPlayersByName(name) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) {
+    return Promise.resolve([]);
+  }
+  const key = normalizePlayerName(cleanName);
+  const cached = searchCache.get(key);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return Promise.resolve(cached.data);
+  }
+
   return new Promise((resolve, reject) => {
     if (typeof GM_xmlhttpRequest !== 'function') {
       reject(new Error('FutBIN oyuncu eşleştirmesi için userscript izni bulunamadı.'));
-      return;
-    }
-    const cleanName = String(name || '').trim();
-    if (!cleanName) {
-      resolve([]);
       return;
     }
     const url = 'https://www.futbin.org/futbin/api/searchPlayersByName?playername=' + encodeURIComponent(cleanName);
@@ -95,7 +107,9 @@ export function queryFutbinPlayersByName(name) {
         }
         try {
           const payload = JSON.parse(response.responseText || '');
-          resolve(Array.isArray(payload?.data) ? payload.data : []);
+          const data = Array.isArray(payload?.data) ? payload.data : [];
+          searchCache.set(key, { data, timestamp: Date.now() });
+          resolve(data);
         } catch (error) {
           reject(error);
         }
@@ -106,13 +120,15 @@ export function queryFutbinPlayersByName(name) {
   });
 }
 
+export async function searchPlayerAllVersions(name) {
+  const rows = await queryFutbinPlayersByName(name);
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const candidates = rows.map(mapCandidate).filter(Boolean);
+  return sortCandidatesByPriceAsc(candidates);
+}
+
 export function fetchFutbinPlayerId(target) {
   return new Promise((resolve, reject) => {
-    if (typeof GM_xmlhttpRequest !== 'function') {
-      reject(new Error('FutBIN oyuncu eşleştirmesi için userscript izni bulunamadı.'));
-      return;
-    }
-
     const targetName = String(target.name || '').trim();
     const wantedName = normalizePlayerName(targetName);
     const wantedFutbinId = String(target.futbinId || '');
@@ -130,7 +146,7 @@ export function fetchFutbinPlayerId(target) {
 
     console.log('[FutRUSH:futbin] Lookup start:', JSON.stringify({ targetName, targetPlayerId, rarityIds, wantsSpecial }));
 
-    const search = (index) => {
+    const search = async (index) => {
       if (index >= searches.length) {
         console.warn('[FutRUSH] FutBIN eşleşme yanıtı:', {
           name: target.name, rating: target.rating, futbinId: target.futbinId, rows: lastRows.slice(0, 8)
@@ -144,39 +160,46 @@ export function fetchFutbinPlayerId(target) {
         return;
       }
 
-      const url = 'https://www.futbin.org/futbin/api/searchPlayersByName?playername=' + encodeURIComponent(searches[index]);
-      GM_xmlhttpRequest({
-        method: 'GET', url, timeout: 15000,
-        headers: { 'Accept': 'application/json, text/plain, */*' },
-        onload: (response) => {
-          if (response.status < 200 || response.status >= 300) {
-            reject(new Error('FutBIN oyuncu eşleştirme isteği başarısız (HTTP ' + response.status + ').'));
-            return;
-          }
-          try {
-            const payload = JSON.parse(response.responseText || '');
-            if (!payload || !Array.isArray(payload.data)) throw new Error('FutBIN API data listesi bulunamadı.');
-            lastRows = payload.data;
-            console.log('[FutRUSH:futbin] API response status:', response.status, 'data length:', payload.data.length, 'wantsSpecial:', wantsSpecial);
+      try {
+        const rows = await queryFutbinPlayersByName(searches[index]);
+        lastRows = rows;
+        console.log('[FutRUSH:futbin] API response data length:', rows.length, 'wantsSpecial:', wantsSpecial);
 
-            if (wantsSpecialRarity) {
-              const matched = filterCandidates(payload.data, {
-                playerId: targetPlayerId,
-                rarityIds,
-                quality: target.quality,
-                wantsSpecial
+        if (wantsSpecialRarity) {
+          const matched = filterCandidates(rows, {
+            playerId: targetPlayerId,
+            rarityIds,
+            quality: target.quality,
+            wantsSpecial
+          });
+          console.log('[FutRUSH:futbin] filterCandidates matched count:', matched.length, 'candidates:', JSON.stringify(matched.map((c) => ({ id: c.futbinId, eaId: c.eaId, rating: c.rating, label: c.versionLabel }))));
+
+          const wantsTotw = rarityIds.includes('3');
+          if (wantsTotw) {
+            if (matched.length > 1) {
+              resolve({
+                status: 'ambiguous',
+                candidates: matched,
+                name: targetName
               });
-              console.log('[FutRUSH:futbin] filterCandidates matched count:', matched.length, 'candidates:', JSON.stringify(matched.map((c) => ({ id: c.futbinId, eaId: c.eaId, rating: c.rating, label: c.versionLabel }))));
-              if (matched.length > 1) {
-                resolve({
-                  status: 'ambiguous',
-                  candidates: matched,
-                  name: targetName
-                });
-                return;
-              }
-              if (matched.length === 1) {
-                const c = matched[0];
+              return;
+            }
+          } else {
+            // TOTW Harici Promo Seçimi
+            if (matched.length === 1) {
+              const c = matched[0];
+              resolve(target.returnDetails ? {
+                status: 'ok',
+                eaId: c.eaId,
+                rating: c.rating,
+                candidate: c
+              } : c.eaId);
+              return;
+            }
+            if (matched.length > 1 && target.rating) {
+              const ratingMatches = matched.filter((c) => Number(c.rating) === Number(target.rating));
+              if (ratingMatches.length === 1) {
+                const c = ratingMatches[0];
                 resolve(target.returnDetails ? {
                   status: 'ok',
                   eaId: c.eaId,
@@ -185,48 +208,73 @@ export function fetchFutbinPlayerId(target) {
                 } : c.eaId);
                 return;
               }
-              search(index + 1);
-              return;
+              if (ratingMatches.length > 1) {
+                resolve({
+                  status: 'ambiguous',
+                  candidates: sortCandidatesByPriceAsc(ratingMatches),
+                  name: targetName
+                });
+                return;
+              }
             }
-
-            const candidates = payload.data
-              .map((row) => ({
-                row,
-                score: scoreRow(row, {
-                  wantedName,
-                  wantedFutbinId,
-                  selectedCardId,
-                  preferStandard,
-                  targetRating: target.rating,
-                  index
-                })
-              }))
-              .filter((entry) => entry.score > 0)
-              .sort((a, b) => b.score - a.score);
-            const candidate = candidates[0]?.row;
-            const eaId = eaIdFrom(candidate?.resource_id) || eaIdFrom(candidate?.playerid);
-            if (!eaId) {
-              search(index + 1);
-              return;
-            }
-            if (!target.rating && Number(candidate.rating) > 0) target.rating = Number(candidate.rating);
-            if (target.returnDetails) {
+            if (matched.length > 1) {
               resolve({
-                status: 'ok',
-                eaId,
-                rating: Number(candidate.rating) || 0,
-                candidate: mapCandidate(candidate)
+                status: 'ambiguous',
+                candidates: sortCandidatesByPriceAsc(matched),
+                name: targetName
               });
               return;
             }
-            resolve(eaId);
-          } catch (error) {
-            reject(error);
           }
-        },
-        onerror: () => reject(new Error('FutBIN oyuncu eşleştirme bağlantısı kurulamadı.')),
-        ontimeout: () => reject(new Error('FutBIN oyuncu eşleştirme isteği zaman aşımına uğradı.'))
-      });
+
+          if (matched.length === 1) {
+            const c = matched[0];
+            resolve(target.returnDetails ? {
+              status: 'ok',
+              eaId: c.eaId,
+              rating: c.rating,
+              candidate: c
+            } : c.eaId);
+            return;
+          }
+          search(index + 1);
+          return;
+        }
+
+        const candidates = rows
+          .map((row) => ({
+            row,
+            score: scoreRow(row, {
+              wantedName,
+              wantedFutbinId,
+              selectedCardId,
+              preferStandard,
+              targetRating: target.rating,
+              index
+            })
+          }))
+          .filter((entry) => entry.score > 0)
+          .sort((a, b) => b.score - a.score);
+        const candidate = candidates[0]?.row;
+        const eaId = eaIdFrom(candidate?.resource_id) || eaIdFrom(candidate?.playerid);
+        if (!eaId) {
+          search(index + 1);
+          return;
+        }
+        if (!target.rating && Number(candidate.rating) > 0) target.rating = Number(candidate.rating);
+        if (target.returnDetails) {
+          resolve({
+            status: 'ok',
+            eaId,
+            rating: Number(candidate.rating) || 0,
+            candidate: mapCandidate(candidate)
+          });
+          return;
+        }
+        resolve(eaId);
+      } catch (error) {
+        reject(error);
+      }
     };
 
     search(0);

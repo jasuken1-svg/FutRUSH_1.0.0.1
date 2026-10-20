@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isHolo, getVersionLabel, mapCandidate, filterCandidates } from '../../src/futbin/candidateMatcher.js';
+import { isHolo, getVersionLabel, mapCandidate, filterCandidates, resolveFutbinImageUrl, sortCandidatesByPriceAsc } from '../../src/futbin/candidateMatcher.js';
 import { scoreRow } from '../../src/futbin/playerLookup.js';
 
 describe('candidateMatcher', () => {
@@ -56,9 +56,41 @@ describe('candidateMatcher', () => {
       expect(getVersionLabel(normalTotwRow)).toBe('TOTW (Standart)');
     });
 
-    it('labels non-TOTW cards as "Standart" or "Özel (Holo)"', () => {
-      expect(getVersionLabel(goldBaseRow)).toBe('Standart');
-      expect(getVersionLabel({ raretype: '18', holographicAnimation: 'path.webp' })).toBe('Özel (Holo)');
+    it('labels non-TOTW cards as "Base" or parsed promo label', () => {
+      expect(getVersionLabel(goldBaseRow)).toBe('Base');
+      expect(getVersionLabel({ raretype: '18', holographicAnimation: 'path.webp' })).toBe('Promo #18 (Holo)');
+      expect(getVersionLabel({ raretype: '44', version: 'Trailblazers' })).toBe('Trailblazers');
+      expect(getVersionLabel({ raretype: '55', cardImage: 'https://cdn3.futbin.com/content/fifa27/img/cards/hd/55_future_stars.png' })).toBe('Future Stars');
+    });
+
+    it('maps candidate with all required fields including images and price', () => {
+      const row = {
+        ID: '1234',
+        playername: 'Test Player',
+        rating: '88',
+        position: 'ST',
+        resource_id: '67123456',
+        playerid: '23456',
+        raretype: '3',
+        image: 'https://cdn.futbin.com/players/p67123456.png',
+        cardImage: 'https://cdn.futbin.com/cards/hd/3_team_of_the_week.png',
+        ps_LCPrice: 50000
+      };
+      const candidate = mapCandidate(row);
+      expect(candidate).toMatchObject({
+        futbinId: '1234',
+        eaId: 67123456,
+        baseId: 23456,
+        name: 'Test Player',
+        rating: 88,
+        position: 'ST',
+        raretype: 3,
+        isHolo: false,
+        versionLabel: 'TOTW (Standart)',
+        playerImageUrl: 'https://cdn.futbin.com/players/p67123456.png',
+        promoImageUrl: 'https://cdn.futbin.com/cards/hd/3_team_of_the_week.png',
+        price: 50000
+      });
     });
   });
 
@@ -119,6 +151,40 @@ describe('candidateMatcher', () => {
 
       expect(scoreNormal).toBeGreaterThan(0);
       expect(scoreHolo).toBe(0);
+    });
+  });
+
+  describe('resolveFutbinImageUrl', () => {
+    it('resolves relative URLs to appropriate absolute domains', () => {
+      expect(resolveFutbinImageUrl('/design2/img/test.png')).toBe('https://www.futbin.org/design2/img/test.png');
+      expect(resolveFutbinImageUrl('/content/fifa27/img/p1.png')).toBe('https://cdn.futbin.com/content/fifa27/img/p1.png');
+      expect(resolveFutbinImageUrl('//cdn.futbin.com/test.png')).toBe('https://cdn.futbin.com/test.png');
+      expect(resolveFutbinImageUrl('https://example.com/pic.png')).toBe('https://example.com/pic.png');
+      expect(resolveFutbinImageUrl('', 'https://fallback.com/f.png')).toBe('https://fallback.com/f.png');
+    });
+  });
+
+  describe('sortCandidatesByPriceAsc', () => {
+    it('sorts candidates in ascending price order, putting zero/unknown prices at the end', () => {
+      const candidates = [
+        { name: 'Card Zero', price: 0, rating: 86 },
+        { name: 'Card High', price: 50000, rating: 88 },
+        { name: 'Card Low', price: 1500, rating: 83 },
+        { name: 'Card Mid', price: 12000, rating: 85 },
+        { name: 'Card Equal Rating High', price: 12000, rating: 87 },
+        { name: 'Card No Price', price: null, rating: 82 }
+      ];
+
+      const sorted = sortCandidatesByPriceAsc(candidates);
+
+      expect(sorted.map((c) => c.name)).toEqual([
+        'Card Low',
+        'Card Mid',
+        'Card Equal Rating High',
+        'Card High',
+        'Card No Price',
+        'Card Zero'
+      ]);
     });
   });
 });
