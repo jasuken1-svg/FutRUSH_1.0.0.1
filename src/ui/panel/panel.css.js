@@ -356,20 +356,22 @@ export const panelCss = `
 
     /* Aday Listesi (Bölüm 2.3) */
     #${P.id} .fr-candidate-selector {
-      flex: 0 0 auto; padding: 8px; border: 1px solid rgba(0,229,255,.35);
-      border-radius: 7px; background: rgba(0,30,50,.65); margin-bottom: 6px;
+      position: absolute; top: 38px; left: 4px; right: 4px; bottom: 44px; z-index: 50;
+      padding: 10px; border: 1px solid #00e5ff; border-radius: 8px;
+      background: rgba(6, 18, 30, 0.98); backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.85); display: flex; flex-direction: column;
     }
     #${P.id} .fr-candidate-header {
       display: flex; align-items: center; justify-content: space-between;
-      color: #00e5ff; font-size: 12px; font-weight: 700; margin-bottom: 6px;
+      color: #00e5ff; font-size: 12px; font-weight: 700; margin-bottom: 6px; flex: 0 0 auto;
     }
     #${P.id} .fr-candidate-cancel {
       border: 0; background: transparent; color: #ff5261;
       font-size: 18px; font-weight: 700; cursor: pointer; padding: 0 4px;
     }
     #${P.id} .fr-candidate-list {
-      display: flex; flex-direction: column; gap: 6px;
-      max-height: 280px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto;
+      min-height: 0; overflow-y: auto;
       scrollbar-width: thin; scrollbar-color: rgba(0,229,255,.3) transparent;
       scrollbar-gutter: stable;
     }
@@ -462,7 +464,7 @@ export const panelCss = `
     #${P.id} .fr-ea-card-name-plate {
       position: absolute; top: var(--card-name-top); left: 10%; right: 10%; height: 9.5%; z-index: 3;
       display: flex; align-items: center; justify-content: center; pointer-events: none;
-      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.68) 20%, rgba(0,0,0,0.68) 80%, transparent);
+      background: none;
       border-radius: 2px;
     }
     #${P.id} .fr-ea-card-name {
@@ -477,7 +479,7 @@ export const panelCss = `
       position: absolute; top: var(--card-stats-top); left: var(--card-stats-inset); right: var(--card-stats-inset); height: 13.5%;
       display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
       justify-items: center; column-gap: 1px; z-index: 3; pointer-events: none;
-      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.55) 15%, rgba(0,0,0,0.55) 85%, transparent);
+      background: none;
       border-radius: 2px;
     }
     #${P.id} .fr-ea-stat-item {
@@ -555,6 +557,89 @@ export const panelCss = `
     /* ==============================================================
        HEDEF LİSTESİ & KARTLARI
        ============================================================== */
+    #${P.id} .fr-target-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 100%;
+      position: relative;
+    }
+    #${P.id} .fc-snipe-tab-content[data-active-tab="targets"] {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    #${P.id} .fr-target-status {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      right: 6px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(10, 25, 40, 0.95);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      animation: fr-status-enter 0.2s ease;
+      pointer-events: auto;
+    }
+    #${P.id} .fr-target-status[hidden] {
+      display: none;
+    }
+    #${P.id} .fr-target-status-exiting {
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+    }
+    #${P.id} .fr-target-status[data-type="success"] {
+      border-color: #51d88a;
+      background: rgba(12, 38, 25, 0.95);
+      color: #b7f5cf;
+    }
+    #${P.id} .fr-target-status[data-type="error"] {
+      border-color: #ff5261;
+      background: rgba(45, 14, 18, 0.95);
+      color: #ffb3ba;
+    }
+    #${P.id} .fr-target-status[data-type="info"] {
+      border-color: #00e5ff;
+      background: rgba(10, 30, 48, 0.95);
+      color: #d0f7ff;
+    }
+    #${P.id} .fr-target-status[data-type="loading"] {
+      border-color: #ffd447;
+      background: rgba(40, 32, 10, 0.95);
+      color: #fff0b3;
+    }
+    #${P.id} .fr-target-status-icon {
+      flex: 0 0 14px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+    #${P.id} .fr-target-status-icon[data-type="loading"] {
+      border: 2px solid rgba(255,212,71,0.25);
+      border-top-color: #ffd447;
+      animation: fr-status-spin 0.8s linear infinite;
+    }
+    #${P.id} .fr-target-status-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    #${P.id} .fr-target-status-message {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     #${P.id} .fr-target-list {
       display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px;
       min-height: 0; overflow-y: auto; overscroll-behavior: contain;
@@ -669,7 +754,7 @@ export const panelCss = `
     }
 
     /* Alt Eylemler */
-    #${P.id} .fr-target-actions { display: flex; flex: 0 0 auto; gap: 8px; padding-top: 2px; }
+    #${P.id} .fr-target-actions { display: flex; flex: 0 0 auto; gap: 8px; margin-top: auto; padding-top: 6px; }
     #${P.id} .fr-target-action {
       flex: 1; min-height: 34px; border: 1px solid transparent; border-radius: 7px;
       color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;

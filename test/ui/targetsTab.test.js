@@ -258,4 +258,23 @@ describe('player target controls', () => {
     expect(card.classList.contains('is-search-inactive')).toBe(false);
     expect(searchToggle.textContent).toContain('Arama: Açık');
   });
+
+  it('renders update prices button with coin icon and keeps action buttons at bottom', () => {
+    state.targets = [
+      { id: 't1', name: 'Rodri', rating: 91, price: 50000, buyNow: 45000, searches: 3 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const updateBtn = content.querySelector('.fr-target-update-prices-btn');
+    expect(updateBtn).not.toBeNull();
+    expect(updateBtn.textContent).toContain('🪙 Güncelle');
+
+    const targetView = content.querySelector('.fr-target-view');
+    expect(targetView).not.toBeNull();
+    const lastChild = targetView.lastElementChild;
+    expect(lastChild.classList.contains('fr-target-actions')).toBe(true);
+    expect(lastChild.querySelector('.fr-target-save')).not.toBeNull();
+    expect(lastChild.querySelector('.fr-target-load')).not.toBeNull();
+  });
 });

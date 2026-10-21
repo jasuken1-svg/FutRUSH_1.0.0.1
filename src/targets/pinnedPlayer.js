@@ -71,7 +71,7 @@ export function commitCandidateTarget(candidate, price) {
     ? CONFIG.targetAdd.discountRate
     : 0.1;
   const defaultBuyNow = futbinPrice > 0
-    ? Math.max(150, roundDownToStep(futbinPrice * (1 - discountRate)))
+    ? Math.max(150, roundDownToStep(Math.round(futbinPrice * 0.95 * (1 - discountRate))))
     : (Number(candidate.raw?.ps_LCPrice) || Number(candidate.raw?.pc_LCPrice) || 10000);
   const finalBuyNow = userPrice > 0 ? userPrice : defaultBuyNow;
   const finalMarketPrice = futbinPrice > 0 ? futbinPrice : finalBuyNow;
@@ -299,6 +299,25 @@ export async function addPinnedPlayerToTargets() {
   }
 
   if (candidate) {
+    if (!candidate.price || candidate.price <= 0) {
+      try {
+        const versions = await searchPlayerAllVersions(name);
+        if (Array.isArray(versions) && versions.length) {
+          const matched = versions.find((v) =>
+            (candidate.futbinId && String(v.futbinId) === String(candidate.futbinId)) ||
+            (candidate.eaId && Number(v.eaId) === Number(candidate.eaId)) ||
+            (Number(v.rating) === Number(candidate.rating) && v.versionLabel === candidate.versionLabel)
+          ) || versions.find((v) => Number(v.rating) === Number(candidate.rating));
+          if (matched && matched.price > 0) {
+            candidate.price = matched.price;
+            if (!candidate.leagueName && matched.leagueName) candidate.leagueName = matched.leagueName;
+            if (!candidate.leagueImageUrl && matched.leagueImageUrl) candidate.leagueImageUrl = matched.leagueImageUrl;
+            if (!candidate.stats && matched.stats) candidate.stats = matched.stats;
+          }
+        }
+      } catch (_) {}
+    }
+
     if (intent.quality) {
       const conflict = validateQualityFilter(candidate.rating, intent.quality);
       if (conflict) {

@@ -159,6 +159,10 @@ export function mergeTargetPlayers(players) {
       if (player.nationImageUrl && !duplicate.nationImageUrl) duplicate.nationImageUrl = player.nationImageUrl;
       if (player.leagueImageUrl && !duplicate.leagueImageUrl) duplicate.leagueImageUrl = player.leagueImageUrl;
       if (player.clubImageUrl && !duplicate.clubImageUrl) duplicate.clubImageUrl = player.clubImageUrl;
+      if (player.leagueName && !duplicate.leagueName) duplicate.leagueName = player.leagueName;
+      if (player.leagueImageFallbacks && !duplicate.leagueImageFallbacks) duplicate.leagueImageFallbacks = player.leagueImageFallbacks;
+      if (player.playstylesPlus && !duplicate.playstylesPlus) duplicate.playstylesPlus = player.playstylesPlus;
+      if (player.priceUpdatedAt && !duplicate.priceUpdatedAt) duplicate.priceUpdatedAt = player.priceUpdatedAt;
       if (player.holographicAnimationUrl && !duplicate.holographicAnimationUrl) duplicate.holographicAnimationUrl = player.holographicAnimationUrl;
       if (player.isHolo) duplicate.isHolo = true;
       return;
@@ -186,6 +190,13 @@ export function mergeTargetPlayers(players) {
       nationImageUrl: player.nationImageUrl || '',
       leagueImageUrl: player.leagueImageUrl || '',
       clubImageUrl: player.clubImageUrl || '',
+      leagueImageFallbacks: Array.isArray(player.leagueImageFallbacks) ? player.leagueImageFallbacks : [],
+      leagueName: player.leagueName || '',
+      playstylesPlus: Array.isArray(player.playstylesPlus) ? player.playstylesPlus : [],
+      priceUpdatedAt: Number(player.priceUpdatedAt) || Date.now(),
+      nationId: Number(player.nationId) || 0,
+      clubId: Number(player.clubId) || 0,
+      leagueId: Number(player.leagueId) || 0,
       raretype: player.raretype != null ? player.raretype : null,
       isHolo: Boolean(player.isHolo)
     });

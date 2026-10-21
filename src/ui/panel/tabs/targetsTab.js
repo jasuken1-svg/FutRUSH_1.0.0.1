@@ -229,8 +229,8 @@ export function renderTargetContent(content) {
   updatePricesBtn.type = 'button';
   updatePricesBtn.className = 'fr-target-update-prices-btn';
   updatePricesBtn.textContent = lastPriceUpdateTime
-    ? `🔄 Fiyat Güncelle (${lastPriceUpdateTime})`
-    : '🔄 Fiyat Güncelle';
+    ? `🪙 Güncelle (${lastPriceUpdateTime})`
+    : '🪙 Güncelle';
   updatePricesBtn.setAttribute('title', 'Tüm hedef oyuncuların FutBIN fiyatlarını güncelle');
 
   updatePricesBtn.addEventListener('click', async () => {
@@ -252,18 +252,57 @@ export function renderTargetContent(content) {
       for (const target of state.targets) {
         const versions = await searchPlayerAllVersions(target.name);
         if (Array.isArray(versions) && versions.length) {
-          const matched = versions.find((v) =>
-            (target.eaId && v.eaId === target.eaId) ||
-            (target.futbinId && String(v.futbinId) === String(target.futbinId)) ||
-            (target.rating && v.rating === target.rating)
-          ) || versions[0];
+          // 1. FutBIN ID eşleşmesi (en kesin)
+          let matched = target.futbinId ? versions.find((v) => String(v.futbinId) === String(target.futbinId)) : null;
+
+          // 2. EA ID eşleşmesi
+          if (!matched && target.eaId) {
+            matched = versions.find((v) => Number(v.eaId) === Number(target.eaId));
+          }
+
+          // 3. Reyting + Versiyon etiketi / nadirlik / Holo eşleşmesi (TOTW/Holo kartı base ile karışamaz)
+          if (!matched && target.rating) {
+            matched = versions.find((v) =>
+              Number(v.rating) === Number(target.rating) &&
+              (
+                (target.raretype != null && v.raretype === target.raretype) ||
+                (target.versionLabel && v.versionLabel === target.versionLabel) ||
+                (Boolean(v.isHolo) === Boolean(target.isHolo))
+              )
+            );
+          }
+
+          // 4. Versiyon etiketi veya Holo durumu eşleşmesi
+          if (!matched && (target.versionLabel || target.isHolo)) {
+            matched = versions.find((v) =>
+              (target.versionLabel && v.versionLabel === target.versionLabel) ||
+              (target.isHolo && v.isHolo)
+            );
+          }
+
+          // 5. Yalnızca standart kartlar için aynı reyting eşleşmesi
+          const isStandardTarget = !target.isHolo && (!target.versionLabel || ['Gold', 'Silver', 'Bronze', 'Base'].includes(target.versionLabel));
+          if (!matched && isStandardTarget && target.rating) {
+            matched = versions.find((v) => Number(v.rating) === Number(target.rating) && !v.isHolo);
+          }
+
+          // 6. Özel kart için hala bulunamadıysa özel kartlar arasından en yakın reytingli olanı seç
+          if (!matched && !isStandardTarget) {
+            matched = versions.find((v) => v.isHolo || (v.versionLabel && !['Gold', 'Silver', 'Bronze', 'Base'].includes(v.versionLabel)));
+          }
+
+          // 7. Son çare (yalnızca standart kartlar için)
+          if (!matched && isStandardTarget) {
+            matched = versions[0];
+          }
+
           if (matched) {
             const oldPrice = Number(target.price) || 0;
             const futbinPrice = Number(matched.price) || 0;
             if (futbinPrice > 0) {
               target.price = futbinPrice;
               target.priceUpdatedAt = Date.now();
-              target.buyNow = Math.max(150, roundDownToStep(futbinPrice * (1 - discountRate)));
+              target.buyNow = Math.max(150, roundDownToStep(Math.round(futbinPrice * 0.95 * (1 - discountRate))));
               target.priceTrend = oldPrice > 0 ? (futbinPrice > oldPrice ? 'up' : (futbinPrice < oldPrice ? 'down' : 'same')) : 'same';
               updatedCount++;
             }
@@ -273,6 +312,9 @@ export function renderTargetContent(content) {
             if (!target.nationImageUrl && matched.nationImageUrl) target.nationImageUrl = matched.nationImageUrl;
             if (!target.clubImageUrl && matched.clubImageUrl) target.clubImageUrl = matched.clubImageUrl;
             if (!target.leagueImageUrl && matched.leagueImageUrl) target.leagueImageUrl = matched.leagueImageUrl;
+            if (!target.leagueName && matched.leagueName) target.leagueName = matched.leagueName;
+            if (!target.leagueImageFallbacks && matched.leagueImageFallbacks) target.leagueImageFallbacks = matched.leagueImageFallbacks;
+            if (!target.playstylesPlus && matched.playstylesPlus) target.playstylesPlus = matched.playstylesPlus;
             if (!target.stats && matched.stats) target.stats = matched.stats;
             if (!target.position && matched.position) target.position = matched.position;
             if (!target.futbinId && matched.futbinId) target.futbinId = matched.futbinId;
