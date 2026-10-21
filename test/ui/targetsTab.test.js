@@ -202,4 +202,60 @@ describe('player target controls', () => {
     const crests = eaCard.querySelectorAll('.fr-ea-crest');
     expect(crests.length).toBe(3);
   });
+
+  it('renders search toggle at top, clean profit, futbin price at bottom, and toggles inactive state', () => {
+    state.targets = [
+      {
+        id: 'target-ux',
+        name: 'Kylian Mbappe',
+        rating: 91,
+        price: 3000000,
+        buyNow: 2500000,
+        searches: 3,
+        searchDisabled: false,
+        priceUpdatedAt: Date.now() - 120000
+      }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const card = content.querySelector('.fr-target-card');
+    expect(card.classList.contains('is-search-inactive')).toBe(false);
+
+    // 2a. Arama butonu ismin üstündeki top-bar içinde
+    const topBar = card.querySelector('.fr-target-card-top');
+    expect(topBar).not.toBeNull();
+    const searchToggle = topBar.querySelector('.fr-target-search-toggle');
+    expect(searchToggle).not.toBeNull();
+    expect(searchToggle.textContent).toContain('Arama: Açık');
+
+    // 2d. Sağ üstte son güncelleme
+    const lastUpdate = topBar.querySelector('.fr-target-last-update');
+    expect(lastUpdate).not.toBeNull();
+    expect(lastUpdate.textContent).toContain('2 dakika önce');
+
+    // 2b. Kâr bilgisi sadece Kâr: +... içerir; (-0.0%) veya FB içermez
+    const profitEl = card.querySelector('.fr-target-profit');
+    expect(profitEl).not.toBeNull();
+    expect(profitEl.textContent).toMatch(/^Kâr:\s*[+-]?[\d.]+/);
+    expect(profitEl.textContent).not.toContain('%');
+    expect(profitEl.textContent).not.toContain('FB');
+
+    // 2c. Sağ en altta FutBIN fiyatı
+    const futbinPrice = card.querySelector('.fr-target-futbin-price');
+    expect(futbinPrice).not.toBeNull();
+    expect(futbinPrice.textContent).toBe('FutBIN: 3.000.000');
+
+    // 2e. Arama kapatılınca karta is-search-inactive sınıfı eklenir
+    searchToggle.click();
+    expect(state.targets[0].searchDisabled).toBe(true);
+    expect(card.classList.contains('is-search-inactive')).toBe(true);
+    expect(searchToggle.textContent).toContain('Arama: Kapalı');
+
+    // Tekrar tıklanınca açılır
+    searchToggle.click();
+    expect(state.targets[0].searchDisabled).toBe(false);
+    expect(card.classList.contains('is-search-inactive')).toBe(false);
+    expect(searchToggle.textContent).toContain('Arama: Açık');
+  });
 });

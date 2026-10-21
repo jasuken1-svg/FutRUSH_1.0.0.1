@@ -106,6 +106,7 @@ export function commitCandidateTarget(candidate, price) {
     leagueImageFallbacks: Array.isArray(candidate.leagueImageFallbacks) ? candidate.leagueImageFallbacks : [],
     leagueName: candidate.leagueName || '',
     playstylesPlus: Array.isArray(candidate.playstylesPlus) ? candidate.playstylesPlus : [],
+    priceUpdatedAt: Date.now(),
     versionKnown: true
   };
 
@@ -162,6 +163,7 @@ export function commitCandidateTarget(candidate, price) {
       duplicate.eaIdTargetKey = targetEaIdKey(duplicate);
       duplicate.buyNow = finalBuyNow;
       duplicate.price = finalMarketPrice;
+      duplicate.priceUpdatedAt = Date.now();
       saveTargets();
       setTargetStatus({
         type: 'success',
@@ -205,6 +207,7 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
           if (!target.futbinId) target.futbinId = matched.futbinId;
           if (!target.versionLabel) target.versionLabel = matched.versionLabel;
           if (!target.price && matched.price) target.price = matched.price;
+          target.priceUpdatedAt = Date.now();
         }
       }
     } catch (e) {}
@@ -324,7 +327,8 @@ export async function addPinnedPlayerToTargets() {
     promoImageUrl,
     leagueImageFallbacks: [],
     leagueName: '',
-    playstylesPlus: []
+    playstylesPlus: [],
+    priceUpdatedAt: Date.now()
   };
   const added = mergeTargetPlayers([{
     ...targetIdentity,

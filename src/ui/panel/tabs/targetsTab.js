@@ -19,6 +19,20 @@ let isHydrating = false;
 let isUpdatingPrices = false;
 let lastPriceUpdateTime = null;
 
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return 'Son güncelleme: —';
+  const diffMs = Date.now() - Number(timestamp);
+  if (diffMs < 0 || isNaN(diffMs)) return 'Son güncelleme: —';
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 45) return 'Son güncelleme: Az önce';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Son güncelleme: ${diffMin} dakika önce`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Son güncelleme: ${diffHours} saat önce`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Son güncelleme: ${diffDays} gün önce`;
+}
+
 function renderStatus(status, targetLoading) {
   const normalized = normalizeTargetStatus(status) || (targetLoading ? {
     type: 'loading',
@@ -248,6 +262,7 @@ export function renderTargetContent(content) {
             const futbinPrice = Number(matched.price) || 0;
             if (futbinPrice > 0) {
               target.price = futbinPrice;
+              target.priceUpdatedAt = Date.now();
               target.buyNow = Math.max(150, roundDownToStep(futbinPrice * (1 - discountRate)));
               target.priceTrend = oldPrice > 0 ? (futbinPrice > oldPrice ? 'up' : (futbinPrice < oldPrice ? 'down' : 'same')) : 'same';
               updatedCount++;
@@ -451,8 +466,12 @@ export function renderTargetContent(content) {
   }
 
   state.targets.forEach((player, index) => {
+    if (!player.priceUpdatedAt) {
+      player.priceUpdatedAt = Date.now();
+    }
+    const isSearchActive = !player.searchDisabled;
     const card = document.createElement('div');
-    card.className = 'fr-target-card';
+    card.className = 'fr-target-card' + (isSearchActive ? '' : ' is-search-inactive');
     card.setAttribute('role', 'listitem');
 
     if (player.playerImageUrl || player.promoImageUrl) {
@@ -463,35 +482,35 @@ export function renderTargetContent(content) {
     const body = document.createElement('div');
     body.className = 'fr-target-card-body';
 
-    const head = document.createElement('div');
-    head.className = 'fr-target-card-head';
-    const info = document.createElement('div');
-    info.className = 'fr-target-info';
-    const name = document.createElement('div');
-    name.className = 'fr-target-name';
-    name.textContent = player.name;
-    const metaLine = document.createElement('div');
-    metaLine.className = 'fr-target-meta-line';
-    const rating = document.createElement('span');
-    rating.className = 'fr-target-rating';
-    rating.textContent = player.rating ? String(player.rating) : '—';
-    metaLine.appendChild(rating);
+    // 1. Üst Satır: Arama Aç/Kapat (solda, ismin üstü) + Son Güncelleme & Silme (sağda)
+    const topBar = document.createElement('div');
+    topBar.className = 'fr-target-card-top';
 
-    const effectiveVersion = player.versionLabel || (player.rating >= 75 ? 'Gold' : player.rating >= 65 ? 'Silver' : player.rating > 0 ? 'Bronze' : 'Base');
-    const badge = document.createElement('span');
-    badge.className = 'fr-target-version-badge';
-    badge.textContent = effectiveVersion;
-    metaLine.appendChild(badge);
+    const searchToggle = document.createElement('button');
+    searchToggle.type = 'button';
+    searchToggle.className = 'fr-target-search-toggle ' + (isSearchActive ? 'is-active' : 'is-inactive');
+    searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${isSearchActive ? 'Açık' : 'Kapalı'}</span>`;
+    searchToggle.setAttribute('title', 'Aramayı Aç/Kapat');
+    searchToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      player.searchDisabled = !player.searchDisabled;
+      saveTargets();
+      const active = !player.searchDisabled;
+      searchToggle.className = 'fr-target-search-toggle ' + (active ? 'is-active' : 'is-inactive');
+      searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
+      card.classList.toggle('is-search-inactive', !active);
+    });
 
-    if (player.leagueName) {
-      const leagueBadge = document.createElement('span');
-      leagueBadge.className = 'fr-target-league-badge';
-      leagueBadge.textContent = player.leagueName;
-      metaLine.appendChild(leagueBadge);
+    const topRight = document.createElement('div');
+    topRight.className = 'fr-target-top-right';
+
+    const lastUpdate = document.createElement('span');
+    lastUpdate.className = 'fr-target-last-update';
+    lastUpdate.textContent = formatRelativeTime(player.priceUpdatedAt);
+    if (player.priceUpdatedAt) {
+      lastUpdate.setAttribute('title', new Date(player.priceUpdatedAt).toLocaleString('tr-TR'));
     }
-    info.append(name, metaLine);
 
-    // Geri Al (Undo) destekli silme butonu (Bölüm 3.7)
     const remove = document.createElement('button');
     remove.className = 'fr-target-remove';
     remove.type = 'button';
@@ -523,9 +542,42 @@ export function renderTargetContent(content) {
       setTimeout(() => toast.remove(), 4500);
     });
 
-    head.append(info, remove);
+    topRight.append(lastUpdate, remove);
+    topBar.append(searchToggle, topRight);
+    body.appendChild(topBar);
+
+    // 2. Başlık ve Bilgiler
+    const head = document.createElement('div');
+    head.className = 'fr-target-card-head';
+    const info = document.createElement('div');
+    info.className = 'fr-target-info';
+    const name = document.createElement('div');
+    name.className = 'fr-target-name';
+    name.textContent = player.name;
+    const metaLine = document.createElement('div');
+    metaLine.className = 'fr-target-meta-line';
+    const rating = document.createElement('span');
+    rating.className = 'fr-target-rating';
+    rating.textContent = player.rating ? String(player.rating) : '—';
+    metaLine.appendChild(rating);
+
+    const effectiveVersion = player.versionLabel || (player.rating >= 75 ? 'Gold' : player.rating >= 65 ? 'Silver' : player.rating > 0 ? 'Bronze' : 'Base');
+    const badge = document.createElement('span');
+    badge.className = 'fr-target-version-badge';
+    badge.textContent = effectiveVersion;
+    metaLine.appendChild(badge);
+
+    if (player.leagueName) {
+      const leagueBadge = document.createElement('span');
+      leagueBadge.className = 'fr-target-league-badge';
+      leagueBadge.textContent = player.leagueName;
+      metaLine.appendChild(leagueBadge);
+    }
+    info.append(name, metaLine);
+    head.appendChild(info);
     body.appendChild(head);
 
+    // 3. Kontroller (Tur Sayısı ve Satın Al)
     const controls = document.createElement('div');
     controls.className = 'fr-target-controls';
     [
@@ -537,26 +589,7 @@ export function renderTargetContent(content) {
       title.className = 'fr-target-control-title';
       title.textContent = control.label;
 
-      let subhead = null;
       if (control.key === 'buyNow') {
-        subhead = document.createElement('div');
-        subhead.className = 'fr-target-subhead';
-
-        const searchToggle = document.createElement('button');
-        searchToggle.type = 'button';
-        const isSearchActive = !player.searchDisabled;
-        searchToggle.className = 'fr-target-search-toggle ' + (isSearchActive ? 'is-active' : 'is-inactive');
-        searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${isSearchActive ? 'Açık' : 'Kapalı'}</span>`;
-        searchToggle.setAttribute('title', 'Aramayı Aç/Kapat');
-        searchToggle.addEventListener('click', (e) => {
-          e.stopPropagation();
-          player.searchDisabled = !player.searchDisabled;
-          saveTargets();
-          const active = !player.searchDisabled;
-          searchToggle.className = 'fr-target-search-toggle ' + (active ? 'is-active' : 'is-inactive');
-          searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
-        });
-
         const profitEl = document.createElement('div');
         profitEl.className = 'fr-target-profit';
         const updateProfit = (val) => {
@@ -565,9 +598,7 @@ export function renderTargetContent(content) {
           if (futbinPrice > 0) {
             const netProfit = Math.round(futbinPrice * 0.95) - currentBuyNow;
             const sign = netProfit > 0 ? '+' : '';
-            const pct = currentBuyNow > 0 ? ((netProfit / currentBuyNow) * 100).toFixed(1) : 0;
-            const trendIcon = player.priceTrend === 'up' ? ' ↑' : (player.priceTrend === 'down' ? ' ↓' : '');
-            profitEl.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}${trendIcon} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
+            profitEl.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
             profitEl.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
           } else {
             profitEl.textContent = 'Kâr: —';
@@ -575,8 +606,7 @@ export function renderTargetContent(content) {
           }
         };
         updateProfit(player.buyNow);
-        subhead.append(searchToggle, profitEl);
-        group.append(subhead, title);
+        group.append(profitEl, title);
       } else {
         group.appendChild(title);
       }
@@ -616,15 +646,14 @@ export function renderTargetContent(content) {
         saveTargets();
         value.value = formatVal(control.key, player[control.key]);
         if (control.key === 'buyNow') {
-          const currentSubheadProfit = group.querySelector('.fr-target-profit');
-          if (currentSubheadProfit) {
+          const currentProfit = card.querySelector('.fr-target-profit');
+          if (currentProfit) {
             const futbinPrice = Number(player.price) || 0;
             if (futbinPrice > 0) {
               const netProfit = Math.round(futbinPrice * 0.95) - player[control.key];
               const sign = netProfit > 0 ? '+' : '';
-              const pct = player[control.key] > 0 ? ((netProfit / player[control.key]) * 100).toFixed(1) : 0;
-              currentSubheadProfit.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
-              currentSubheadProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+              currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
+              currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
             }
           }
         }
@@ -655,15 +684,14 @@ export function renderTargetContent(content) {
         value.value = formatVal(control.key, completedValue);
         saveTargets();
         if (control.key === 'buyNow') {
-          const currentSubheadProfit = group.querySelector('.fr-target-profit');
-          if (currentSubheadProfit) {
+          const currentProfit = card.querySelector('.fr-target-profit');
+          if (currentProfit) {
             const futbinPrice = Number(player.price) || 0;
             if (futbinPrice > 0) {
               const netProfit = Math.round(futbinPrice * 0.95) - completedValue;
               const sign = netProfit > 0 ? '+' : '';
-              const pct = completedValue > 0 ? ((netProfit / completedValue) * 100).toFixed(1) : 0;
-              currentSubheadProfit.innerHTML = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')} <span class="fr-target-profit-meta">(${pct}%) · FB ${futbinPrice.toLocaleString('tr-TR')}</span>`;
-              currentSubheadProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+              currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
+              currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
             }
           }
         }
@@ -676,8 +704,18 @@ export function renderTargetContent(content) {
       controls.appendChild(group);
     });
     body.appendChild(controls);
-    card.appendChild(body);
 
+    // 4. Alt Bilgi: FutBIN Fiyatı (sağ en alt, 9px)
+    const bottomBar = document.createElement('div');
+    bottomBar.className = 'fr-target-card-bottom';
+    const futbinPriceEl = document.createElement('span');
+    futbinPriceEl.className = 'fr-target-futbin-price';
+    const fbVal = Number(player.price) || 0;
+    futbinPriceEl.textContent = fbVal > 0 ? `FutBIN: ${fbVal.toLocaleString('tr-TR')}` : 'FutBIN: —';
+    bottomBar.appendChild(futbinPriceEl);
+    body.appendChild(bottomBar);
+
+    card.appendChild(body);
     list.appendChild(card);
   });
 

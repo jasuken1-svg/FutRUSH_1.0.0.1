@@ -468,7 +468,7 @@ export const panelCss = `
     #${P.id} .fr-ea-card-name {
       font-size: var(--card-name-size); font-weight: var(--card-name-weight); text-transform: uppercase; color: #fff;
       font-family: var(--card-name-font, var(--card-font));
-      text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.2px; padding: 0 2px;
+      text-shadow: none; letter-spacing: -0.2px; padding: 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
 
@@ -488,12 +488,12 @@ export const panelCss = `
       display: var(--card-stat-lbl-display, flex);
       font-size: var(--card-stat-lbl-size); font-weight: var(--card-stat-lbl-weight); letter-spacing: -0.3px; color: #dbe7f0; line-height: 1;
       font-family: var(--card-stat-font, var(--card-font));
-      text-shadow: 0 1px 1px #000;
+      text-shadow: none;
     }
     #${P.id} .fr-ea-stat-val {
       font-size: var(--card-stat-val-size); font-weight: var(--card-stat-val-weight); color: #fff; line-height: 1.05;
       font-family: var(--card-stat-font, var(--card-font));
-      text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums;
+      text-shadow: none; font-variant-numeric: tabular-nums;
     }
     @container (max-width: 75px) {
       #${P.id} .fr-ea-stat-lbl { display: none; }
@@ -564,11 +564,25 @@ export const panelCss = `
     #${P.id} .fr-target-empty { margin: auto; color: #90a2ad; font-size: 12px; text-align: center; }
 
     #${P.id} .fr-target-card {
-      display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
-      padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(4,12,22,.48);
+      display: flex; align-items: stretch; gap: 10px; flex: 0 0 auto;
+      padding: 8px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(4,12,22,.48);
+      position: relative; transition: filter 0.2s ease, opacity 0.2s ease;
+    }
+    #${P.id} .fr-target-card.is-search-inactive {
+      opacity: 0.55;
+      filter: grayscale(0.85);
     }
     #${P.id} .fr-target-card-body {
-      display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 8px;
+      display: flex; flex-direction: column; justify-content: space-between; flex: 1; min-width: 0; gap: 6px;
+    }
+    #${P.id} .fr-target-card-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    }
+    #${P.id} .fr-target-top-right {
+      display: flex; align-items: center; gap: 8px;
+    }
+    #${P.id} .fr-target-last-update {
+      font-size: 9px; color: #8da2ae; white-space: nowrap; font-variant-numeric: tabular-nums;
     }
     #${P.id} .fr-target-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
     #${P.id} .fr-target-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -577,20 +591,20 @@ export const panelCss = `
     #${P.id} .fr-target-rating { color: #c8d7df; font-size: 11px; font-weight: 700; }
     #${P.id} .fr-target-version-badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
     #${P.id} .fr-target-league-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,.08); color: #c8d7df; }
-    #${P.id} .fr-target-remove { flex: 0 0 20px; width: 20px; height: 20px; margin: -3px -3px 0 0; padding: 0; border: 0; color: #ff5261; background: transparent; font: 700 18px/20px Arial,sans-serif; cursor: pointer; }
+    #${P.id} .fr-target-remove {
+      flex: 0 0 18px; width: 18px; height: 18px; margin: 0; padding: 0; border: 0;
+      color: #ff5261; background: transparent; font: 700 16px/18px Arial,sans-serif; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #${P.id} .fr-target-remove:hover { color: #ff7582; }
 
     #${P.id} .fr-target-controls {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: flex-end;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: flex-end;
     }
     #${P.id} .fr-target-controls > div {
       display: flex; flex-direction: column; justify-content: flex-end;
     }
 
-    /* Subhead: "Arama: Açık" rozeti ve "Kâr" tek flex satırında (Bölüm 1.1) */
-    #${P.id} .fr-target-subhead {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 4px; width: 100%;
-    }
     #${P.id} .fr-target-search-toggle {
       display: inline-flex; align-items: center; justify-content: center; gap: 3px;
       margin: 0; padding: 1px 6px; border-radius: 4px;
@@ -620,26 +634,25 @@ export const panelCss = `
 
     #${P.id} .fr-target-profit {
       font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
-      margin: 0; line-height: 1.2; text-align: right; white-space: nowrap;
+      margin-bottom: 2px; line-height: 1.2; text-align: center; white-space: nowrap;
     }
     #${P.id} .fr-target-profit.is-profit { color: #51d88a; }
     #${P.id} .fr-target-profit.is-loss { color: #ff5261; }
-    #${P.id} .fr-target-profit-meta { font-size: 10px; opacity: 0.8; font-weight: 500; margin-left: 3px; }
 
     #${P.id} .fr-target-control-title {
       margin-bottom: 3px; color: #aebfc8; font-size: 11px; font-weight: 700;
       letter-spacing: .04em; text-align: center; text-transform: uppercase;
     }
-    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 6px; }
-    #${P.id} .fr-target-counter-editable { gap: 6px; }
+    #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 5px; }
+    #${P.id} .fr-target-counter-editable { gap: 5px; }
     #${P.id} .fr-target-counter button {
-      width: 24px; height: 24px; padding: 0; border: 1px solid rgba(255,255,255,.2);
+      flex: 0 0 22px; width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2);
       border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08);
-      font-size: 15px; line-height: 1; cursor: pointer; user-select: none;
+      font-size: 14px; line-height: 1; cursor: pointer; user-select: none;
     }
     #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }
     #${P.id} .fr-target-counter-input {
-      box-sizing: border-box; flex: 0 0 10ch; width: 10ch; min-width: 0; height: 24px;
+      box-sizing: border-box; flex: 1 1 auto; width: 100%; max-width: 9ch; min-width: 44px; height: 22px;
       padding: 2px 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 4px;
       color: #00e5ff; background: rgba(255,255,255,.05); font: inherit; font-size: 12px;
       font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield;
@@ -647,6 +660,13 @@ export const panelCss = `
     #${P.id} .fr-target-counter-input::-webkit-inner-spin-button,
     #${P.id} .fr-target-counter-input::-webkit-outer-spin-button { margin: 0; appearance: none; }
     #${P.id} .fr-target-counter-input:focus { outline: 1px solid rgba(0,229,255,.7); }
+
+    #${P.id} .fr-target-card-bottom {
+      display: flex; justify-content: flex-end; width: 100%; margin-top: 2px;
+    }
+    #${P.id} .fr-target-futbin-price {
+      font-size: 9px; color: #8da2ae; font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
 
     /* Alt Eylemler */
     #${P.id} .fr-target-actions { display: flex; flex: 0 0 auto; gap: 8px; padding-top: 2px; }
