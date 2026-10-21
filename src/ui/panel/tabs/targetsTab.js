@@ -293,26 +293,33 @@ export function renderTargetContent(content) {
   targetView.insertBefore(searchBox, list);
 
   // Üstte Özet Çubuğu (Bölüm 3.4)
-  if (state.targets.length > 0) {
-    const summaryBar = document.createElement('div');
-    summaryBar.className = 'fr-target-summary-bar';
-    const totalCount = state.targets.length;
+  let summaryBar = null;
+  const updateSummaryBar = () => {
+    if (!summaryBar) return;
+    let totalTargetCards = 0;
     let totalCoinsNeeded = 0;
     let totalEstProfit = 0;
     state.targets.forEach((t) => {
       const buy = Number(t.buyNow) || 0;
-      const searches = Number(t.searches) || 1;
+      const searches = Math.max(1, Math.round(Number(t.searches) || 1));
       const fbPrice = Number(t.price) || 0;
+      totalTargetCards += searches;
       totalCoinsNeeded += buy * searches;
       if (fbPrice > 0) {
         totalEstProfit += (Math.round(fbPrice * 0.95) - buy) * searches;
       }
     });
     summaryBar.innerHTML = `
-      <span class="fr-summary-item">Hedef: <strong class="fr-summary-val">${totalCount}</strong></span>
+      <span class="fr-summary-item">Hedef: <strong class="fr-summary-val">${totalTargetCards}</strong></span>
       <span class="fr-summary-item">Gereken: <strong class="fr-summary-val">${totalCoinsNeeded.toLocaleString('tr-TR')}</strong></span>
       <span class="fr-summary-item">Tahmini Kâr: <strong class="fr-summary-val fr-summary-profit">${totalEstProfit > 0 ? '+' : ''}${totalEstProfit.toLocaleString('tr-TR')}</strong></span>
     `;
+  };
+
+  if (state.targets.length > 0) {
+    summaryBar = document.createElement('div');
+    summaryBar.className = 'fr-target-summary-bar';
+    updateSummaryBar();
     targetView.insertBefore(summaryBar, list);
   }
 
@@ -459,6 +466,7 @@ export function renderTargetContent(content) {
       const [deletedPlayer] = state.targets.splice(index, 1);
       saveTargets();
       emit('targets:changed');
+      updateSummaryBar();
 
       addMarketLog({
         text: `${deletedPlayer.name} hedeflerden silindi.`,
@@ -597,6 +605,7 @@ export function renderTargetContent(content) {
             }
           }
         }
+        updateSummaryBar();
       };
 
       value.addEventListener('keydown', (e) => {
@@ -606,6 +615,27 @@ export function renderTargetContent(content) {
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
           change(-1, e.shiftKey ? 10 : 1);
+        }
+      });
+
+      value.addEventListener('input', () => {
+        const entered = parseVal(control.key, value.value);
+        if (Number.isSafeInteger(entered) && entered >= control.min) {
+          player[control.key] = entered;
+          saveTargets();
+          if (control.key === 'buyNow') {
+            const currentProfit = card.querySelector('.fr-target-profit');
+            if (currentProfit) {
+              const futbinPrice = Number(player.price) || 0;
+              if (futbinPrice > 0) {
+                const netProfit = Math.round(futbinPrice * 0.95) - entered;
+                const sign = netProfit > 0 ? '+' : '';
+                currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
+                currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
+              }
+            }
+          }
+          updateSummaryBar();
         }
       });
 
@@ -635,6 +665,7 @@ export function renderTargetContent(content) {
             }
           }
         }
+        updateSummaryBar();
       });
 
       attachHoldRepeat(minus, (e) => change(-1, e?.shiftKey ? 10 : 1));

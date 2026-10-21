@@ -277,4 +277,41 @@ describe('player target controls', () => {
     expect(lastChild.querySelector('.fr-target-save')).not.toBeNull();
     expect(lastChild.querySelector('.fr-target-load')).not.toBeNull();
   });
+
+  it('calculates total target cards in summary bar as sum of searches and updates in real time', () => {
+    state.targets = [
+      { id: 'p1', name: 'Player 1', rating: 90, price: 10000, buyNow: 8500, searches: 2 },
+      { id: 'p2', name: 'Player 2', rating: 91, price: 20000, buyNow: 18000, searches: 2 },
+      { id: 'p3', name: 'Player 3', rating: 92, price: 30000, buyNow: 27000, searches: 2 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const summaryBar = content.querySelector('.fr-target-summary-bar');
+    expect(summaryBar).not.toBeNull();
+
+    const summaryVals = summaryBar.querySelectorAll('.fr-summary-val');
+    // Hedef: 2 + 2 + 2 = 6
+    expect(summaryVals[0].textContent).toBe('6');
+    // Gereken: 8500*2 + 18000*2 + 27000*2 = 17000 + 36000 + 54000 = 107.000
+    expect(summaryVals[1].textContent).toBe('107.000');
+
+    // First card: change searches from 2 to 3
+    const firstCard = content.querySelectorAll('.fr-target-card')[0];
+    const searchPlus = firstCard.querySelector('[aria-label="TUR SAYISI artır"]');
+    searchPlus.click();
+
+    expect(state.targets[0].searches).toBe(3);
+    // Real-time update in summary bar without clicking "Güncelle 💰"
+    expect(summaryBar.querySelectorAll('.fr-summary-val')[0].textContent).toBe('7');
+
+    // Change buyNow on second card
+    const secondCard = content.querySelectorAll('.fr-target-card')[1];
+    const buyNowPlus = secondCard.querySelector('[aria-label="SATIN AL artır"]');
+    buyNowPlus.click(); // 18000 + 250 = 18250
+
+    expect(state.targets[1].buyNow).toBe(18250);
+    // Gereken should update in real time: 8500*3 + 18250*2 + 27000*2 = 25500 + 36500 + 54000 = 116.000
+    expect(summaryBar.querySelectorAll('.fr-summary-val')[1].textContent).toBe('116.000');
+  });
 });
