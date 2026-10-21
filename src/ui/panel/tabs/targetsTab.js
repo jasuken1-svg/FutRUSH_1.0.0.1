@@ -13,11 +13,11 @@ import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/pl
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { roundDownToStep } from '../../../ea/priceSteps.js';
+import { addMarketLog } from '../../marketLogBox.js';
 
 let statusRemovalTimer = null;
 let isHydrating = false;
 let isUpdatingPrices = false;
-let lastPriceUpdateTime = null;
 
 function formatRelativeTime(timestamp) {
   if (!timestamp) return 'Son güncelleme: —';
@@ -52,7 +52,7 @@ function cancelStatusRemoval(statusElement) {
 function attachHoldRepeat(button, onTrigger) {
   let timer = null;
   let interval = null;
-  let isHolding = false;
+  let didTriggerOnDown = false;
 
   const stop = () => {
     if (timer) {
@@ -63,19 +63,22 @@ function attachHoldRepeat(button, onTrigger) {
       clearInterval(interval);
       interval = null;
     }
-    setTimeout(() => { isHolding = false; }, 0);
+    setTimeout(() => {
+      didTriggerOnDown = false;
+    }, 50);
   };
 
   const start = (e) => {
     if (e.type === 'mousedown' && e.button !== 0) return;
-    isHolding = true;
-    stop();
+    didTriggerOnDown = true;
+    if (timer) clearTimeout(timer);
+    if (interval) clearInterval(interval);
     onTrigger(e);
     timer = setTimeout(() => {
       interval = setInterval(() => {
         onTrigger(e);
       }, 70);
-    }, 350);
+    }, 1000);
   };
 
   button.addEventListener('mousedown', start);
@@ -87,7 +90,7 @@ function attachHoldRepeat(button, onTrigger) {
 
   button.addEventListener('click', (e) => {
     e.preventDefault();
-    if (!isHolding) {
+    if (!didTriggerOnDown) {
       onTrigger(e);
     }
   });
@@ -228,9 +231,7 @@ export function renderTargetContent(content) {
   const updatePricesBtn = document.createElement('button');
   updatePricesBtn.type = 'button';
   updatePricesBtn.className = 'fr-target-update-prices-btn';
-  updatePricesBtn.textContent = lastPriceUpdateTime
-    ? `🪙 Güncelle (${lastPriceUpdateTime})`
-    : '🪙 Güncelle';
+  updatePricesBtn.textContent = 'Güncelle 💰';
   updatePricesBtn.setAttribute('title', 'Tüm hedef oyuncuların FutBIN fiyatlarını güncelle');
 
   updatePricesBtn.addEventListener('click', async () => {
@@ -322,7 +323,6 @@ export function renderTargetContent(content) {
           }
         }
       }
-      lastPriceUpdateTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       saveTargets();
       setTargetStatus({ type: 'success', message: `${updatedCount} oyuncunun fiyatı ve SATIN AL hedefleri kâr marjına göre güncellendi.` });
     } catch (err) {
@@ -563,25 +563,14 @@ export function renderTargetContent(content) {
       saveTargets();
       renderTargetContent(content);
 
-      const existingToast = document.querySelector('.fr-undo-toast');
-      if (existingToast) existingToast.remove();
-
-      const toast = document.createElement('div');
-      toast.className = 'fr-undo-toast';
-      toast.innerHTML = `<span>${deletedPlayer.name} silindi.</span>`;
-      const undoBtn = document.createElement('button');
-      undoBtn.type = 'button';
-      undoBtn.className = 'fr-undo-btn';
-      undoBtn.textContent = 'Geri Al';
-      undoBtn.addEventListener('click', () => {
-        state.targets.splice(index, 0, deletedPlayer);
-        saveTargets();
-        toast.remove();
-        renderTargetContent(content);
+      addMarketLog({
+        text: `${deletedPlayer.name} hedeflerden silindi.`,
+        undoAction: () => {
+          state.targets.splice(index, 0, deletedPlayer);
+          saveTargets();
+          renderTargetContent(content);
+        }
       });
-      toast.appendChild(undoBtn);
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 4500);
     });
 
     topRight.append(lastUpdate, remove);

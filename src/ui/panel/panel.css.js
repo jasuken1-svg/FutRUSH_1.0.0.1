@@ -443,11 +443,11 @@ export const panelCss = `
     }
     #${P.id} .fr-ea-card-rating {
       position: static; top: auto; left: auto;
-      font-size: var(--card-rating-size); line-height: 0.95; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; letter-spacing: -0.3px;
+      font-size: var(--card-rating-size); line-height: 0.95; font-weight: 900; color: #000; text-shadow: none; letter-spacing: -0.3px;
     }
     #${P.id} .fr-ea-card-pos {
       position: static; top: auto; left: auto;
-      font-size: var(--card-pos-size); font-weight: 800; color: #e0e9f0; text-shadow: 0 1px 2px #000; margin-top: 1px;
+      font-size: var(--card-pos-size); font-weight: 800; color: #000; text-shadow: none; margin-top: 1px;
     }
 
     /* 2. Oyuncu Portresi */
@@ -468,7 +468,7 @@ export const panelCss = `
       border-radius: 2px;
     }
     #${P.id} .fr-ea-card-name {
-      font-size: var(--card-name-size); font-weight: var(--card-name-weight); text-transform: uppercase; color: #fff;
+      font-size: var(--card-name-size); font-weight: var(--card-name-weight); text-transform: uppercase; color: #000;
       font-family: var(--card-name-font, var(--card-font));
       text-shadow: none; letter-spacing: -0.2px; padding: 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
@@ -488,12 +488,12 @@ export const panelCss = `
     }
     #${P.id} .fr-ea-stat-lbl {
       display: var(--card-stat-lbl-display, flex);
-      font-size: var(--card-stat-lbl-size); font-weight: var(--card-stat-lbl-weight); letter-spacing: -0.3px; color: #dbe7f0; line-height: 1;
+      font-size: var(--card-stat-lbl-size); font-weight: var(--card-stat-lbl-weight); letter-spacing: -0.3px; color: #000; line-height: 1;
       font-family: var(--card-stat-font, var(--card-font));
       text-shadow: none;
     }
     #${P.id} .fr-ea-stat-val {
-      font-size: var(--card-stat-val-size); font-weight: var(--card-stat-val-weight); color: #fff; line-height: 1.05;
+      font-size: var(--card-stat-val-size); font-weight: var(--card-stat-val-weight); color: #000; line-height: 1.05;
       font-family: var(--card-stat-font, var(--card-font));
       text-shadow: none; font-variant-numeric: tabular-nums;
     }

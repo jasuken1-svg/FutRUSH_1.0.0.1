@@ -110,6 +110,7 @@ describe('addPinnedPlayerToTargets', () => {
     expect(fetchFutbinPlayerId).toHaveBeenCalledWith({
       name: 'Player One',
       rating: 88,
+      returnDetails: true,
       selectedCardId: 22770
     });
     expect(mergeTargetPlayers).toHaveBeenCalledWith([expect.objectContaining({
@@ -144,6 +145,7 @@ describe('addPinnedPlayerToTargets', () => {
     expect(lookupArguments).toEqual([{
       name: 'Player One',
       rating: 0,
+      returnDetails: true,
       selectedCardId: 0
     }]);
     expect(mergeTargetPlayers).toHaveBeenCalledWith([expect.objectContaining({

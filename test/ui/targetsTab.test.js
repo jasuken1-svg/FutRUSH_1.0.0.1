@@ -268,7 +268,7 @@ describe('player target controls', () => {
 
     const updateBtn = content.querySelector('.fr-target-update-prices-btn');
     expect(updateBtn).not.toBeNull();
-    expect(updateBtn.textContent).toContain('🪙 Güncelle');
+    expect(updateBtn.textContent).toContain('Güncelle 💰');
 
     const targetView = content.querySelector('.fr-target-view');
     expect(targetView).not.toBeNull();

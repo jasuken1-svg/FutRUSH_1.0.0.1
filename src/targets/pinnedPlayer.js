@@ -253,10 +253,10 @@ export async function addPinnedPlayerToTargets() {
   if (intent.quality) {
     lookupTarget.quality = intent.quality;
   }
+  lookupTarget.returnDetails = true;
   if (wantsSpecial) {
     lookupTarget.wantsSpecial = true;
     lookupTarget.rarityIds = intent.rarityIds;
-    lookupTarget.returnDetails = true;
   }
 
   console.log('[FutRUSH] Hedef ekleme intent: ' + JSON.stringify({ name, price, playerId: lookupTarget.playerId, rarityIds: lookupTarget.rarityIds, quality: intent.quality }));
@@ -299,7 +299,7 @@ export async function addPinnedPlayerToTargets() {
   }
 
   if (candidate) {
-    if (!candidate.price || candidate.price <= 0) {
+    if (!candidate.price || candidate.price <= 0 || !candidate.leagueImageUrl || !candidate.leagueName || !candidate.stats) {
       try {
         const versions = await searchPlayerAllVersions(name);
         if (Array.isArray(versions) && versions.length) {
@@ -307,12 +307,21 @@ export async function addPinnedPlayerToTargets() {
             (candidate.futbinId && String(v.futbinId) === String(candidate.futbinId)) ||
             (candidate.eaId && Number(v.eaId) === Number(candidate.eaId)) ||
             (Number(v.rating) === Number(candidate.rating) && v.versionLabel === candidate.versionLabel)
-          ) || versions.find((v) => Number(v.rating) === Number(candidate.rating));
-          if (matched && matched.price > 0) {
-            candidate.price = matched.price;
+          ) || versions.find((v) => Number(v.rating) === Number(candidate.rating)) || versions[0];
+          if (matched) {
+            if (!candidate.price && matched.price > 0) candidate.price = matched.price;
             if (!candidate.leagueName && matched.leagueName) candidate.leagueName = matched.leagueName;
             if (!candidate.leagueImageUrl && matched.leagueImageUrl) candidate.leagueImageUrl = matched.leagueImageUrl;
+            if ((!candidate.leagueImageFallbacks || !candidate.leagueImageFallbacks.length) && matched.leagueImageFallbacks) {
+              candidate.leagueImageFallbacks = matched.leagueImageFallbacks;
+            }
+            if (!candidate.clubImageUrl && matched.clubImageUrl) candidate.clubImageUrl = matched.clubImageUrl;
+            if (!candidate.nationImageUrl && matched.nationImageUrl) candidate.nationImageUrl = matched.nationImageUrl;
             if (!candidate.stats && matched.stats) candidate.stats = matched.stats;
+            if (!candidate.playerImageUrl && matched.playerImageUrl) candidate.playerImageUrl = matched.playerImageUrl;
+            if (!candidate.promoImageUrl && matched.promoImageUrl) candidate.promoImageUrl = matched.promoImageUrl;
+            if (!candidate.futbinId && matched.futbinId) candidate.futbinId = matched.futbinId;
+            if (!candidate.position && matched.position) candidate.position = matched.position;
           }
         }
       } catch (_) {}
