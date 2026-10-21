@@ -390,7 +390,7 @@ export function renderTargetContent(content) {
       selectBtn.className = 'fr-candidate-btn';
       selectBtn.textContent = 'Bu kartı ekle';
       selectBtn.addEventListener('click', () => {
-        commitCandidateTarget(candidate, candidate.price || state.pendingCandidates.price);
+        commitCandidateTarget(candidate);
         renderTargetContent(content);
       });
 

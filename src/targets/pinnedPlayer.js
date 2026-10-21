@@ -13,7 +13,7 @@ import { findDuplicateTarget, mergeTargetPlayers, targetEaIdKey } from './target
 import { saveTargets } from './targetStore.js';
 import { setTargetStatus } from './targetStatus.js';
 import { CONFIG } from '../core/config.js';
-import { roundDownToStep } from '../ea/priceSteps.js';
+import { MIN_PRICE, roundDownToStep } from '../ea/priceSteps.js';
 
 export function selectedPinnedPlayer() {
   const pinned = Array.from(document.querySelectorAll('.ut-pinned-list')).find(visibleElement);
@@ -71,10 +71,10 @@ export function commitCandidateTarget(candidate, price) {
     ? CONFIG.targetAdd.discountRate
     : 0.1;
   const defaultBuyNow = futbinPrice > 0
-    ? Math.max(150, roundDownToStep(Math.round(futbinPrice * 0.95 * (1 - discountRate))))
+    ? Math.max(MIN_PRICE, roundDownToStep(Math.round(futbinPrice * 0.95 * (1 - discountRate))))
     : (Number(candidate.raw?.ps_LCPrice) || Number(candidate.raw?.pc_LCPrice) || 10000);
-  const finalBuyNow = userPrice > 0 ? userPrice : defaultBuyNow;
-  const finalMarketPrice = futbinPrice > 0 ? futbinPrice : finalBuyNow;
+  const finalBuyNow = (userPrice > 0 && userPrice !== futbinPrice) ? userPrice : defaultBuyNow;
+  const finalMarketPrice = futbinPrice > 0 ? futbinPrice : (userPrice > 0 ? userPrice : finalBuyNow);
   const versionLabel = candidate.versionLabel && candidate.versionLabel !== 'Base'
     ? candidate.versionLabel
     : (rating >= 75 ? 'Gold' : rating >= 65 ? 'Silver' : rating > 0 ? 'Bronze' : (candidate.versionLabel || 'Base'));

@@ -431,7 +431,7 @@ export const panelCss = `
       position: relative; user-select: none; display: flex; flex-direction: column;
       align-items: center; justify-content: flex-start; border-radius: 6px; overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,.5); flex-shrink: 0; background: rgba(0,0,0,.25);
-      container-type: inline-size; width: var(--card-w); height: var(--card-h); flex: 0 0 var(--card-w);
+      container-type: inline-size; width: 105px !important; height: 152.7px !important; flex: 0 0 105px !important;
       font-family: var(--card-font);
     }
     #${P.id} .fr-ea-card-preview {
@@ -456,46 +456,46 @@ export const panelCss = `
     }
 
     /* 1. Sol Üst: Reyting & Mevki */
-    #${P.id} .fr-ea-card-top-left {
-      position: absolute; top: var(--card-rating-top); left: var(--card-rating-left);
+    #${P.id} .fr-ea-card .fr-ea-card-top-left {
+      position: absolute; top: 23% !important; left: 12% !important;
       display: flex; flex-direction: column; align-items: center; z-index: 4; line-height: 0.95; pointer-events: none;
     }
-    #${P.id} .fr-ea-card-rating {
-      position: static; top: auto; left: auto;
-      font-size: var(--card-rating-size); line-height: 0.95; font-weight: 900; color: #000; text-shadow: none; letter-spacing: -0.3px;
+    #${P.id} .fr-ea-card .fr-ea-card-rating {
+      position: static !important; top: auto !important; left: auto !important;
+      font-size: 15cqw !important; line-height: 0.95; font-weight: 900; color: #fff !important; text-shadow: none; letter-spacing: -0.3px;
     }
-    #${P.id} .fr-ea-card-pos {
-      position: static; top: auto; left: auto;
-      font-size: var(--card-pos-size); font-weight: 800; color: #000; text-shadow: none; margin-top: 1px;
+    #${P.id} .fr-ea-card .fr-ea-card-pos {
+      position: static !important; top: auto !important; left: auto !important;
+      font-size: 7.5cqw !important; font-weight: 800; color: #e0e9f0 !important; text-shadow: none; margin-top: 1px;
     }
 
     /* 2. Oyuncu Portresi */
-    #${P.id} .fr-ea-card-player-img {
-      position: absolute; top: var(--card-photo-top); right: var(--card-photo-right);
-      width: var(--card-photo-w); height: var(--card-photo-h); object-fit: contain; object-position: center top;
-      transform: translateY(var(--card-photo-shift)) scale(var(--card-photo-scale));
-      transform-origin: center top;
+    #${P.id} .fr-ea-card .fr-ea-card-player-img {
+      position: absolute; top: 26% !important; right: 19% !important;
+      width: 58.5% !important; height: 58% !important; object-fit: contain; object-position: center top !important;
+      transform: translateY(-10%) scale(1.07) !important;
+      transform-origin: center top !important;
       z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
       border-radius: 0; background: transparent; margin: 0; flex: none;
     }
 
     /* 3. İsim Şeridi */
-    #${P.id} .fr-ea-card-name-plate {
-      position: absolute; top: var(--card-name-top); left: 10%; right: 10%; height: 9.5%; z-index: 3;
+    #${P.id} .fr-ea-card .fr-ea-card-name-plate {
+      position: absolute; top: 62.5% !important; left: 10%; right: 10%; height: 9.5%; z-index: 3;
       display: flex; align-items: center; justify-content: center; pointer-events: none;
       background: none;
       border-radius: 2px;
     }
-    #${P.id} .fr-ea-card-name {
-      font-size: var(--card-name-size); font-weight: var(--card-name-weight); text-transform: uppercase; color: #000;
+    #${P.id} .fr-ea-card .fr-ea-card-name {
+      font-size: 8.5cqw !important; font-weight: 100 !important; text-transform: uppercase; color: #000;
       font-family: var(--card-name-font, var(--card-font));
       text-shadow: none; letter-spacing: -0.2px; padding: 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
 
     /* 4. 6 İstatistik Strip (Tek Satır 6 Sütun) */
-    #${P.id} .fr-ea-card-stats-grid {
-      position: absolute; top: var(--card-stats-top); left: var(--card-stats-inset); right: var(--card-stats-inset); height: 13.5%;
+    #${P.id} .fr-ea-card .fr-ea-card-stats-grid {
+      position: absolute; top: 69% !important; left: 14.5% !important; right: 14.5% !important; height: 13.5%;
       display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
       justify-items: center; column-gap: 1px; z-index: 3; pointer-events: none;
       background: none;
@@ -505,14 +505,14 @@ export const panelCss = `
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       line-height: 1; min-width: 0;
     }
-    #${P.id} .fr-ea-stat-lbl {
+    #${P.id} .fr-ea-card .fr-ea-stat-lbl {
       display: var(--card-stat-lbl-display, flex);
-      font-size: var(--card-stat-lbl-size); font-weight: var(--card-stat-lbl-weight); letter-spacing: -0.3px; color: #000; line-height: 1;
+      font-size: 6.5cqw !important; font-weight: 100 !important; letter-spacing: -0.3px; color: #000; line-height: 1;
       font-family: var(--card-stat-font, var(--card-font));
       text-shadow: none;
     }
-    #${P.id} .fr-ea-stat-val {
-      font-size: var(--card-stat-val-size); font-weight: var(--card-stat-val-weight); color: #000; line-height: 1.05;
+    #${P.id} .fr-ea-card .fr-ea-stat-val {
+      font-size: 6.5cqw !important; font-weight: 100 !important; color: #000; line-height: 1.05;
       font-family: var(--card-stat-font, var(--card-font));
       text-shadow: none; font-variant-numeric: tabular-nums;
     }
@@ -529,36 +529,36 @@ export const panelCss = `
     }
 
     /* 5. Alt Armalar (Ülke, Lig, Kulüp) */
-    #${P.id} .fr-ea-card-bottom-crests {
-      position: absolute; top: var(--card-crest-top); bottom: auto; height: 9.5%; left: var(--card-crest-inset); right: var(--card-crest-inset);
-      display: flex; align-items: center; justify-content: center; gap: var(--card-crest-gap);
+    #${P.id} .fr-ea-card .fr-ea-card-bottom-crests {
+      position: absolute; top: 81% !important; bottom: auto; height: 9.5%; left: 17.5% !important; right: 17.5% !important;
+      display: flex; align-items: center; justify-content: center; gap: 8.5cqw !important;
       z-index: 3; pointer-events: none;
     }
     #${P.id} .fr-ea-crest {
       max-width: none; max-height: none; object-fit: contain;
       filter: drop-shadow(0 1px 1px rgba(0,0,0,.7));
     }
-    #${P.id} .fr-ea-crest-nation { width: var(--card-nation-w); height: var(--card-nation-h); }
-    #${P.id} .fr-ea-crest-league { width: var(--card-league-w); height: var(--card-league-h); }
-    #${P.id} .fr-ea-crest-club { width: var(--card-club-w); height: var(--card-club-h); }
+    #${P.id} .fr-ea-card .fr-ea-crest-nation { width: 11cqw !important; height: -11cqw !important; }
+    #${P.id} .fr-ea-card .fr-ea-crest-league { width: 11cqw !important; height: 11cqw !important; }
+    #${P.id} .fr-ea-card .fr-ea-crest-club { width: 13cqw !important; height: 11.5cqw !important; }
 
     /* 6. PlayStyle+ Simgeleri (B4) */
-    #${P.id} .fr-ea-card-playstyles {
-      position: absolute; top: var(--card-ps-top); left: var(--card-ps-left);
-      display: var(--card-ps-display, flex); flex-direction: column; gap: var(--card-ps-gap);
+    #${P.id} .fr-ea-card .fr-ea-card-playstyles {
+      position: absolute; top: 38%; left: 13%;
+      display: flex; flex-direction: column; gap: 2cqw;
       z-index: 4; pointer-events: none;
     }
-    #${P.id} .fr-ea-ps {
-      position: relative; box-sizing: border-box; width: var(--card-ps-size); height: var(--card-ps-size);
+    #${P.id} .fr-ea-card .fr-ea-ps {
+      position: relative; box-sizing: border-box; width: 11cqw; height: 11cqw;
       border-radius: 50%; display: flex; align-items: center; justify-content: center;
       background: radial-gradient(circle at 30% 30%, #fff2b0, #d9a900 70%);
       border: 1px solid #fff6c2; box-shadow: 0 1px 2px rgba(0,0,0,.7);
-      color: #3a2a00; font-weight: 900; font-size: calc(var(--card-ps-size) * 0.5); line-height: 1; pointer-events: auto;
+      color: #3a2a00; font-weight: 900; font-size: 5.50cqw; line-height: 1; pointer-events: auto;
     }
-    #${P.id} .fr-ea-ps img { width: 80%; height: 80%; object-fit: contain; }
-    #${P.id} .fr-ea-ps::after {
+    #${P.id} .fr-ea-card .fr-ea-ps img { width: 80%; height: 80%; object-fit: contain; }
+    #${P.id} .fr-ea-card .fr-ea-ps::after {
       content: '+'; position: absolute; top: -25%; right: -25%; width: 55%; height: 55%;
-      border-radius: 50%; background: #00e5ff; color: #001018; font-size: calc(var(--card-ps-size) * 0.45);
+      border-radius: 50%; background: #00e5ff; color: #001018; font-size: 4.95cqw;
       font-weight: 900; display: flex; align-items: center; justify-content: center; line-height: 1;
     }
 

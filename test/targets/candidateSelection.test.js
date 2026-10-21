@@ -93,6 +93,25 @@ describe('candidate selection integration', () => {
     expect(state.pendingCandidates).toBeNull();
   });
 
+  it('commitCandidateTarget applies discountRate to candidate.price', () => {
+    state.targets = [];
+    const candidate = {
+      name: 'Discounted Player',
+      rating: 88,
+      price: 100000,
+      futbinId: '99999',
+      eaId: 55555,
+      versionLabel: 'Gold'
+    };
+
+    commitCandidateTarget(candidate);
+
+    expect(state.targets).toHaveLength(1);
+    expect(state.targets[0].price).toBe(100000);
+    // 100000 * 0.95 * (1 - 0.10) = 85500 (EA step 85500)
+    expect(state.targets[0].buyNow).toBe(85500);
+  });
+
   it('directly resolves status: "ok" for non-TOTW promo when there is a single match', async () => {
     const promoData = [
       {
