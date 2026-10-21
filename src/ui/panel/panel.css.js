@@ -584,7 +584,7 @@ export const panelCss = `
       );
       background-size: 300% 300%;
       mix-blend-mode: overlay;
-      animation: fr-holo-shine 2.4s ease-in-out infinite;
+      animation: fr-holo-shine 5.8s ease-in-out infinite;
       opacity: 0.95;
     }
     #${P.id} .fr-card-holo-webp {
