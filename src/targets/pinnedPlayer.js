@@ -175,7 +175,7 @@ export function commitCandidateTarget(candidate, price) {
 }
 
 export async function hydrateTargetsWithFutbin(onItemComplete) {
-  const needsHydration = state.targets.filter((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl));
+  const needsHydration = state.targets.filter((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl || !t.leagueImageUrl));
   if (!needsHydration.length) return;
 
   needsHydration.forEach((t) => {
@@ -185,7 +185,8 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
 
   for (const target of needsHydration) {
     try {
-      const versions = await searchPlayerAllVersions(target.name);
+      const queryName = target.commonName || target.name;
+      const versions = await searchPlayerAllVersions(queryName);
       if (Array.isArray(versions) && versions.length) {
         const matched = versions.find((v) =>
           (target.eaId && v.eaId === target.eaId) ||
@@ -193,6 +194,10 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
           (target.rating && v.rating === target.rating)
         ) || versions[0];
         if (matched) {
+          if (matched.commonName && target.name !== matched.commonName) {
+            target.name = matched.commonName;
+            target.commonName = matched.commonName;
+          }
           if (!target.playerImageUrl) target.playerImageUrl = matched.playerImageUrl;
           if (!target.promoImageUrl) target.promoImageUrl = matched.promoImageUrl;
           if (!target.playerImageFallbackUrl) target.playerImageFallbackUrl = matched.playerImageFallbackUrl;

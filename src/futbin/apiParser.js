@@ -2,6 +2,7 @@
 // Bagimlilik: yalnizca JSON/metin ayrıştırma ve utils/format.
 
 import { CONFIG } from '../core/config.js';
+import { mapCandidate } from './candidateMatcher.js';
 
 export function parseFutbinApiPlayers(body, requestedRating) {
   let payload;
@@ -15,8 +16,22 @@ export function parseFutbinApiPlayers(body, requestedRating) {
   const players = payload.data.map((row) => {
     const rating = Number(row.rating) || 0;
     const price = Number(row[priceField]) || 0;
-    const name = String(row.playername || row.common_name || '').trim().replace(/\s+/g, ' ');
+    const commonName = String(row.common_name || '').trim().replace(/\s+/g, ' ');
+    const fullName = String(row.playername || '').trim().replace(/\s+/g, ' ');
+    const name = commonName || fullName;
     if (!name || rating !== requestedRating || !Number.isFinite(price) || price <= 0) return null;
+
+    if (row.resource_id || row.playerid || row.league || row.club || row.nation) {
+      const candidate = mapCandidate(row);
+      if (candidate) {
+        return {
+          ...candidate,
+          name,
+          commonName: commonName || name,
+          price
+        };
+      }
+    }
     return { name, rating, price, futbinId: row.ID == null ? null : String(row.ID) };
   }).filter(Boolean);
   players.pageRowCount = payload.data.length;

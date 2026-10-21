@@ -497,6 +497,13 @@ export const panelCss = `
       font-family: var(--card-stat-font, var(--card-font));
       text-shadow: none; font-variant-numeric: tabular-nums;
     }
+    #${P.id} .fr-ea-card.is-dark-card .fr-ea-card-rating,
+    #${P.id} .fr-ea-card.is-dark-card .fr-ea-card-pos,
+    #${P.id} .fr-ea-card.is-dark-card .fr-ea-card-name,
+    #${P.id} .fr-ea-card.is-dark-card .fr-ea-stat-lbl,
+    #${P.id} .fr-ea-card.is-dark-card .fr-ea-stat-val {
+      color: #d9a900 !important;
+    }
     @container (max-width: 75px) {
       #${P.id} .fr-ea-stat-lbl { display: none; }
       #${P.id} .fr-ea-stat-val { font-size: 8.5cqw; }
@@ -571,6 +578,7 @@ export const panelCss = `
       overflow: hidden;
     }
     #${P.id} .fr-target-status {
+      display: none !important;
       position: absolute;
       top: 4px;
       left: 6px;

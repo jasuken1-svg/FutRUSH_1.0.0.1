@@ -6,7 +6,6 @@ import { emit } from '../../../core/events.js';
 import { buyNowStep, floorPrice } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
-import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../targets/pinnedPlayer.js';
 import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
@@ -15,7 +14,6 @@ import { CONFIG } from '../../../core/config.js';
 import { roundDownToStep } from '../../../ea/priceSteps.js';
 import { addMarketLog } from '../../marketLogBox.js';
 
-let statusRemovalTimer = null;
 let isHydrating = false;
 let isUpdatingPrices = false;
 
@@ -31,22 +29,6 @@ function formatRelativeTime(timestamp) {
   if (diffHours < 24) return `Son güncelleme: ${diffHours} saat önce`;
   const diffDays = Math.floor(diffHours / 24);
   return `Son güncelleme: ${diffDays} gün önce`;
-}
-
-function renderStatus(status, targetLoading) {
-  const normalized = normalizeTargetStatus(status) || (targetLoading ? {
-    type: 'loading',
-    message: 'FutBIN oyuncuları yükleniyor...',
-    source: 'futbin'
-  } : null);
-  return normalized;
-}
-
-function cancelStatusRemoval(statusElement) {
-  if (statusRemovalTimer !== null) {
-    clearTimeout(statusRemovalTimer);
-    statusRemovalTimer = null;
-  }
 }
 
 function attachHoldRepeat(button, onTrigger) {
@@ -96,102 +78,17 @@ function attachHoldRepeat(button, onTrigger) {
   });
 }
 
-export function updateTargetStatus(statusElement, status, targetLoading) {
-  const normalized = renderStatus(status, targetLoading);
-  if (!normalized) {
+export function updateTargetStatus(statusElement) {
+  if (statusElement) {
     statusElement.hidden = true;
-    statusElement.removeAttribute('data-type');
+    statusElement.style.display = 'none';
     statusElement.replaceChildren();
-    return;
-  }
-
-  cancelStatusRemoval(statusElement);
-  statusElement.classList.remove('fr-target-status-exiting');
-  statusElement.hidden = false;
-
-  const previousType = statusElement.getAttribute('data-type');
-  const previousMessage = statusElement.querySelector('.fr-target-status-message')?.textContent;
-  statusElement.setAttribute('data-type', normalized.type);
-
-  let icon = statusElement.querySelector('.fr-target-status-icon');
-  if (!icon) {
-    icon = document.createElement('span');
-    icon.className = 'fr-target-status-icon';
-    statusElement.appendChild(icon);
-  }
-  icon.dataset.type = normalized.type;
-
-  let main = statusElement.querySelector('.fr-target-status-main');
-  if (!main) {
-    main = document.createElement('div');
-    main.className = 'fr-target-status-main';
-    const message = document.createElement('div');
-    message.className = 'fr-target-status-message';
-    const progressLabel = document.createElement('div');
-    progressLabel.className = 'fr-target-progress-label';
-    progressLabel.hidden = true;
-    const source = document.createElement('div');
-    source.className = 'fr-target-status-source';
-    main.append(message, progressLabel, source);
-    statusElement.appendChild(main);
-  }
-
-  const message = main.querySelector('.fr-target-status-message');
-  if (message.textContent !== normalized.message) {
-    message.textContent = normalized.message;
-    message.classList.remove('fr-status-message-enter');
-    void message.offsetWidth;
-    message.classList.add('fr-status-message-enter');
-  }
-
-  const source = main.querySelector('.fr-target-status-source');
-  source.dataset.source = normalized.source || '';
-
-  const progressLabel = main.querySelector('.fr-target-progress-label');
-  let progress = statusElement.querySelector('.fr-target-progress');
-  if (normalized.progress) {
-    if (!progress) {
-      progress = document.createElement('div');
-      progress.className = 'fr-target-progress';
-      const fill = document.createElement('div');
-      fill.className = 'fr-target-progress-fill';
-      progress.appendChild(fill);
-      statusElement.appendChild(progress);
-    }
-    const done = Math.max(0, Number(normalized.progress.done) || 0);
-    const total = Math.max(0, Number(normalized.progress.total) || 0);
-    const width = total ? Math.min(100, done / total * 100) : 0;
-    progress.querySelector('.fr-target-progress-fill').style.width = width + '%';
-    progressLabel.textContent = done + '/' + total;
-    progressLabel.hidden = false;
-  } else {
-    progress?.remove();
-    progressLabel.textContent = '';
-    progressLabel.hidden = true;
-  }
-
-  if (normalized.type === 'success' && (previousType !== 'success' || previousMessage !== normalized.message)) {
-    statusElement.classList.remove('fr-status-success-flash');
-    void statusElement.offsetWidth;
-    statusElement.classList.add('fr-status-success-flash');
-  } else {
-    statusElement.classList.remove('fr-status-success-flash');
   }
 }
 
 export function expireTargetStatus(content) {
   const statusElement = content.querySelector('.fr-target-status');
-  if (!statusElement || statusElement.hidden) return;
-  statusElement.classList.add('fr-target-status-exiting');
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (reducedMotion) {
-    statusElement.remove();
-    return;
-  }
-  statusRemovalTimer = setTimeout(() => {
-    statusElement.remove();
-    statusRemovalTimer = null;
-  }, 220);
+  if (statusElement) statusElement.remove();
 }
 
 export function renderTargetContent(content) {
@@ -561,14 +458,14 @@ export function renderTargetContent(content) {
     remove.addEventListener('click', () => {
       const [deletedPlayer] = state.targets.splice(index, 1);
       saveTargets();
-      renderTargetContent(content);
+      emit('targets:changed');
 
       addMarketLog({
         text: `${deletedPlayer.name} hedeflerden silindi.`,
         undoAction: () => {
-          state.targets.splice(index, 0, deletedPlayer);
+          state.targets.splice(Math.min(index, state.targets.length), 0, deletedPlayer);
           saveTargets();
-          renderTargetContent(content);
+          emit('targets:changed');
         }
       });
     });

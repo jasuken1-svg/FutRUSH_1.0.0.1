@@ -7,7 +7,7 @@ import { addPinnedPlayerToTargets } from '../targets/pinnedPlayer.js';
 import { panel } from './panel/panel.js';
 import { renderPanelTabs } from './panel/panelTabs.js';
 import { SB_BOLT_SVG } from './icons.js';
-import { mountMarketLogBox } from './marketLogBox.js';
+import { mountMarketLogBox, syncMarketLogVisibility } from './marketLogBox.js';
 
 const SB = CONFIG.searchButton;
 
@@ -63,6 +63,7 @@ function showTargetsAfterQuickAdd() {
 
 export function placeSearchButton() {
     mountMarketLogBox();
+    syncMarketLogVisibility();
     document.querySelectorAll('button.btn-standard.primary').forEach((searchEl) => {
       const parent = searchEl.parentElement;
       if (!parent || parent.dataset.frSbSkip) return;

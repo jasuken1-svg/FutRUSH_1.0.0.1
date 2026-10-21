@@ -55,12 +55,24 @@ if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
   }).catch(() => {});
 }
 
+export function isDarkCard(item) {
+  if (!item) return false;
+  const raretype = Number(item.raretype ?? 0);
+  if (raretype <= 1) return false;
+  const promo = String(item.promoImageUrl || '').toLowerCase();
+  if (promo.includes('gold') || promo.includes('silver') || promo.includes('bronze')) {
+    return false;
+  }
+  return true;
+}
+
 export function createEaCardElement(item, { size = 'preview' } = {}) {
   const card = document.createElement('div');
   const sizeClass = size === 'thumb' ? 'fr-ea-card-thumb' : 'fr-ea-card-preview';
   const holoClass = item.isHolo ? ' fr-ea-card-holo' : '';
   const skeletonClass = item.isSkeleton ? ' is-skeleton' : '';
-  card.className = `fr-ea-card ${sizeClass}${holoClass}${skeletonClass} fr-target-thumb-wrap`;
+  const darkClass = isDarkCard(item) ? ' is-dark-card' : '';
+  card.className = `fr-ea-card ${sizeClass}${holoClass}${skeletonClass}${darkClass} fr-target-thumb-wrap`;
 
   const showImages = CONFIG.showCardImages !== false;
 
