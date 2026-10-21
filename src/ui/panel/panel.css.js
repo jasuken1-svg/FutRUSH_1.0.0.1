@@ -462,11 +462,11 @@ export const panelCss = `
     }
     #${P.id} .fr-ea-card .fr-ea-card-rating {
       position: static !important; top: auto !important; left: auto !important;
-      font-size: 15cqw !important; line-height: 0.95; font-weight: 900; color: #fff !important; text-shadow: none; letter-spacing: -0.3px;
+      font-size: 15cqw !important; line-height: 0.95; font-weight: 900; color: #000 !important; text-shadow: none; letter-spacing: -0.3px;
     }
     #${P.id} .fr-ea-card .fr-ea-card-pos {
       position: static !important; top: auto !important; left: auto !important;
-      font-size: 7.5cqw !important; font-weight: 800; color: #e0e9f0 !important; text-shadow: none; margin-top: 1px;
+      font-size: 7.5cqw !important; font-weight: 800; color: #000 !important; text-shadow: none; margin-top: 1px;
     }
 
     /* 2. Oyuncu Portresi */
@@ -522,6 +522,10 @@ export const panelCss = `
     #${P.id} .fr-ea-card.is-dark-card .fr-ea-stat-lbl,
     #${P.id} .fr-ea-card.is-dark-card .fr-ea-stat-val {
       color: #d9a900 !important;
+    }
+    #${P.id} .fr-ea-card.fr-ea-card-holo .fr-ea-card-rating,
+    #${P.id} .fr-ea-card.fr-ea-card-holo .fr-ea-card-pos {
+      color: #fff !important;
     }
     @container (max-width: 75px) {
       #${P.id} .fr-ea-stat-lbl { display: none; }
@@ -890,9 +894,10 @@ export const panelCss = `
 
     #${P.id} .fr-governor-banner {
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      padding: 7px 10px; margin: 4px 0 8px 0; border-radius: 6px;
+      padding: 7px 10px; margin: 0 0 8px 0; border-radius: 6px;
       background: rgba(255, 68, 68, 0.18); border: 1px solid rgba(255, 68, 68, 0.6);
       color: #ff6b6b; font-size: 11px; font-weight: 600; line-height: 1.3;
+      flex: 0 0 auto; width: 100%; box-sizing: border-box;
     }
     #${P.id} .fr-governor-banner-msg { flex: 1 1 auto; min-width: 0; word-break: break-word; }
     #${P.id} .fr-governor-resume-btn {

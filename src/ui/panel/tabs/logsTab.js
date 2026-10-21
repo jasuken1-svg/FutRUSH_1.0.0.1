@@ -3,8 +3,6 @@
 // Bagimlilik: core/state.
 
 import { state } from '../../../core/state.js';
-import { on } from '../../../core/events.js';
-import { safetyGovernor } from '../../../bot/safetyGovernor.js';
 import { botLogType, chronologicalBotLogs, logTone, shouldAutoScrollLogList, summarizeBotStats } from '../panelLogic.js';
 import { mountWaitBar } from '../waitBar.js';
 
@@ -83,10 +81,6 @@ export function renderBotLogs(content) {
   content.innerHTML =
     '<div class="fr-logs-view">' +
       '<div class="fr-waitbar" hidden></div>' +
-      '<div class="fr-governor-banner" style="display: none;">' +
-        '<span class="fr-governor-banner-msg"></span>' +
-        '<button class="fr-governor-resume-btn" type="button">Devam Et ▶</button>' +
-      '</div>' +
       '<div class="fr-log-summary"></div>' +
       '<div class="fr-log-toolbar">' +
         '<div class="fr-log-filters">' +
@@ -144,25 +138,6 @@ export function renderBotLogs(content) {
   updateBotLogStats(content);
   renderLogRows(content);
   mountWaitBar(content.querySelector('.fr-waitbar'));
-
-  const banner = content.querySelector('.fr-governor-banner');
-  const bannerMsg = content.querySelector('.fr-governor-banner-msg');
-  const syncBanner = () => {
-    if (!banner) return;
-    if (safetyGovernor.isHalted()) {
-      banner.style.display = 'flex';
-      bannerMsg.textContent = '⛔ ' + safetyGovernor.getHaltReason();
-    } else {
-      banner.style.display = 'none';
-    }
-  };
-  syncBanner();
-  content.querySelector('.fr-governor-resume-btn')?.addEventListener('click', () => {
-    safetyGovernor.resume();
-    syncBanner();
-  });
-  on('governor:halt', syncBanner);
-  on('governor:resume', syncBanner);
 }
 
 export function addBotLogEntry(content) {
