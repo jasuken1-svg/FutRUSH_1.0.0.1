@@ -562,22 +562,53 @@ export const panelCss = `
       font-weight: 900; display: flex; align-items: center; justify-content: center; line-height: 1;
     }
 
+    #${P.id} .fr-ea-card.fr-ea-card-holo {
+      box-shadow: 0 0 12px rgba(160, 32, 240, 0.45), 0 0 22px rgba(0, 229, 255, 0.35), inset 0 0 10px rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(200, 160, 255, 0.65);
+    }
+
     #${P.id} .fr-card-holo-shimmer {
-      position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
-      background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.4) 38%, rgba(255,100,200,0.45) 48%, rgba(0,229,255,0.5) 58%, transparent 75%);
-      background-size: 250% 250%;
-      mix-blend-mode: color-dodge;
-      animation: fr-holo-shine 2.8s ease-in-out infinite;
-      opacity: .85;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(
+        125deg,
+        transparent 15%,
+        rgba(255, 255, 255, 0.55) 35%,
+        rgba(255, 0, 180, 0.35) 45%,
+        rgba(0, 229, 255, 0.55) 55%,
+        rgba(255, 255, 255, 0.3) 65%,
+        transparent 85%
+      );
+      background-size: 300% 300%;
+      mix-blend-mode: overlay;
+      animation: fr-holo-shine 2.4s ease-in-out infinite;
+      opacity: 0.95;
     }
     #${P.id} .fr-card-holo-webp {
-      position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: cover; pointer-events: none;
-      mix-blend-mode: screen; opacity: .75;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.88;
+      filter: saturate(1.25) contrast(1.1);
     }
     @keyframes fr-holo-shine {
-      0% { background-position: -100% -100%; }
-      50% { background-position: 100% 100%; }
-      100% { background-position: 250% 250%; }
+      0% {
+        background-position: -150% -150%;
+      }
+      50% {
+        background-position: 150% 150%;
+      }
+      100% {
+        background-position: 300% 300%;
+      }
     }
 
     /* ==============================================================
