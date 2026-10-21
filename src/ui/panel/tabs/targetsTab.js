@@ -11,7 +11,7 @@ import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../target
 import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
-import { roundDownToStep } from '../../../ea/priceSteps.js';
+import { priceAbove, priceBelow, roundDownToStep } from '../../../ea/priceSteps.js';
 import { addMarketLog } from '../../marketLogBox.js';
 
 let isHydrating = false;
@@ -567,11 +567,22 @@ export function renderTargetContent(content) {
 
       const change = (direction, multiplier = 1) => {
         const current = Number(player[control.key]);
-        const baseStep = control.key === 'buyNow'
-          ? buyNowStep(Math.max(0, current + direction))
-          : control.step;
-        const step = baseStep * multiplier;
-        player[control.key] = Math.max(control.min, current + direction * step);
+        if (control.key === 'buyNow') {
+          let nextVal = current;
+          for (let i = 0; i < multiplier; i++) {
+            if (direction > 0) {
+              nextVal = priceAbove(nextVal);
+            } else {
+              const below = priceBelow(nextVal);
+              nextVal = below > 0 ? below : control.min;
+              if (below === 0) break;
+            }
+          }
+          player.buyNow = Math.max(control.min, nextVal);
+        } else {
+          const step = control.step * multiplier;
+          player[control.key] = Math.max(control.min, current + direction * step);
+        }
         saveTargets();
         value.value = formatVal(control.key, player[control.key]);
         if (control.key === 'buyNow') {

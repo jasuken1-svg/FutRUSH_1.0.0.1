@@ -1,38 +1,104 @@
 // EA Transfer Market arama olcutlerini kurar, ilan arar ve alim istegi gonderir.
-// Bagimliliklar: core/state, ea/observe ve utils/dom.
+// Bagimliliklar: core/state, ea/observe, ea/priceSteps ve utils/dom.
 
 import { state } from '../core/state.js';
 import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';
 import { debug, warnOnce } from '../core/logger.js';
+import { MIN_BIN, roundDownToStep } from './priceSteps.js';
 
-export function makeAutoBuyCriteria(targetOrId, maxBuy) {
+export const HIGH_BID_STEPS = [
+  14990000, 14991000, 14992000, 14993000, 14994000,
+  14995000, 14996000, 14997000, 14998000, 14999000, 15000000
+];
+
+export const SPECIAL_OR_HIGH_MIN_BIDS = [
+  0, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600
+];
+
+export const STANDARD_LOW_MIN_BIDS = [
+  0, 150
+];
+
+let cacheBustCounter = 0;
+
+export function resetCacheBustCounter() {
+  cacheBustCounter = 0;
+}
+
+export function makeAutoBuyCriteria(targetOrId, maxBuyOrOptions, maybeOptions) {
   const Criteria = pageWindow.UTSearchCriteriaDTO;
   if (typeof Criteria !== 'function') throw new Error('EA arama ölçütleri hazır değil. Web App’i yenileyip tekrar deneyin.');
   const criteria = new Criteria();
   criteria.type = 'player';
+
+  let rawMaxBuy;
+  let options;
+  if (typeof maxBuyOrOptions === 'object' && maxBuyOrOptions !== null) {
+    options = maxBuyOrOptions;
+    rawMaxBuy = options.maxBuy;
+  } else {
+    rawMaxBuy = maxBuyOrOptions;
+    options = maybeOptions || {};
+  }
+
   const rawId = typeof targetOrId === 'object' && targetOrId !== null
     ? (targetOrId.eaId || targetOrId.playerId)
     : targetOrId;
   criteria.maskedDefId = Number(rawId) & 0xffffff;
-  criteria.maxBuy = Number(maxBuy);
+
+  const target = typeof targetOrId === 'object' && targetOrId !== null ? targetOrId : null;
+  const inputBuyNow = Number(rawMaxBuy ?? target?.buyNow) || 0;
+  const snappedMaxBuy = roundDownToStep(inputBuyNow);
+  const resolvedMaxBuy = snappedMaxBuy < MIN_BIN ? MIN_BIN : snappedMaxBuy;
+  criteria.maxBuy = resolvedMaxBuy;
+
   criteria.offset = 0;
   criteria.count = 21;
 
-  if (typeof targetOrId === 'object' && targetOrId !== null) {
-    const raretype = Number(targetOrId.raretype);
+  if (target) {
+    const raretype = Number(target.raretype);
     if (raretype > 0) {
       criteria.level = 'SP';
       criteria.rarities = [raretype];
-    } else if (Array.isArray(targetOrId.rarityIds) && targetOrId.rarityIds.length > 0) {
+    } else if (Array.isArray(target.rarityIds) && target.rarityIds.length > 0) {
       criteria.level = 'SP';
-      criteria.rarities = targetOrId.rarityIds.map(Number);
+      criteria.rarities = target.rarityIds.map(Number);
     }
   }
+
+  if (!options.disableCacheBust) {
+    let bustIndex;
+    if (typeof options.cacheBustStep === 'number' && Number.isFinite(options.cacheBustStep)) {
+      bustIndex = Math.abs(Math.floor(options.cacheBustStep));
+    } else if (typeof options.searchIndex === 'number' && Number.isFinite(options.searchIndex)) {
+      bustIndex = Math.abs(Math.floor(options.searchIndex));
+    } else {
+      bustIndex = cacheBustCounter++;
+    }
+
+    const raretype = Number(target?.raretype) || 0;
+    const isSpecial = raretype > 0 || (Array.isArray(target?.rarityIds) && target.rarityIds.length > 0);
+    const minBidBasePool = (resolvedMaxBuy >= 1500 || isSpecial)
+      ? SPECIAL_OR_HIGH_MIN_BIDS
+      : STANDARD_LOW_MIN_BIDS;
+
+    let minBidPool = minBidBasePool.filter((bid) => bid === 0 || (bid < resolvedMaxBuy && bid <= 600));
+    if (!minBidPool.length) minBidPool = [0];
+
+    const minBid = minBidPool[bustIndex % minBidPool.length];
+    const maxBid = HIGH_BID_STEPS[Math.floor(bustIndex / minBidPool.length) % HIGH_BID_STEPS.length];
+
+    if (minBid > 0) {
+      criteria.minBid = minBid;
+    }
+    criteria.maxBid = maxBid;
+  }
+
   return criteria;
 }
 
-export async function searchAutoBuyOffers(target, eaId, token) {
+export async function searchAutoBuyOffers(target, eaId, token, options = {}) {
   const services = pageWindow.services;
   const service = services && services.Item;
   if (!service || typeof service.searchTransferMarket !== 'function') throw new Error('EA Transfer Market arama servisi bulunamadı.');
@@ -41,8 +107,10 @@ export async function searchAutoBuyOffers(target, eaId, token) {
       debug('[FutRUSH:ea]', 'EA Transfer Market önbelleği temizlenemedi.', String(e?.message || e));
     }
   }
-  const maxBuy = Math.max(1, Math.floor(Number(target.buyNow) || 0));
-  const criteria = makeAutoBuyCriteria(target || eaId, maxBuy);
+  const rawBuyNow = Number(target?.buyNow) || 0;
+  const snapped = roundDownToStep(rawBuyNow);
+  const maxBuy = snapped < MIN_BIN ? MIN_BIN : snapped;
+  const criteria = makeAutoBuyCriteria(target || eaId, maxBuy, options);
   const response = await observeEaRequest(service.searchTransferMarket(criteria, 1), 18000);
   if (token !== state.botToken || !state.botRunning) return { stopped: true, offers: [] };
   if (!response.success) {

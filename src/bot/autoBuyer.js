@@ -77,9 +77,23 @@ export async function runAutoBuyer(token, deps = {}) {
   let cycles = 0;
   let bought = 0;
   let totalSpent = 0;
+  let searchIndex = 0;
   const attemptedTrades = new Set();
   const loggedMatches = new Set();
   const newlyResolvedTargets = new Set();
+
+  const checkLimitsReached = () => {
+    if (bought >= settings.maxPlayers) {
+      stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
+      return true;
+    }
+    if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
+      stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
+      return true;
+    }
+    return false;
+  };
+
   try {
     for (const target of state.targets) {
       if (target.searchDisabled) continue;
@@ -100,21 +114,15 @@ export async function runAutoBuyer(token, deps = {}) {
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {
           if (token !== state.botToken || !state.botRunning) return;
-          if (bought >= settings.maxPlayers) {
-            stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-            return;
-          }
-          if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
-            stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
-            return;
-          }
+          if (checkLimitsReached()) return;
           setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
           incrementStat('searches');
           if (newlyResolvedTargets.has(target) && !loggedMatches.has(target)) {
             addBotLog(target.name + ' EA oyuncu kimliğiyle eşleştirildi.', 'success');
             loggedMatches.add(target);
           }
-          const result = await search(target, eaId, token);
+          searchIndex++;
+          const result = await search(target, eaId, token, { searchIndex });
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
           if (!offer) {
@@ -168,14 +176,7 @@ export async function runAutoBuyer(token, deps = {}) {
             }
           }
           const hasMoreSearches = attempt < attempts || state.targets.slice(targetIndex + 1).some((t) => !t.searchDisabled);
-          if (bought >= settings.maxPlayers) {
-            stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-            return;
-          }
-          if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
-            stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
-            return;
-          }
+          if (checkLimitsReached()) return;
           if (hasMoreSearches && state.botRunning && token === state.botToken) {
             const baseDelay = speedDelay[settings.speed] || 4000;
             const jitter = jitterMs(searchJitterRange);
@@ -187,14 +188,7 @@ export async function runAutoBuyer(token, deps = {}) {
         if (bought >= settings.maxPlayers || (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins)) break;
       }
       if (!state.botRunning || token !== state.botToken) return;
-      if (bought >= settings.maxPlayers) {
-        stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-        return;
-      }
-      if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
-        stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
-        return;
-      }
+      if (checkLimitsReached()) return;
       if (settings.repeat > 0 && cycles >= settings.repeat) {
         stopAutoBuyer('Tarama tamamlandı. Başarılı alım: ' + bought + '.');
         return;
