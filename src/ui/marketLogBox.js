@@ -4,6 +4,7 @@
 
 import { on } from '../core/events.js';
 import { state } from '../core/state.js';
+import { bindPriceStepRounding } from '../ea/priceSteps.js';
 
 let currentBoxEl = null;
 let observer = null;
@@ -188,6 +189,11 @@ export function mountMarketLogBox() {
     searchPrices.appendChild(box);
   }
   currentBoxEl = box;
+  searchPrices.querySelectorAll('input').forEach((input) => {
+    if (input.dataset.frBoundPrice) return;
+    input.dataset.frBoundPrice = 'true';
+    bindPriceStepRounding(input);
+  });
   setupObserver(searchPrices);
   renderMarketLogBox();
 }

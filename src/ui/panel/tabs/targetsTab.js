@@ -3,7 +3,6 @@
 
 import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
-import { buyNowStep, floorPrice } from '../../../utils/format.js';
 import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
@@ -11,7 +10,7 @@ import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../target
 import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
-import { priceAbove, priceBelow, roundDownToStep } from '../../../ea/priceSteps.js';
+import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
 import { addMarketLog } from '../../marketLogBox.js';
 
 let isHydrating = false;
@@ -519,17 +518,18 @@ export function renderTargetContent(content) {
     controls.className = 'fr-target-controls';
     [
       { key: 'searches', label: 'TUR SAYISI', step: 1, min: 1 },
-      { key: 'buyNow', label: 'SATIN AL', step: buyNowStep(player.buyNow), min: 150 }
+      { key: 'buyNow', label: 'SATIN AL', step: 100, min: MIN_PRICE }
     ].forEach((control) => {
       const group = document.createElement('div');
       const title = document.createElement('div');
       title.className = 'fr-target-control-title';
       title.textContent = control.label;
 
+      let updateProfit = () => {};
       if (control.key === 'buyNow') {
         const profitEl = document.createElement('div');
         profitEl.className = 'fr-target-profit';
-        const updateProfit = (val) => {
+        updateProfit = (val) => {
           const futbinPrice = Number(player.price) || 0;
           const currentBuyNow = Number(val ?? player.buyNow) || 0;
           if (futbinPrice > 0) {
@@ -579,14 +579,13 @@ export function renderTargetContent(content) {
           let nextVal = current;
           for (let i = 0; i < multiplier; i++) {
             if (direction > 0) {
-              nextVal = priceAbove(nextVal);
+              nextVal = nextPriceUp(nextVal);
             } else {
-              const below = priceBelow(nextVal);
-              nextVal = below > 0 ? below : control.min;
-              if (below === 0) break;
+              nextVal = nextPriceDown(nextVal);
+              if (nextVal <= MIN_PRICE) break;
             }
           }
-          player.buyNow = Math.max(control.min, nextVal);
+          player.buyNow = clampPrice(nextVal);
         } else {
           const step = control.step * multiplier;
           player[control.key] = Math.max(control.min, current + direction * step);
@@ -594,16 +593,7 @@ export function renderTargetContent(content) {
         saveTargets();
         value.value = formatVal(control.key, player[control.key]);
         if (control.key === 'buyNow') {
-          const currentProfit = card.querySelector('.fr-target-profit');
-          if (currentProfit) {
-            const futbinPrice = Number(player.price) || 0;
-            if (futbinPrice > 0) {
-              const netProfit = Math.round(futbinPrice * 0.95) - player[control.key];
-              const sign = netProfit > 0 ? '+' : '';
-              currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
-              currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
-            }
-          }
+          updateProfit(player.buyNow);
         }
         updateSummaryBar();
       };
@@ -624,24 +614,17 @@ export function renderTargetContent(content) {
           player[control.key] = entered;
           saveTargets();
           if (control.key === 'buyNow') {
-            const currentProfit = card.querySelector('.fr-target-profit');
-            if (currentProfit) {
-              const futbinPrice = Number(player.price) || 0;
-              if (futbinPrice > 0) {
-                const netProfit = Math.round(futbinPrice * 0.95) - entered;
-                const sign = netProfit > 0 ? '+' : '';
-                currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
-                currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
-              }
-            }
+            updateProfit(entered);
           }
           updateSummaryBar();
         }
       });
 
-      value.addEventListener('change', () => {
+      const commitValue = () => {
         const enteredValue = parseVal(control.key, value.value);
-        const completedValue = control.key === 'buyNow' ? floorPrice(enteredValue) : enteredValue;
+        const completedValue = control.key === 'buyNow'
+          ? (Number.isFinite(enteredValue) ? clampPrice(roundToPriceStep(enteredValue, 'nearest')) : NaN)
+          : enteredValue;
         if (!Number.isSafeInteger(enteredValue) || enteredValue < control.min || completedValue < control.min) {
           value.value = formatVal(control.key, player[control.key]);
           setTargetStatus({
@@ -654,19 +637,13 @@ export function renderTargetContent(content) {
         value.value = formatVal(control.key, completedValue);
         saveTargets();
         if (control.key === 'buyNow') {
-          const currentProfit = card.querySelector('.fr-target-profit');
-          if (currentProfit) {
-            const futbinPrice = Number(player.price) || 0;
-            if (futbinPrice > 0) {
-              const netProfit = Math.round(futbinPrice * 0.95) - completedValue;
-              const sign = netProfit > 0 ? '+' : '';
-              currentProfit.textContent = `Kâr: ${sign}${netProfit.toLocaleString('tr-TR')}`;
-              currentProfit.className = 'fr-target-profit ' + (netProfit >= 0 ? 'is-profit' : 'is-loss');
-            }
-          }
+          updateProfit(completedValue);
         }
         updateSummaryBar();
-      });
+      };
+
+      value.addEventListener('change', commitValue);
+      value.addEventListener('blur', commitValue);
 
       attachHoldRepeat(minus, (e) => change(-1, e?.shiftKey ? 10 : 1));
       attachHoldRepeat(plus, (e) => change(1, e?.shiftKey ? 10 : 1));

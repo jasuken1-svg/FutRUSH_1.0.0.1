@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { MIN_BIN, priceAbove, priceBelow, roundDownToStep, roundUpToStep } from '../../src/ea/priceSteps.js';
+import {
+  MIN_BIN,
+  MIN_PRICE,
+  MAX_PRICE,
+  PRICE_TIERS,
+  clampPrice,
+  getPriceStep,
+  priceAbove,
+  priceBelow,
+  roundDownToStep,
+  roundUpToStep,
+  roundToPriceStep,
+  nextPriceUp,
+  nextPriceDown,
+  runPriceStepSelfTests
+} from '../../src/ea/priceSteps.js';
 
 describe('priceSteps', () => {
   it('sinir degerlerinde dogru basamak (yukari)', () => {
@@ -25,6 +40,7 @@ describe('priceSteps', () => {
 
   it('en dusuk fiyatin altinda 0 doner', () => {
     expect(MIN_BIN).toBe(200);
+    expect(MIN_PRICE).toBe(200);
     expect(priceBelow(250)).toBe(200);
     expect(priceBelow(200)).toBe(0);
   });
@@ -36,5 +52,33 @@ describe('priceSteps', () => {
     expect(roundUpToStep(1001)).toBe(1100);
     expect(roundUpToStep(990)).toBe(1000);
     expect(roundUpToStep(10120)).toBe(10250);
+  });
+
+  it('clampPrice ve getPriceStep dogru calisir', () => {
+    expect(clampPrice(50)).toBe(200);
+    expect(clampPrice(15000000)).toBe(MAX_PRICE);
+    expect(clampPrice(5000)).toBe(5000);
+    expect(getPriceStep(500)).toBe(50);
+    expect(getPriceStep(1000)).toBe(100);
+    expect(getPriceStep(10000)).toBe(250);
+    expect(getPriceStep(50000)).toBe(500);
+    expect(getPriceStep(100000)).toBe(1000);
+  });
+
+  it('roundToPriceStep tum modlarda ve 49950 gecisinde dogru yuvarlar', () => {
+    expect(roundToPriceStep(49950, 'nearest')).toBe(50000);
+    expect(roundToPriceStep(49950, 'up')).toBe(50000);
+    expect(roundToPriceStep(49950, 'down')).toBe(49750);
+    expect(roundToPriceStep(980, 'nearest')).toBe(1000);
+    expect(roundToPriceStep(980, 'down')).toBe(950);
+    expect(roundToPriceStep(1040, 'nearest')).toBe(1000);
+    expect(roundToPriceStep(1060, 'nearest')).toBe(1100);
+  });
+
+  it('runPriceStepSelfTests tum test vakalarini basariyla tamamlar (25+ vaka)', () => {
+    const results = runPriceStepSelfTests();
+    expect(results.total).toBeGreaterThanOrEqual(25);
+    expect(results.failed).toBe(0);
+    expect(results.passed).toBe(results.total);
   });
 });

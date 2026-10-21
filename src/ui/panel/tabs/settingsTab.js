@@ -4,6 +4,7 @@
 import { state } from '../../../core/state.js';
 import { saveSnipeSettings } from '../../../core/storage.js';
 import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
+import { clampPrice, roundToPriceStep } from '../../../ea/priceSteps.js';
 
 export function renderPanelSettings(content) {
 const s = state.snipeSettings;
@@ -81,10 +82,16 @@ if (spendInput) {
     content.querySelector('[data-value="maxSpendCoins"]').textContent = val ? val.toLocaleString('tr-TR') : 'Limitsiz';
   };
   spendInput.addEventListener('input', updateSpend);
-  spendInput.addEventListener('change', () => {
-    updateSpend();
+  const commitSpend = () => {
+    const raw = Math.max(0, Math.floor(Number(spendInput.value) || 0));
+    const val = raw > 0 ? clampPrice(roundToPriceStep(raw, 'nearest')) : 0;
+    s.maxSpendCoins = val;
+    spendInput.value = val > 0 ? String(val) : '';
+    content.querySelector('[data-value="maxSpendCoins"]').textContent = val ? val.toLocaleString('tr-TR') : 'Limitsiz';
     saveSnipeSettings();
-  });
+  };
+  spendInput.addEventListener('change', commitSpend);
+  spendInput.addEventListener('blur', commitSpend);
 }
 content.querySelector('.fr-toggle').addEventListener('click', (event) => {
   s.autoSell = !s.autoSell;
