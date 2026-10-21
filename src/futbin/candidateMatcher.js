@@ -44,6 +44,65 @@ export function getLeagueImageUrls(leagueId) {
   return { leagueImageUrl: primary, leagueImageFallbacks: fallbacks };
 }
 
+export function normalizePlaystyleName(raw) {
+  if (!raw) return '';
+  return String(raw)
+    .trim()
+    .replace(/\+$/, '')
+    .trim()
+    .replace(/^u?['"]+|['"]+$/gi, '')
+    .trim();
+}
+
+export const PLAYSTYLE_ICON_KEY_MAP = {
+  chipshot: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/1.2.png',
+  powershot: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/2.2.png',
+  deadball: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/3.2.png',
+  finesseshot: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/0.2.png',
+  pingedpass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/6.2.png',
+  incisivepass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/5.3.png',
+  longballpass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/7.2.png',
+  tikitaka: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/8.2.png',
+  whippedpass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/9.2.png',
+  firsttouch: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/19.2.png',
+  pressproven: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/21.2.png',
+  rapid: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/17.2.png',
+  technical: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/16.2.png',
+  block: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/11.2.png',
+  bruiser: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/15.2.png',
+  intercept: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/12.2.png',
+  jockey: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/10.2.png',
+  slidetackle: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/14.2.png',
+  anticipate: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/13.2.png',
+  acrobatic: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/25.2.png',
+  relentless: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/23.2.png',
+  quickstep: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/22.2.png',
+  longthrow: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/26.2.png',
+  farthrow: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/28.3.png',
+  footwork: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/29.3.png',
+  crossclaimer: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/30.3.png',
+  '1v1closedown': 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/31.3.png',
+  farreach: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/32.3.png',
+  deflector: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/33.3.png',
+  lowdrivenshot: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/34.3.png',
+  aerialfortress: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/35.3.png',
+  aerial: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/35.3.png',
+  enforcer: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/36.3.png',
+  gamechanger: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/37.3.png',
+  inventive: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/38.3.png',
+  precisionheader: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/39.3.png',
+  powerheader: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/39.3.png',
+  trickster: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/20.2.png',
+  trivela: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/37.3.png'
+};
+
+export function resolvePlaystyleIconUrl(name) {
+  const clean = normalizePlaystyleName(name);
+  if (!clean) return '';
+  const key = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return PLAYSTYLE_ICON_KEY_MAP[key] || '';
+}
+
 export function extractPlaystylesPlus(row) {
   if (!row) return [];
 
@@ -62,14 +121,18 @@ export function extractPlaystylesPlus(row) {
 
   const rawPs = row.playstyles_plus ?? row.playstylesPlus ?? row.playstyle_plus ?? row.playstyleplus ?? row.playStylesPlus;
 
+  const toPlaystyleObj = (rawName, explicitIcon = '') => {
+    const name = normalizePlaystyleName(rawName);
+    if (!name) return null;
+    const iconUrl = explicitIcon || resolvePlaystyleIconUrl(name);
+    return { name, iconUrl };
+  };
+
   if (Array.isArray(rawPs)) {
     return rawPs.slice(0, 4).map((p) => {
-      if (typeof p === 'string') return { name: p.replace(/\+$/, '').trim(), iconUrl: '' };
-      return {
-        name: (p.name || p.title || p.label || '').replace(/\+$/, '').trim(),
-        iconUrl: p.icon || p.image || p.imageUrl || ''
-      };
-    }).filter((p) => p.name);
+      if (typeof p === 'string') return toPlaystyleObj(p);
+      return toPlaystyleObj(p.name || p.title || p.label || '', p.icon || p.image || p.imageUrl || '');
+    }).filter(Boolean);
   }
 
   if (typeof rawPs === 'string' && rawPs.trim()) {
@@ -77,7 +140,11 @@ export function extractPlaystylesPlus(row) {
       const parsed = JSON.parse(rawPs);
       if (Array.isArray(parsed)) return extractPlaystylesPlus({ playstyles_plus: parsed });
     } catch (_) {}
-    return rawPs.split(/[,;|]/).map((s) => s.trim().replace(/\+$/, '')).filter(Boolean).slice(0, 4).map((name) => ({ name, iconUrl: '' }));
+    return rawPs
+      .split(/[,;|]/)
+      .map((s) => toPlaystyleObj(s))
+      .filter(Boolean)
+      .slice(0, 4);
   }
 
   const generalPs = row.playstyles || row.playStyles;
@@ -89,12 +156,9 @@ export function extractPlaystylesPlus(row) {
 
     if (plusItems.length > 0) {
       return plusItems.map((p) => {
-        if (typeof p === 'string') return { name: p.replace(/\+$/, '').trim(), iconUrl: '' };
-        return {
-          name: (p.name || p.title || '').replace(/\+$/, '').trim(),
-          iconUrl: p.icon || p.image || p.imageUrl || ''
-        };
-      });
+        if (typeof p === 'string') return toPlaystyleObj(p);
+        return toPlaystyleObj(p.name || p.title || '', p.icon || p.image || p.imageUrl || '');
+      }).filter(Boolean);
     }
   }
 

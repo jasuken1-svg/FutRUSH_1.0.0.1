@@ -8,7 +8,10 @@ import {
   sortCandidatesByPriceAsc,
   normalizeQuality,
   getQualityTier,
-  validateQualityFilter
+  validateQualityFilter,
+  normalizePlaystyleName,
+  resolvePlaystyleIconUrl,
+  extractPlaystylesPlus
 } from '../../src/futbin/candidateMatcher.js';
 import { scoreRow } from '../../src/futbin/playerLookup.js';
 
@@ -273,6 +276,34 @@ describe('candidateMatcher', () => {
       });
 
       expect(candidates).toHaveLength(0);
+    });
+  });
+
+  describe('playstylesPlus normalization & icon resolution', () => {
+    it('normalizes python repr string formats from Futbin API', () => {
+      expect(normalizePlaystyleName("u'Precision Header'")).toBe('Precision Header');
+      expect(normalizePlaystyleName("u'Finesse Shot'+")).toBe('Finesse Shot');
+      expect(normalizePlaystyleName("Technical")).toBe('Technical');
+      expect(normalizePlaystyleName("")).toBe('');
+      expect(normalizePlaystyleName(null)).toBe('');
+    });
+
+    it('resolves correct playstyle icon url case-insensitively', () => {
+      expect(resolvePlaystyleIconUrl('Precision Header')).toContain('play-styles/39.3.png');
+      expect(resolvePlaystyleIconUrl('finesse shot')).toContain('play-styles/0.2.png');
+      expect(resolvePlaystyleIconUrl('tiki taka+')).toContain('play-styles/8.2.png');
+      expect(resolvePlaystyleIconUrl('Nonexistent Playstyle')).toBe('');
+    });
+
+    it('extracts playstylesPlus with cleaned name and resolved iconUrl', () => {
+      const row = {
+        playername: 'Pernille Harder',
+        playstylesPlus: "u'Precision Header'"
+      };
+      const result = extractPlaystylesPlus(row);
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Precision Header');
+      expect(result[0].iconUrl).toContain('play-styles/39.3.png');
     });
   });
 });

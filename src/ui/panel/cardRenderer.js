@@ -3,6 +3,7 @@
 
 import { loadFutbinImage, applyFutbinBgImage } from '../../futbin/imageLoader.js';
 import { CONFIG } from '../../core/config.js';
+import { normalizePlaystyleName, resolvePlaystyleIconUrl } from '../../futbin/candidateMatcher.js';
 
 const PARTICLES = new Set(['de', 'da', 'do', 'dos', 'das', 'del', 'della', 'di', 'van', 'von', 'der', 'den', 'ten', 'ter', 'le', 'la', 'el', 'al', 'bin', 'ben', 'mac', 'st']);
 const SUFFIXES = new Set(['jr', 'jr.', 'junior', 'júnior', 'filho', 'neto', 'sr', 'sr.']);
@@ -122,22 +123,24 @@ export function createEaCardElement(item, { size = 'preview' } = {}) {
     const psWrap = document.createElement('div');
     psWrap.className = 'fr-ea-card-playstyles';
     item.playstylesPlus.slice(0, 4).forEach((ps) => {
+      const rawName = typeof ps === 'string' ? ps : (ps.name || '');
+      const psName = normalizePlaystyleName(rawName);
+      if (!psName) return;
+      const iconUrl = (typeof ps === 'object' && ps.iconUrl) ? ps.iconUrl : resolvePlaystyleIconUrl(psName);
+      if (!iconUrl) return;
+
       const psEl = document.createElement('div');
       psEl.className = 'fr-ea-ps';
-      const psName = typeof ps === 'string' ? ps : (ps.name || '');
-      psEl.title = psName ? `${psName}+` : 'PlayStyle+';
-      const iconUrl = typeof ps === 'object' ? (ps.iconUrl || ps.icon || '') : '';
-      if (iconUrl) {
-        const iconImg = document.createElement('img');
-        iconImg.alt = psName;
-        loadFutbinImage(iconImg, iconUrl);
-        psEl.appendChild(iconImg);
-      } else {
-        psEl.textContent = (psName.slice(0, 2) || 'PS').toUpperCase();
-      }
+      psEl.title = `${psName}+`;
+      const iconImg = document.createElement('img');
+      iconImg.alt = psName;
+      loadFutbinImage(iconImg, iconUrl);
+      psEl.appendChild(iconImg);
       psWrap.appendChild(psEl);
     });
-    card.appendChild(psWrap);
+    if (psWrap.childNodes.length > 0) {
+      card.appendChild(psWrap);
+    }
   }
 
   // 4. Oyuncu Portresi

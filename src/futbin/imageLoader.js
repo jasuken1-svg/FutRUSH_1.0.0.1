@@ -114,7 +114,7 @@ export function fetchImageBlobUrl(url) {
       timeout: 10000,
       headers: {
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Referer': FUTBIN_REFERER
+        'Referer': trimmed.includes('fut.gg') ? 'https://www.fut.gg/' : FUTBIN_REFERER
       },
       onload: async (res) => {
         if (res.status >= 200 && res.status < 300 && res.response) {
