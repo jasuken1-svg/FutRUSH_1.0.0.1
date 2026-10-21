@@ -14,6 +14,7 @@ import { getCoinBalance } from '../ea/services.js';
 import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { idleWait } from './idle.js';
+import { safetyGovernor } from './safetyGovernor.js';
 
 const defaultSearchJitterMs = [...CONFIG.bot.searchJitterMs];
 const defaultCycleJitterMs = [...CONFIG.bot.cycleJitterMs];
@@ -28,6 +29,11 @@ export function stopAutoBuyer(reason) {
 
 export async function startAutoBuyer() {
   if (state.botRunning) return;
+  if (safetyGovernor.isHalted()) {
+    setBotStatus('Güvenlik durdurucu devrede: ' + safetyGovernor.getHaltReason());
+    addBotLog('⛔ Bot başlatılamadı: ' + safetyGovernor.getHaltReason() + ' (Devam etmek için "Devam Et" butonuna basın).', 'error');
+    return;
+  }
   if (!state.targets.length) {
     setBotStatus('Önce Oyuncu Hedefleri listesine oyuncu ekleyin.');
     addBotLog(state.botStatus, 'error');
@@ -78,20 +84,14 @@ export async function runAutoBuyer(token, deps = {}) {
   let bought = 0;
   let totalSpent = 0;
   let searchIndex = 0;
+  const governor = deps.safetyGovernor || safetyGovernor;
   const attemptedTrades = new Set();
   const loggedMatches = new Set();
   const newlyResolvedTargets = new Set();
 
-  const checkLimitsReached = () => {
-    if (bought >= settings.maxPlayers) {
-      stopAutoBuyer('Alım limiti doldu: ' + bought + ' oyuncu.');
-      return true;
-    }
-    if (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins) {
-      stopAutoBuyer('Harcama limiti doldu: ' + totalSpent.toLocaleString('tr-TR') + ' coin.');
-      return true;
-    }
-    return false;
+  const checkLimitsReached = (nextCost = 0) => {
+    const check = governor.canSearch({ currentSpent: totalSpent, currentBought: bought, nextCost });
+    return !check.allowed;
   };
 
   try {
@@ -122,17 +122,16 @@ export async function runAutoBuyer(token, deps = {}) {
             loggedMatches.add(target);
           }
           searchIndex++;
+          governor.recordSearch();
           const result = await search(target, eaId, token, { searchIndex });
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
           if (!offer) {
+            governor.recordResult(200);
             addBotLog(target.name + ': Buy Now sınırında uygun ilan bulunamadı.', 'info');
           } else {
             attemptedTrades.add(offer.tradeId);
-            if (settings.maxSpendCoins > 0 && totalSpent + offer.price > settings.maxSpendCoins) {
-              stopAutoBuyer('Harcama limiti aşılacak: ' + (totalSpent + offer.price).toLocaleString('tr-TR') + ' > ' + settings.maxSpendCoins.toLocaleString('tr-TR') + ' coin.');
-              return;
-            }
+            if (checkLimitsReached(offer.price)) return;
             const balance = coinBalance();
             if (balance && offer.price > balance) {
               throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
@@ -149,10 +148,12 @@ export async function runAutoBuyer(token, deps = {}) {
               bought++;
               totalSpent += offer.price;
               incrementStat('bought');
+              governor.recordPurchase(offer.price);
               addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'success' });
             } else {
               const error = purchase.error;
               const classified = classifyPurchaseError(error, purchase);
+              governor.recordResult(classified.code || (classified.kind === 'fatal' ? 500 : 0));
               let rawError;
               try {
                 rawError = JSON.stringify(error ?? purchase);
@@ -185,7 +186,7 @@ export async function runAutoBuyer(token, deps = {}) {
             await idle(baseDelay + jitter, token, 'search');
           }
         }
-        if (bought >= settings.maxPlayers || (settings.maxSpendCoins > 0 && totalSpent >= settings.maxSpendCoins)) break;
+        if (checkLimitsReached()) break;
       }
       if (!state.botRunning || token !== state.botToken) return;
       if (checkLimitsReached()) return;
@@ -216,6 +217,7 @@ export async function runAutoBuyer(token, deps = {}) {
     } while (state.botRunning && token === state.botToken);
   } catch (error) {
     if (token === state.botToken) {
+      governor.recordResult(error?.status || error?.code || 500);
       incrementStat('errors');
       state.botRunning = false;
       state.botToken++;

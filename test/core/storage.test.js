@@ -27,7 +27,10 @@ const defaults = {
   autoSell: false,
   maxPlayers: 1,
   speed: 0,
-  maxSpendCoins: 0
+  maxSpendCoins: 0,
+  hourlySearchLimit: 1200,
+  dailySearchLimit: 6000,
+  consecutiveErrorLimit: 3
 };
 
 function loadRecord(record) {
@@ -80,7 +83,10 @@ describe('snipe settings storage', () => {
       autoSell: true,
       maxPlayers: 8,
       speed: 2,
-      maxSpendCoins: 0
+      maxSpendCoins: 0,
+      hourlySearchLimit: 1200,
+      dailySearchLimit: 6000,
+      consecutiveErrorLimit: 3
     });
   });
 
@@ -159,7 +165,10 @@ describe('snipe settings storage', () => {
       autoSell: true,
       maxPlayers: 6,
       speed: 3,
-      maxSpendCoins: 250000
+      maxSpendCoins: 250000,
+      hourlySearchLimit: 1200,
+      dailySearchLimit: 6000,
+      consecutiveErrorLimit: 3
     });
   });
 });

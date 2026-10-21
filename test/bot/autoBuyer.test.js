@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONFIG } from '../../src/core/config.js';
 import { state } from '../../src/core/state.js';
+import { safetyGovernor } from '../../src/bot/safetyGovernor.js';
 
 vi.mock('../../src/utils/dom.js', () => ({
-  pageWindow: { services: {}, setTimeout: (...args) => globalThis.setTimeout(...args) }
+  pageWindow: { services: {}, setTimeout: (...args) => globalThis.setTimeout(...args) },
+  pageStorage: () => ({ getItem: () => null, setItem: () => {}, removeItem: () => {} })
 }));
 vi.mock('../../src/utils/async.js', () => ({ wait: vi.fn(() => Promise.resolve()) }));
 
@@ -14,6 +16,8 @@ function target(name, searches, eaId = 1) {
 }
 
 function prepareBot(targets, settings = {}) {
+  safetyGovernor.resume();
+  safetyGovernor.searches = [];
   state.targets = targets;
   state.snipeSettings = { repeat: 1, waitSeconds: 0, maxPlayers: 10, speed: 1, ...settings };
   state.botRunning = true;
@@ -311,5 +315,34 @@ describe('runAutoBuyer', () => {
     expect(state.botRunning).toBe(false);
     expect(state.botStats.bought).toBe(2);
     expect(state.botStatus).toContain('Harcama limiti doldu');
+  });
+
+  it('halts when hourly search limit is reached in SafetyGovernor', async () => {
+    prepareBot([target('A', 5)], { hourlySearchLimit: 2 });
+    const idleWait = vi.fn(async () => true);
+    const searchAutoBuyOffers = vi.fn(async () => ({ stopped: false, offers: [] }));
+
+    await runAutoBuyer(1, deps(idleWait, searchAutoBuyOffers));
+
+    expect(state.botRunning).toBe(false);
+    expect(safetyGovernor.isHalted()).toBe(true);
+    expect(state.botStatus).toContain('Saatlik arama limiti doldu');
+  });
+
+  it('halts when consecutive error limit is reached in SafetyGovernor', async () => {
+    prepareBot([target('A', 5)], { consecutiveErrorLimit: 2 });
+    const idleWait = vi.fn(async () => true);
+    let nextTrade = 100;
+    const searchAutoBuyOffers = vi.fn(async () => ({
+      stopped: false,
+      offers: [{ tradeId: nextTrade++, price: 500, rating: 90 }]
+    }));
+    const buyAutoOffer = vi.fn(async () => ({ success: false, error: { code: 500 } }));
+
+    await runAutoBuyer(1, deps(idleWait, searchAutoBuyOffers, { buyAutoOffer }));
+
+    expect(state.botRunning).toBe(false);
+    expect(safetyGovernor.isHalted()).toBe(true);
+    expect(state.botStatus).toContain('Ardışık 2 EA sunucu hatası (500) alındı');
   });
 });

@@ -2,8 +2,10 @@
 // Bagimliliklar: core/state, core/storage ve bot/autoBuyer.
 
 import { state } from '../../../core/state.js';
+import { on } from '../../../core/events.js';
 import { saveSnipeSettings } from '../../../core/storage.js';
 import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
+import { safetyGovernor } from '../../../bot/safetyGovernor.js';
 import { clampPrice, roundToPriceStep } from '../../../ea/priceSteps.js';
 
 export function renderPanelSettings(content) {
@@ -17,6 +19,10 @@ const waitDisplay = waitRange[0] === waitRange[1]
   : waitRange[0] + ' - ' + waitRange[1] + ' sn';
 content.innerHTML =
   '<div class="fr-settings-view">' +
+    '<div class="fr-governor-banner" style="display: none;">' +
+      '<span class="fr-governor-banner-msg"></span>' +
+      '<button class="fr-governor-resume-btn" type="button">Devam Et ▶</button>' +
+    '</div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Oyuncu listesi tekrarı</span><span class="fr-setting-value" data-value="repeat">' + s.repeat + '</span></div><input class="fr-range" data-setting="repeat" type="range" min="0" max="50" step="1" value="' + s.repeat + '" aria-label="Oyuncu listesi kaç kez tekrarlanacak"></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Bekleme süresi (arama bitince)</span><span class="fr-setting-value" data-value="waitSeconds">' + waitDisplay + '</span></div>' +
       '<div class="fr-range-dual">' +
@@ -28,6 +34,9 @@ content.innerHTML =
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Arama hızı</span><span class="fr-setting-value" data-value="speed">' + (speedLabels[s.speed] || '') + '</span></div><input class="fr-range" data-setting="speed" type="range" min="0" max="3" step="1" value="' + s.speed + '" aria-label="Arama hızı 0 ile 3 arasında"></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Harcama limiti (coin)</span><span class="fr-setting-value" data-value="maxSpendCoins">' + (s.maxSpendCoins ? Number(s.maxSpendCoins).toLocaleString('tr-TR') : 'Limitsiz') + '</span></div><input class="fr-setting-input" data-setting="maxSpendCoins" type="number" min="0" step="1000" placeholder="0 = limitsiz" value="' + (s.maxSpendCoins || '') + '" aria-label="Harcama limiti coin olarak"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Saatlik arama limiti</span><span class="fr-setting-value" data-value="hourlySearchLimit">' + (s.hourlySearchLimit ? s.hourlySearchLimit : 'Limitsiz') + '</span></div><input class="fr-setting-input" data-setting="hourlySearchLimit" type="number" min="0" step="50" placeholder="0 = limitsiz" value="' + (s.hourlySearchLimit || '') + '" aria-label="Saatlik arama limiti"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Günlük arama limiti</span><span class="fr-setting-value" data-value="dailySearchLimit">' + (s.dailySearchLimit ? s.dailySearchLimit : 'Limitsiz') + '</span></div><input class="fr-setting-input" data-setting="dailySearchLimit" type="number" min="0" step="100" placeholder="0 = limitsiz" value="' + (s.dailySearchLimit || '') + '" aria-label="Günlük arama limiti"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Ardışık hata limiti</span><span class="fr-setting-value" data-value="consecutiveErrorLimit">' + (s.consecutiveErrorLimit || 3) + '</span></div><input class="fr-setting-input" data-setting="consecutiveErrorLimit" type="number" min="1" max="20" step="1" value="' + (s.consecutiveErrorLimit || 3) + '" aria-label="Ardışık 429/500 hata limiti"></div>' +
     '<button class="fr-start" type="button" data-state="' + (state.botRunning ? 'running' : 'idle') + '" aria-pressed="' + state.botRunning + '" aria-label="' + (state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH') + '">' +
       '<svg class="fr-start-icon fr-start-icon-idle" viewBox="0 0 24 32" aria-hidden="true"><path d="M14 1 3 18h7l-1 13 12-19h-8z" fill="currentColor" stroke="rgba(255,255,255,.8)" stroke-width="1" stroke-linejoin="round"/></svg>' +
       '<svg class="fr-start-icon fr-start-icon-running" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>' +
@@ -107,5 +116,39 @@ content.querySelector('.fr-start').addEventListener('click', () => {
   if (state.botRunning) stopAutoBuyer('Kullanıcı tarafından durduruldu.');
   else startAutoBuyer();
 });
-  
+
+['hourlySearchLimit', 'dailySearchLimit', 'consecutiveErrorLimit'].forEach((key) => {
+  const inp = content.querySelector('.fr-setting-input[data-setting="' + key + '"]');
+  if (!inp) return;
+  const updateVal = () => {
+    const val = Math.max(0, Math.floor(Number(inp.value) || 0));
+    s[key] = val;
+    content.querySelector('[data-value="' + key + '"]').textContent = val ? String(val) : (key === 'consecutiveErrorLimit' ? '3' : 'Limitsiz');
+  };
+  inp.addEventListener('input', updateVal);
+  inp.addEventListener('change', () => {
+    updateVal();
+    saveSnipeSettings();
+  });
+});
+
+const banner = content.querySelector('.fr-governor-banner');
+const bannerMsg = content.querySelector('.fr-governor-banner-msg');
+const syncBanner = () => {
+  if (!banner) return;
+  if (safetyGovernor.isHalted()) {
+    banner.style.display = 'flex';
+    bannerMsg.textContent = '⛔ ' + safetyGovernor.getHaltReason();
+  } else {
+    banner.style.display = 'none';
+  }
+};
+syncBanner();
+content.querySelector('.fr-governor-resume-btn')?.addEventListener('click', () => {
+  safetyGovernor.resume();
+  syncBanner();
+});
+on('governor:halt', syncBanner);
+on('governor:resume', syncBanner);
+
 }

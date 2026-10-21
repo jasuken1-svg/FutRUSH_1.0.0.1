@@ -888,6 +888,19 @@ export const panelCss = `
       animation-delay: var(--fr-wait-delay, 0ms);
     }
 
+    #${P.id} .fr-governor-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 7px 10px; margin: 4px 0 8px 0; border-radius: 6px;
+      background: rgba(255, 68, 68, 0.18); border: 1px solid rgba(255, 68, 68, 0.6);
+      color: #ff6b6b; font-size: 11px; font-weight: 600; line-height: 1.3;
+    }
+    #${P.id} .fr-governor-banner-msg { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+    #${P.id} .fr-governor-resume-btn {
+      flex: 0 0 auto; background: #00e5ff; color: #001018; border: none; border-radius: 4px;
+      padding: 4px 8px; font-weight: 700; font-size: 11px; cursor: pointer; white-space: nowrap;
+    }
+    #${P.id} .fr-governor-resume-btn:hover { background: #33ebff; }
+
     @keyframes fr-status-spin { to { transform: rotate(360deg); } }
     @keyframes fr-status-enter { from { opacity: 0; transform: translateX(7px); } to { opacity: 1; transform: translateX(0); } }
     @keyframes fr-status-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
