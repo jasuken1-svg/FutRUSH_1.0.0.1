@@ -142,29 +142,31 @@ describe('applyTargetAddEaTax', () => {
 
 describe('applyTargetAddDiscount', () => {
   it.each([
-    [10000, 0.1, 9000],
-    [10000, 0.15, 8500],
-    [10000, 0, 10000],
-    [950, 0.1, 850],
-    [1000, 0.1, 900],
+    [10000, 0.1, 8500],
+    [10000, 0.15, 8000],
+    [10000, 0, 9500],
+    [950, 0.1, 800],
+    [1000, 0.1, 850],
     [200, 0.1, 200],
-    [53000, 0.1, 47500]
+    [53000, 0.1, 45250]
   ])('calculates the discounted price for %i with rate %s as %i', (price, rate, expected) => {
     expect(applyTargetAddDiscount({ price }, rate).buyNow).toBe(expected);
-    expect(applyTargetAddDiscount({ price }, rate).price).toBe(expected);
+    expect(applyTargetAddDiscount({ price }, rate).price).toBe(price);
   });
 
   it('uses CONFIG.targetAdd.discountRate when rate argument is omitted', () => {
     const originalRate = CONFIG.targetAdd.discountRate;
     CONFIG.targetAdd.discountRate = 0.15;
     try {
-      expect(applyTargetAddDiscount({ price: 10000 }).buyNow).toBe(8500);
+      expect(applyTargetAddDiscount({ price: 10000 }).buyNow).toBe(8000);
+      expect(applyTargetAddDiscount({ price: 10000 }).price).toBe(10000);
     } finally {
       CONFIG.targetAdd.discountRate = originalRate;
     }
   });
 
   it.each([-0.01, 1, '0.1', Number.NaN])('uses fallback rate when given invalid rate %s', (rate) => {
-    expect(applyTargetAddDiscount({ price: 10000 }, rate).buyNow).toBe(9000);
+    expect(applyTargetAddDiscount({ price: 10000 }, rate).buyNow).toBe(8500);
+    expect(applyTargetAddDiscount({ price: 10000 }, rate).price).toBe(10000);
   });
 });

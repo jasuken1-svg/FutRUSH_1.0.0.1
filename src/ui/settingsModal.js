@@ -214,9 +214,9 @@ export function renderSettingsBody(body) {
     const percentage = index;
     const value = percentage / 100;
     let label = percentage + '%';
-    if (percentage === 0) label += ' (İndirimsiz)';
-    else if (percentage === 5) label += ' (Başa baş / %5 EA vergisi)';
-    else if (percentage === 10) label += ' (Önerilen)';
+    if (percentage === 0) label += ' (Başa baş / %0 Net Kâr)';
+    else if (percentage === 5) label += ' (%5 Net Kâr)';
+    else if (percentage === 10) label += ' (%10 Net Kâr - Önerilen)';
     return '<option value="' + value + '"' + (Math.abs(targetAdd.discountRate - value) < 0.001 ? ' selected' : '') + '>' + label + '</option>';
   }).join('');
   const outlierOptions = '<option value="0"' + (targetAdd.outlierRatio === 0 ? ' selected' : '') + '>Kapalı</option>' +

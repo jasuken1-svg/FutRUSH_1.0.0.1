@@ -319,7 +319,14 @@ export const panelCss = `
     #${P.id} .fr-summary-profit { color: #51d88a; }
 
     /* Arama Çubuğu */
-    #${P.id} .fr-target-search-box { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+    #${P.id} .fr-target-search-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 4px;
+      z-index: 60;
+    }
     #${P.id} .fr-target-search-row { display: flex; gap: 6px; align-items: center; }
     #${P.id} .fr-target-search-input {
       flex: 1; height: 32px; padding: 0 10px;
@@ -339,9 +346,21 @@ export const panelCss = `
 
     /* Arama Sonuçları */
     #${P.id} .fr-target-search-results {
-      max-height: 200px; overflow-y: auto; background: rgba(5,15,25,0.95);
-      border: 1px solid rgba(0,229,255,0.25); border-radius: 6px; padding: 4px;
-      scrollbar-width: thin; scrollbar-color: rgba(0,229,255,.3) transparent;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+      background: rgba(6, 18, 30, 0.98);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      border-radius: 6px;
+      padding: 4px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 229, 255, .3) transparent;
       scrollbar-gutter: stable;
     }
     #${P.id} .fr-search-result-item {

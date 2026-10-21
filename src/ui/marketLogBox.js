@@ -17,13 +17,14 @@ function ensureStyles() {
   st.textContent = `
     .ut-market-search-filters-view .search-prices {
       position: relative !important;
+      overflow: visible !important;
     }
     .fr-market-log-box {
       position: absolute;
       top: 30px;
       left: 0;
       width: calc(50% - 6px);
-      height: calc(100% - 30px);
+      height: 450px;
       background: rgba(10, 16, 26, 0.85);
       backdrop-filter: blur(4px);
       border: 1px solid rgba(0, 229, 255, 0.25);
@@ -31,12 +32,13 @@ function ensureStyles() {
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      z-index: 10;
+      z-index: 9999 !important;
       overflow: hidden;
       font-family: inherit;
       color: #fff;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
       transition: opacity 0.15s ease;
+      pointer-events: auto !important;
     }
     .fr-market-log-head {
       display: flex;
@@ -52,7 +54,9 @@ function ensureStyles() {
       flex: 0 0 auto;
     }
     .fr-market-log-list {
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 6px 8px;
@@ -62,6 +66,7 @@ function ensureStyles() {
       scrollbar-width: none;
       -ms-overflow-style: none;
       overscroll-behavior: contain;
+      pointer-events: auto !important;
     }
     .fr-market-log-list::-webkit-scrollbar {
       display: none;
@@ -117,6 +122,7 @@ function ensureStyles() {
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.15s, transform 0.15s;
+      pointer-events: auto !important;
     }
     .fr-market-log-undo-btn:hover {
       background: rgba(255, 77, 79, 0.3);
@@ -205,7 +211,7 @@ export function renderMarketLogBox() {
   list.addEventListener('wheel', (e) => {
     e.stopPropagation();
     list.scrollTop += e.deltaY;
-  }, { passive: false });
+  }, { passive: true });
 
   if (!logHistory.length) {
     const empty = document.createElement('div');
@@ -230,13 +236,20 @@ export function renderMarketLogBox() {
         undoBtn.textContent = '↩️';
         undoBtn.title = 'Geri Al';
         undoBtn.setAttribute('aria-label', 'Geri Al');
-        undoBtn.addEventListener('click', (e) => {
+        const triggerUndo = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          item.undoAction();
-          row.remove();
-          addMarketLog({ text: `${item.text.replace(' hedeflerden silindi.', '').replace(' silindi.', '')} geri yüklendi.`, type: 'success' });
-        });
+          if (typeof item.undoAction === 'function') {
+            const action = item.undoAction;
+            item.undoAction = null;
+            const idx = logHistory.indexOf(item);
+            if (idx !== -1) logHistory.splice(idx, 1);
+            action();
+            addMarketLog({ text: `${item.text.replace(' hedeflerden silindi.', '').replace(' silindi.', '')} geri yüklendi.`, type: 'success' });
+          }
+        };
+        undoBtn.addEventListener('click', triggerUndo);
+        undoBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
         row.appendChild(undoBtn);
       }
 

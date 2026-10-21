@@ -122,7 +122,7 @@ describe('importCheapestTargets EA pricing', () => {
         progress.push(state.targetStatus.message);
         if (eaId === 1002) {
           expect(mergeTargetPlayers).toHaveBeenCalledOnce();
-          expect(mergeTargetPlayers).toHaveBeenCalledWith([{ ...players[0], price: 1100, buyNow: 1100 }]);
+          expect(mergeTargetPlayers).toHaveBeenCalledWith([{ ...players[0], price: 1300, buyNow: 1100 }]);
         }
         return successfulPage(eaId);
       },
@@ -132,8 +132,8 @@ describe('importCheapestTargets EA pricing', () => {
     expect(players.map((item) => item.price)).toEqual([1300, 1300]);
     expect(players.map((item) => item.buyNow)).toEqual([1300, 1300]);
     expect(mergeTargetPlayers).toHaveBeenCalledTimes(2);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [{ ...players[0], price: 1100, buyNow: 1100 }]);
-    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [{ ...players[1], price: 1100, buyNow: 1100 }]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [{ ...players[0], price: 1300, buyNow: 1100 }]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [{ ...players[1], price: 1300, buyNow: 1100 }]);
     expect(applyTargetAddDiscount).toHaveBeenCalledTimes(2);
     expect(progress).toEqual(['EA fiyatı alınıyor 1/2: Alpha', 'EA fiyatı alınıyor 2/2: Beta']);
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi (fiyatlar EA\'dan).');
@@ -283,8 +283,8 @@ describe('importCheapestTargets EA pricing', () => {
 
     expect(mergeTargetPlayers).toHaveBeenCalledOnce();
     expect(mergeTargetPlayers).toHaveBeenCalledWith([
-      { ...players[0], price: 4500, buyNow: 4500 },
-      { ...players[1], price: 5400, buyNow: 5400 }
+      { ...players[0], price: 5000, buyNow: 4200 },
+      { ...players[1], price: 6000, buyNow: 5100 }
     ]);
     expect(applyTargetAddDiscount).toHaveBeenCalledTimes(2);
     expect(fetchMarketPage).not.toHaveBeenCalled();
@@ -306,7 +306,7 @@ describe('importCheapestTargets EA pricing', () => {
     });
 
     expect(mergeTargetPlayers).toHaveBeenCalledWith([
-      { ...players[0], price: 4000, buyNow: 4000 }
+      { ...players[0], price: 5000, buyNow: 3800 }
     ]);
   });
 

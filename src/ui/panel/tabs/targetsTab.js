@@ -466,6 +466,7 @@ export function renderTargetContent(content) {
           state.targets.splice(Math.min(index, state.targets.length), 0, deletedPlayer);
           saveTargets();
           emit('targets:changed');
+          renderTargetContent(content);
         }
       });
     });

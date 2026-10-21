@@ -17,16 +17,21 @@ export function applyTargetAddDiscount(player, discountRate = CONFIG.targetAdd.d
       ? CONFIG.targetAdd.discountRate
       : 0.1);
   const originalPrice = Number(player.price);
-  const discountedPrice = Number.isFinite(originalPrice) ? originalPrice * (1 - rate) : MIN_BIN;
-  const price = Math.max(MIN_BIN, roundDownToStep(discountedPrice));
-  return { ...player, price, buyNow: price };
+  const discountedPrice = Number.isFinite(originalPrice)
+    ? Math.round(originalPrice * 0.95 * (1 - rate))
+    : MIN_BIN;
+  const buyNow = Math.max(MIN_BIN, roundDownToStep(discountedPrice));
+  return { ...player, price: originalPrice, buyNow };
 }
 
 export function applyTargetAddEaTax(player, eaTaxRate = CONFIG.targetAdd.eaTaxRate) {
   const rate = typeof eaTaxRate === 'number' && Number.isFinite(eaTaxRate) && eaTaxRate >= 0 && eaTaxRate < 1
     ? eaTaxRate
     : 0.05;
-  return applyTargetAddDiscount(player, rate);
+  const originalPrice = Number(player.price);
+  const discountedPrice = Number.isFinite(originalPrice) ? originalPrice * (1 - rate) : MIN_BIN;
+  const price = Math.max(MIN_BIN, roundDownToStep(discountedPrice));
+  return { ...player, price, buyNow: price };
 }
 
 export function findDuplicateTarget(targets, candidate, { matchFutbinId = true } = {}) {
@@ -178,7 +183,7 @@ export function mergeTargetPlayers(players) {
       eaIdTargetKey: player.eaIdTargetKey || null,
       price: player.price,
       searches: 3,
-      buyNow: player.price,
+      buyNow: player.buyNow != null ? player.buyNow : player.price,
       futbinId,
       playerId: player.playerId || toBaseId(player.eaId),
       versionKnown: Boolean(player.versionKnown),
