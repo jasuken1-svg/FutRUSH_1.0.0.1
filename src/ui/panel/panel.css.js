@@ -128,6 +128,27 @@ export const panelCss = `
       border-bottom-color: #00e5ff;
     }
 
+    #${P.id} .fr-futbin-queue-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      padding: 2px 6px;
+      margin: auto 6px auto auto;
+      border-radius: 4px;
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      color: #00e5ff;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    #${P.id} .fr-futbin-queue-pill.is-backoff {
+      background: rgba(255, 77, 79, 0.15);
+      border-color: rgba(255, 77, 79, 0.4);
+      color: #ff4d4f;
+    }
+
     #${P.id} .fc-snipe-tab-content {
       flex: 1 1 auto;
       min-height: 0;

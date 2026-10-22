@@ -6,6 +6,7 @@ import { idOf, isBaseId, toBaseId } from './eaId.js';
 import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc, normalizeQuality, validateQualityFilter, isSpecialCard } from './candidateMatcher.js';
 import { CONFIG } from '../core/config.js';
 import { requestFutbinApi } from './http.js';
+import { enqueueFutbinRequest } from './requestQueue.js';
 
 const SPECIAL_OFFSET = 0x1000000;
 const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
@@ -194,32 +195,38 @@ export function queryFutbinPlayersByName(name) {
     return Promise.resolve(cached.data);
   }
 
-  return new Promise((resolve, reject) => {
+  const url = 'https://www.futbin.org/futbin/api/searchPlayersByName?playername=' + encodeURIComponent(cleanName);
+  return enqueueFutbinRequest(url, () => new Promise((resolve, reject) => {
     if (typeof GM_xmlhttpRequest !== 'function') {
       reject(new Error('FutBIN oyuncu eşleştirmesi için userscript izni bulunamadı.'));
       return;
     }
-    const url = 'https://www.futbin.org/futbin/api/searchPlayersByName?playername=' + encodeURIComponent(cleanName);
     GM_xmlhttpRequest({
       method: 'GET', url, timeout: 15000,
       headers: { 'Accept': 'application/json, text/plain, */*' },
       onload: (response) => {
+        if (response.status === 429 || response.status === 403) {
+          resolve(response);
+          return;
+        }
         if (response.status < 200 || response.status >= 300) {
           reject(new Error('FutBIN oyuncu eşleştirme isteği başarısız (HTTP ' + response.status + ').'));
           return;
         }
-        try {
-          const payload = JSON.parse(response.responseText || '');
-          const data = Array.isArray(payload?.data) ? payload.data : [];
-          searchCache.set(key, { data, timestamp: Date.now() });
-          resolve(data);
-        } catch (error) {
-          reject(error);
-        }
+        resolve(response);
       },
       onerror: () => reject(new Error('FutBIN oyuncu eşleştirme bağlantısı kurulamadı.')),
       ontimeout: () => reject(new Error('FutBIN oyuncu eşleştirme isteği zaman aşımına uğradı.'))
     });
+  })).then((response) => {
+    try {
+      const payload = JSON.parse(response.responseText || '');
+      const data = Array.isArray(payload?.data) ? payload.data : [];
+      searchCache.set(key, { data, timestamp: Date.now() });
+      return data;
+    } catch (error) {
+      throw error;
+    }
   });
 }
 

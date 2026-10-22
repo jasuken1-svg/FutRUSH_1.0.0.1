@@ -13,7 +13,7 @@ const MAX_LOGS = 25;
 const logHistory = [];
 
 function ensureStyles() {
-  if (document.getElementById('fr-market-log-style')) return;
+  if (typeof document === 'undefined' || document.getElementById('fr-market-log-style')) return;
   const st = document.createElement('style');
   st.id = 'fr-market-log-style';
   st.textContent = `
@@ -241,6 +241,7 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
 }
 
 export function mountMarketLogBox(targetContainer) {
+  if (typeof document === 'undefined') return;
   ensureStyles();
   const searchPrices = document.querySelector('.ut-market-search-filters-view .search-prices');
   if (searchPrices) {
@@ -305,6 +306,7 @@ function setupBoxElements(box) {
 }
 
 export function renderMarketLogBox(forceBottom = false) {
+  if (typeof document === 'undefined') return;
   if (!currentBoxEl || !currentBoxEl.isConnected) {
     mountMarketLogBox();
     if (!currentBoxEl) return;

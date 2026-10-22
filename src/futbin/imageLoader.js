@@ -1,8 +1,9 @@
 // EA Web App CSP ve Hotlink engellerini asmak icin GM_xmlhttpRequest tabanli Base64 Data URL resim yukleyici.
-// Eşzamanlı istek kuyruğu (max 6), Promise tekilleştirme, LRU bellek önbelleği ve negatif önbellek içerir.
+// Eşzamanlı istek kuyruğu, Promise tekilleştirme, LRU bellek önbelleği ve negatif önbellek içerir.
+
+import { enqueueFutbinRequest } from './requestQueue.js';
 
 export const FUTBIN_REFERER = 'https://www.futbin.org/';
-const MAX_CONCURRENT = 6;
 const MAX_CACHE_BYTES = 30 * 1024 * 1024; // 30 MB
 const NEGATIVE_CACHE_TTL_MS = 60 * 1000; // 60 saniye
 
@@ -16,29 +17,6 @@ const inflightRequests = new Map();
 // URL -> timestamp (ms)
 const negativeCache = new Map();
 
-// Eşzamanlı istek kuyruğu
-let activeRequests = 0;
-const requestQueue = [];
-
-function pumpQueue() {
-  while (activeRequests < MAX_CONCURRENT && requestQueue.length > 0) {
-    const nextTask = requestQueue.shift();
-    if (nextTask) {
-      activeRequests++;
-      nextTask().finally(() => {
-        activeRequests--;
-        pumpQueue();
-      });
-    }
-  }
-}
-
-function enqueueRequest(taskFn) {
-  return new Promise((resolve, reject) => {
-    requestQueue.push(() => taskFn().then(resolve, reject));
-    pumpQueue();
-  });
-}
 
 function evictLruIfNeeded(newBytes) {
   while (currentCacheBytes + newBytes > MAX_CACHE_BYTES && imageDataCache.size > 0) {
@@ -101,9 +79,9 @@ export function fetchImageBlobUrl(url) {
     return inflightRequests.get(trimmed);
   }
 
-  const promise = enqueueRequest(() => new Promise((resolve) => {
+  const promise = enqueueFutbinRequest(trimmed, () => new Promise((resolve) => {
     if (typeof GM_xmlhttpRequest !== 'function') {
-      resolve('');
+      resolve({ status: 500 });
       return;
     }
 
@@ -116,45 +94,41 @@ export function fetchImageBlobUrl(url) {
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Referer': trimmed.includes('fut.gg') ? 'https://www.fut.gg/' : FUTBIN_REFERER
       },
-      onload: async (res) => {
-        if (res.status >= 200 && res.status < 300 && res.response) {
-          try {
-            const rawHeader = res.responseHeaders || '';
-            const match = rawHeader.match(/content-type:\s*([^\r\n;]+)/i);
-            const contentType = match ? match[1].trim().toLowerCase() : (res.response.type || '');
-
-            // Yanıt content-type image/ ile başlamıyorsa reddet
-            if (contentType && !contentType.startsWith('image/')) {
-              negativeCache.set(trimmed, Date.now());
-              resolve('');
-              return;
-            }
-
-            const dataUrl = await blobToDataUrl(res.response);
-            if (dataUrl && dataUrl.startsWith('data:image/')) {
-              const approxBytes = dataUrl.length * 2;
-              evictLruIfNeeded(approxBytes);
-              imageDataCache.set(trimmed, { dataUrl, bytes: approxBytes });
-              currentCacheBytes += approxBytes;
-              negativeCache.delete(trimmed);
-              resolve(dataUrl);
-              return;
-            }
-          } catch (e) {}
-        }
-        negativeCache.set(trimmed, Date.now());
-        resolve('');
-      },
-      onerror: () => {
-        negativeCache.set(trimmed, Date.now());
-        resolve('');
-      },
-      ontimeout: () => {
-        negativeCache.set(trimmed, Date.now());
-        resolve('');
-      }
+      onload: (res) => resolve(res),
+      onerror: () => resolve({ status: 500 }),
+      ontimeout: () => resolve({ status: 504 }),
+      onabort: () => resolve({ status: 0 })
     });
-  })).finally(() => {
+  })).then(async (res) => {
+    if (res && res.status >= 200 && res.status < 300 && res.response) {
+      try {
+        const rawHeader = res.responseHeaders || '';
+        const match = rawHeader.match(/content-type:\s*([^\r\n;]+)/i);
+        const contentType = match ? match[1].trim().toLowerCase() : (res.response.type || '');
+
+        // Yanıt content-type image/ ile başlamıyorsa reddet
+        if (contentType && !contentType.startsWith('image/')) {
+          negativeCache.set(trimmed, Date.now());
+          return '';
+        }
+
+        const dataUrl = await blobToDataUrl(res.response);
+        if (dataUrl && dataUrl.startsWith('data:image/')) {
+          const approxBytes = dataUrl.length * 2;
+          evictLruIfNeeded(approxBytes);
+          imageDataCache.set(trimmed, { dataUrl, bytes: approxBytes });
+          currentCacheBytes += approxBytes;
+          negativeCache.delete(trimmed);
+          return dataUrl;
+        }
+      } catch (e) {}
+    }
+    negativeCache.set(trimmed, Date.now());
+    return '';
+  }).catch(() => {
+    negativeCache.set(trimmed, Date.now());
+    return '';
+  }).finally(() => {
     inflightRequests.delete(trimmed);
   });
 
