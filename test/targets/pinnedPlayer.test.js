@@ -9,10 +9,18 @@ const { findDuplicateTarget, mergeTargetPlayers, saveTargets, setTargetStatus, e
   emit: vi.fn()
 }));
 
-const { fetchFutbinPlayerId } = vi.hoisted(() => ({ fetchFutbinPlayerId: vi.fn() }));
+const { fetchFutbinPlayerId, fetchPlayerDetailsFromFutbinApi, searchPlayerAllVersions } = vi.hoisted(() => ({
+  fetchFutbinPlayerId: vi.fn(),
+  fetchPlayerDetailsFromFutbinApi: vi.fn(),
+  searchPlayerAllVersions: vi.fn()
+}));
 
 vi.mock('../../src/utils/dom.js', () => ({ visibleElement: () => true }));
-vi.mock('../../src/futbin/playerLookup.js', () => ({ fetchFutbinPlayerId }));
+vi.mock('../../src/futbin/playerLookup.js', () => ({
+  fetchFutbinPlayerId,
+  fetchPlayerDetailsFromFutbinApi,
+  searchPlayerAllVersions
+}));
 vi.mock('../../src/targets/targetOps.js', () => ({
   findDuplicateTarget,
   mergeTargetPlayers,
@@ -39,6 +47,8 @@ beforeEach(() => {
   findDuplicateTarget.mockReset();
   mergeTargetPlayers.mockReset();
   fetchFutbinPlayerId.mockReset();
+  fetchPlayerDetailsFromFutbinApi.mockReset();
+  searchPlayerAllVersions.mockReset();
   saveTargets.mockReset();
   setTargetStatus.mockReset();
   emit.mockReset();

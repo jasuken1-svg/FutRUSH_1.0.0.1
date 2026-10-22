@@ -166,7 +166,7 @@ export function mergeTargetPlayers(players) {
       if (player.clubImageUrl && !duplicate.clubImageUrl) duplicate.clubImageUrl = player.clubImageUrl;
       if (player.leagueName && !duplicate.leagueName) duplicate.leagueName = player.leagueName;
       if (player.leagueImageFallbacks && !duplicate.leagueImageFallbacks) duplicate.leagueImageFallbacks = player.leagueImageFallbacks;
-      if (player.playstylesPlus && !duplicate.playstylesPlus) duplicate.playstylesPlus = player.playstylesPlus;
+      if (Array.isArray(player.playstylesPlus) && player.playstylesPlus.length > 0 && (!duplicate.playstylesPlus || !duplicate.playstylesPlus.length)) duplicate.playstylesPlus = player.playstylesPlus;
       if (player.priceUpdatedAt && !duplicate.priceUpdatedAt) duplicate.priceUpdatedAt = player.priceUpdatedAt;
       if (player.holographicAnimationUrl && !duplicate.holographicAnimationUrl) duplicate.holographicAnimationUrl = player.holographicAnimationUrl;
       if (player.isHolo) duplicate.isHolo = true;

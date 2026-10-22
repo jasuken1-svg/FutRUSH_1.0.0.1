@@ -7,7 +7,7 @@ import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../targets/pinnedPlayer.js';
-import { searchPlayerAllVersions, searchUniquePlayers } from '../../../futbin/playerLookup.js';
+import { searchPlayerAllVersions, searchUniquePlayers, fetchPlayerDetailsFromFutbinApi } from '../../../futbin/playerLookup.js';
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
@@ -106,7 +106,7 @@ export function renderTargetContent(content) {
   const list = content.querySelector('.fr-target-list');
 
   // Arka planda eksik görsel/stat alanlarını FUTBIN'den tamamla (Bölüm 1.2)
-  if (!isHydrating && state.targets.some((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl))) {
+  if (!isHydrating && state.targets.some((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl || !t.playstylesPlus || !t.playstylesPlus.length))) {
     isHydrating = true;
     hydrateTargetsWithFutbin().then(() => {
       isHydrating = false;
@@ -215,7 +215,7 @@ export function renderTargetContent(content) {
             if (!target.leagueImageUrl && matched.leagueImageUrl) target.leagueImageUrl = matched.leagueImageUrl;
             if (!target.leagueName && matched.leagueName) target.leagueName = matched.leagueName;
             if (!target.leagueImageFallbacks && matched.leagueImageFallbacks) target.leagueImageFallbacks = matched.leagueImageFallbacks;
-            if (!target.playstylesPlus && matched.playstylesPlus) target.playstylesPlus = matched.playstylesPlus;
+            if ((!target.playstylesPlus || !target.playstylesPlus.length) && matched.playstylesPlus?.length) target.playstylesPlus = matched.playstylesPlus;
             if (!target.stats && matched.stats) target.stats = matched.stats;
             if (!target.position && matched.position) target.position = matched.position;
             if (!target.futbinId && matched.futbinId) target.futbinId = matched.futbinId;
@@ -393,7 +393,24 @@ export function renderTargetContent(content) {
       selectBtn.type = 'button';
       selectBtn.className = 'fr-candidate-btn';
       selectBtn.textContent = 'Bu kartı ekle';
-      selectBtn.addEventListener('click', () => {
+      selectBtn.addEventListener('click', async () => {
+        if (!candidate.playstylesPlus || !candidate.playstylesPlus.length) {
+          try {
+            const details = await fetchPlayerDetailsFromFutbinApi({
+              name: candidate.name,
+              rating: candidate.rating,
+              eaId: candidate.eaId,
+              futbinId: candidate.futbinId
+            });
+            if (details) {
+              if (details.playstylesPlus?.length) candidate.playstylesPlus = details.playstylesPlus;
+              if (!candidate.stats && details.stats) candidate.stats = details.stats;
+              if (!candidate.leagueImageUrl && details.leagueImageUrl) candidate.leagueImageUrl = details.leagueImageUrl;
+              if (!candidate.clubImageUrl && details.clubImageUrl) candidate.clubImageUrl = details.clubImageUrl;
+              if (!candidate.nationImageUrl && details.nationImageUrl) candidate.nationImageUrl = details.nationImageUrl;
+            }
+          } catch (_) {}
+        }
         commitCandidateTarget(candidate);
         renderTargetContent(content);
       });

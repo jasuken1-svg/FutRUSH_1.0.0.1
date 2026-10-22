@@ -5,7 +5,7 @@ import { state } from '../core/state.js';
 import { emit } from '../core/events.js';
 import { visibleElement } from '../utils/dom.js';
 import { parseFutbinPrice } from '../utils/format.js';
-import { fetchFutbinPlayerId, searchPlayerAllVersions } from '../futbin/playerLookup.js';
+import { fetchFutbinPlayerId, searchPlayerAllVersions, fetchPlayerDetailsFromFutbinApi } from '../futbin/playerLookup.js';
 import { mapCandidate, validateQualityFilter } from '../futbin/candidateMatcher.js';
 import { toBaseId } from '../futbin/eaId.js';
 import { extractSearchIntent } from './searchIntent.js';
@@ -154,7 +154,9 @@ export function commitCandidateTarget(candidate, price) {
       duplicate.leagueImageUrl = candidate.leagueImageUrl || duplicate.leagueImageUrl || '';
       duplicate.leagueImageFallbacks = Array.isArray(candidate.leagueImageFallbacks) ? candidate.leagueImageFallbacks : (duplicate.leagueImageFallbacks || []);
       duplicate.leagueName = candidate.leagueName || duplicate.leagueName || '';
-      duplicate.playstylesPlus = Array.isArray(candidate.playstylesPlus) ? candidate.playstylesPlus : (duplicate.playstylesPlus || []);
+      duplicate.playstylesPlus = (Array.isArray(candidate.playstylesPlus) && candidate.playstylesPlus.length > 0)
+        ? candidate.playstylesPlus
+        : (duplicate.playstylesPlus || []);
       duplicate.isHolo = candidate.isHolo;
       duplicate.holographicAnimationUrl = candidate.holographicAnimationUrl || duplicate.holographicAnimationUrl || '';
       duplicate.playerImageUrl = candidate.playerImageUrl || duplicate.playerImageUrl || '';
@@ -175,7 +177,7 @@ export function commitCandidateTarget(candidate, price) {
 }
 
 export async function hydrateTargetsWithFutbin(onItemComplete) {
-  const needsHydration = state.targets.filter((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl || !t.leagueImageUrl));
+  const needsHydration = state.targets.filter((t) => !t.hydrationAttempted && (!t.playerImageUrl || !t.promoImageUrl || !t.stats || !t.clubImageUrl || !t.leagueImageUrl || !t.playstylesPlus || !t.playstylesPlus.length));
   if (!needsHydration.length) return;
 
   needsHydration.forEach((t) => {
@@ -186,6 +188,32 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
   for (const target of needsHydration) {
     try {
       const queryName = target.commonName || target.name;
+      const details = await fetchPlayerDetailsFromFutbinApi({
+        name: queryName,
+        rating: target.rating,
+        eaId: target.eaId,
+        futbinId: target.futbinId
+      });
+      if (details) {
+        if ((!target.playstylesPlus || !target.playstylesPlus.length) && details.playstylesPlus?.length) {
+          target.playstylesPlus = details.playstylesPlus;
+        }
+        if (!target.playerImageUrl && details.playerImageUrl) target.playerImageUrl = details.playerImageUrl;
+        if (!target.promoImageUrl && details.promoImageUrl) target.promoImageUrl = details.promoImageUrl;
+        if (!target.playerImageFallbackUrl && details.playerImageFallbackUrl) target.playerImageFallbackUrl = details.playerImageFallbackUrl;
+        if (!target.nationImageUrl && details.nationImageUrl) target.nationImageUrl = details.nationImageUrl;
+        if (!target.clubImageUrl && details.clubImageUrl) target.clubImageUrl = details.clubImageUrl;
+        if (!target.leagueImageUrl && details.leagueImageUrl) target.leagueImageUrl = details.leagueImageUrl;
+        if ((!target.leagueImageFallbacks || !target.leagueImageFallbacks.length) && details.leagueImageFallbacks?.length) target.leagueImageFallbacks = details.leagueImageFallbacks;
+        if (!target.leagueName && details.leagueName) target.leagueName = details.leagueName;
+        if (!target.stats && details.stats) target.stats = details.stats;
+        if (!target.position && details.position) target.position = details.position;
+        if (!target.futbinId && details.futbinId) target.futbinId = details.futbinId;
+        if (!target.versionLabel && details.versionLabel) target.versionLabel = details.versionLabel;
+        if (!target.price && details.price) target.price = details.price;
+        target.priceUpdatedAt = Date.now();
+      }
+
       const versions = await searchPlayerAllVersions(queryName);
       if (Array.isArray(versions) && versions.length) {
         const matched = versions.find((v) =>
@@ -206,7 +234,7 @@ export async function hydrateTargetsWithFutbin(onItemComplete) {
           if (!target.leagueImageUrl) target.leagueImageUrl = matched.leagueImageUrl;
           if (!target.leagueImageFallbacks && matched.leagueImageFallbacks) target.leagueImageFallbacks = matched.leagueImageFallbacks;
           if (!target.leagueName && matched.leagueName) target.leagueName = matched.leagueName;
-          if (!target.playstylesPlus && matched.playstylesPlus) target.playstylesPlus = matched.playstylesPlus;
+          if ((!target.playstylesPlus || !target.playstylesPlus.length) && matched.playstylesPlus?.length) target.playstylesPlus = matched.playstylesPlus;
           if (!target.stats) target.stats = matched.stats;
           if (!target.position) target.position = matched.position;
           if (!target.futbinId) target.futbinId = matched.futbinId;
@@ -304,8 +332,33 @@ export async function addPinnedPlayerToTargets() {
   }
 
   if (candidate) {
-    if (!candidate.price || candidate.price <= 0 || !candidate.leagueImageUrl || !candidate.leagueName || !candidate.stats) {
+    if (!candidate.price || candidate.price <= 0 || !candidate.leagueImageUrl || !candidate.leagueName || !candidate.stats || !candidate.playstylesPlus || !candidate.playstylesPlus.length) {
       try {
+        const details = await fetchPlayerDetailsFromFutbinApi({
+          name,
+          rating: candidate.rating || player.rating,
+          eaId: candidate.eaId || player.eaId,
+          futbinId: candidate.futbinId
+        });
+        if (details) {
+          if ((!candidate.playstylesPlus || !candidate.playstylesPlus.length) && details.playstylesPlus?.length) {
+            candidate.playstylesPlus = details.playstylesPlus;
+          }
+          if (!candidate.price && details.price > 0) candidate.price = details.price;
+          if (!candidate.leagueName && details.leagueName) candidate.leagueName = details.leagueName;
+          if (!candidate.leagueImageUrl && details.leagueImageUrl) candidate.leagueImageUrl = details.leagueImageUrl;
+          if ((!candidate.leagueImageFallbacks || !candidate.leagueImageFallbacks.length) && details.leagueImageFallbacks?.length) {
+            candidate.leagueImageFallbacks = details.leagueImageFallbacks;
+          }
+          if (!candidate.clubImageUrl && details.clubImageUrl) candidate.clubImageUrl = details.clubImageUrl;
+          if (!candidate.nationImageUrl && details.nationImageUrl) candidate.nationImageUrl = details.nationImageUrl;
+          if (!candidate.stats && details.stats) candidate.stats = details.stats;
+          if (!candidate.playerImageUrl && details.playerImageUrl) candidate.playerImageUrl = details.playerImageUrl;
+          if (!candidate.promoImageUrl && details.promoImageUrl) candidate.promoImageUrl = details.promoImageUrl;
+          if (!candidate.futbinId && details.futbinId) candidate.futbinId = details.futbinId;
+          if (!candidate.position && details.position) candidate.position = details.position;
+        }
+
         const versions = await searchPlayerAllVersions(name);
         if (Array.isArray(versions) && versions.length) {
           const matched = versions.find((v) =>
@@ -327,6 +380,9 @@ export async function addPinnedPlayerToTargets() {
             if (!candidate.promoImageUrl && matched.promoImageUrl) candidate.promoImageUrl = matched.promoImageUrl;
             if (!candidate.futbinId && matched.futbinId) candidate.futbinId = matched.futbinId;
             if (!candidate.position && matched.position) candidate.position = matched.position;
+            if ((!candidate.playstylesPlus || !candidate.playstylesPlus.length) && matched.playstylesPlus?.length) {
+              candidate.playstylesPlus = matched.playstylesPlus;
+            }
           }
         }
       } catch (_) {}

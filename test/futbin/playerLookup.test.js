@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearFutbinSearchCache, fetchFutbinPlayerId, queryFutbinPlayersByName, searchUniquePlayers } from '../../src/futbin/playerLookup.js';
+import { clearFutbinSearchCache, fetchFutbinPlayerId, fetchPlayerDetailsFromFutbinApi, queryFutbinPlayersByName, searchUniquePlayers } from '../../src/futbin/playerLookup.js';
 
 let originalRequest;
 
@@ -345,6 +345,100 @@ describe('fetchFutbinPlayerId', () => {
       expect(players[0].name).toBe('Alexia Putellas Segura');
       expect(players[0].baseRating).toBe(91);
       expect(players[0].highestRating).toBe(92);
+    });
+  });
+
+  describe('fetchPlayerDetailsFromFutbinApi', () => {
+    it('fetches player details from getFilteredPlayers and extracts playstylesPlus', async () => {
+      const requests = [];
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        requests.push(options.url);
+        options.onload({
+          status: 200,
+          responseText: JSON.stringify({
+            data: [{
+              ID: '999',
+              playername: 'Pernille Harder',
+              rating: '85',
+              resource_id: '231478',
+              playerid: '231478',
+              playstyles_plus: "u'Precision Header'"
+            }]
+          })
+        });
+      });
+
+      const details = await fetchPlayerDetailsFromFutbinApi({
+        name: 'Pernille Harder',
+        rating: 85,
+        eaId: 231478
+      });
+
+      expect(details).not.toBeNull();
+      expect(details.name).toBe('Pernille Harder');
+      expect(details.rating).toBe(85);
+      expect(details.playstylesPlus).toEqual([
+        expect.objectContaining({ name: 'Precision Header' })
+      ]);
+      expect(requests[0]).toContain('https://www.futbin.org/futbin/api/27/getFilteredPlayers');
+      expect(requests[0]).toContain('search=Pernille+Harder');
+    });
+
+    it('falls back to rating search and caches results', async () => {
+      let callCount = 0;
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        callCount++;
+        // search returns empty data
+        if (options.url.includes('search=')) {
+          options.onload({ status: 200, responseText: '{"data":[]}' });
+          return;
+        }
+        // rating query returns player
+        options.onload({
+          status: 200,
+          responseText: JSON.stringify({
+            data: [{
+              ID: '123',
+              playername: 'Caroline Graham Hansen',
+              rating: '90',
+              resource_id: '227290',
+              playstyles_plus: "['Whipped Cross']"
+            }]
+          })
+        });
+      });
+
+      const first = await fetchPlayerDetailsFromFutbinApi({
+        name: 'Caroline Graham Hansen',
+        rating: 90,
+        eaId: 227290
+      });
+      expect(first).not.toBeNull();
+      expect(first.playstylesPlus).toEqual([
+        expect.objectContaining({ name: 'Whipped Cross' })
+      ]);
+
+      const initialCalls = callCount;
+      // Second call should return from cache without network calls
+      const cached = await fetchPlayerDetailsFromFutbinApi({
+        name: 'Caroline Graham Hansen',
+        rating: 90,
+        eaId: 227290
+      });
+      expect(cached).toEqual(first);
+      expect(callCount).toBe(initialCalls);
+    });
+
+    it('returns null when API returns an error or no match', async () => {
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        options.onload({ status: 500, responseText: 'Server Error' });
+      });
+
+      const result = await fetchPlayerDetailsFromFutbinApi({
+        name: 'Nonexistent Player',
+        rating: 80
+      });
+      expect(result).toBeNull();
     });
   });
 });

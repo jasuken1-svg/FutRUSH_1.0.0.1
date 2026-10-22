@@ -4,6 +4,8 @@
 import { normalizePlayerName } from '../utils/strings.js';
 import { idOf, isBaseId, toBaseId } from './eaId.js';
 import { filterCandidates, mapCandidate, sortCandidatesByPriceAsc, normalizeQuality, validateQualityFilter, isSpecialCard } from './candidateMatcher.js';
+import { CONFIG } from '../core/config.js';
+import { requestFutbinApi } from './http.js';
 
 const SPECIAL_OFFSET = 0x1000000;
 const eaIdFrom = (value) => (Number(value) || 0) & 0xffffff;
@@ -74,10 +76,90 @@ export function scoreRow(row, {
 }
 
 const searchCache = new Map();
+const detailsCache = new Map();
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 export function clearFutbinSearchCache() {
   searchCache.clear();
+  detailsCache.clear();
+}
+
+export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, eaId = 0, futbinId = '' } = {}) {
+  const cacheKey = `${eaId || futbinId || normalizePlayerName(name)}_${rating}`;
+  const cached = detailsCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  const cfg = CONFIG.futbin;
+  const isPc = cfg.platform === 'pc';
+
+  // 1. search parametresi ile getFilteredPlayers sorgula
+  if (name) {
+    try {
+      const searchUrl = new URL(cfg.apiBaseUrl);
+      searchUrl.searchParams.set('platform', isPc ? 'PC' : 'PS');
+      searchUrl.searchParams.set('page', '1');
+      searchUrl.searchParams.set('search', String(name).trim());
+      if (rating) searchUrl.searchParams.set('rating', `${rating}-${rating}`);
+      const res = await requestFutbinApi(searchUrl.toString());
+      if (res && res.status >= 200 && res.status < 300) {
+        const payload = JSON.parse(res.responseText || '{}');
+        if (Array.isArray(payload?.data) && payload.data.length > 0) {
+          const matchedRow = payload.data.find((row) =>
+            (eaId && (Number(row.resource_id) === Number(eaId) || Number(row.playerid) === Number(eaId))) ||
+            (futbinId && String(row.ID ?? row.id) === String(futbinId)) ||
+            (rating && Number(row.rating) === Number(rating))
+          ) || payload.data[0];
+          if (matchedRow) {
+            const candidate = mapCandidate(matchedRow);
+            if (candidate) {
+              detailsCache.set(cacheKey, { data: candidate, timestamp: Date.now() });
+              return candidate;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 2. Reyting biliniyorsa doğrudan reyting sayfasından sorgula (getFilteredPlayers API)
+  if (rating > 0) {
+    try {
+      const ratingUrl = new URL(cfg.apiBaseUrl);
+      ratingUrl.searchParams.set('platform', isPc ? 'PC' : 'PS');
+      ratingUrl.searchParams.set('page', '1');
+      ratingUrl.searchParams.set('rating', `${rating}-${rating}`);
+      ratingUrl.searchParams.set(isPc ? 'pcprice' : 'ps4price', cfg.priceRange);
+      ratingUrl.searchParams.set('sort', isPc ? 'pc_price' : 'ps_price');
+      ratingUrl.searchParams.set('order', 'asc');
+      const res = await requestFutbinApi(ratingUrl.toString());
+      if (res && res.status >= 200 && res.status < 300) {
+        const payload = JSON.parse(res.responseText || '{}');
+        if (Array.isArray(payload?.data) && payload.data.length > 0) {
+          const normWanted = name ? normalizePlayerName(name) : '';
+          const matchedRow = payload.data.find((row) => {
+            if (eaId && (Number(row.resource_id) === Number(eaId) || Number(row.playerid) === Number(eaId))) return true;
+            if (futbinId && String(row.ID ?? row.id) === String(futbinId)) return true;
+            if (normWanted) {
+              const rowName = normalizePlayerName(row.playername || row.common_name || '');
+              return rowName === normWanted || rowName.includes(normWanted) || normWanted.includes(rowName);
+            }
+            return false;
+          });
+          if (matchedRow) {
+            const candidate = mapCandidate(matchedRow);
+            if (candidate) {
+              detailsCache.set(cacheKey, { data: candidate, timestamp: Date.now() });
+              return candidate;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return null;
 }
 
 export function queryFutbinPlayersByName(name) {

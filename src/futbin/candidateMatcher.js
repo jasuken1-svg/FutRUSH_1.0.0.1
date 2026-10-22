@@ -50,7 +50,7 @@ export function normalizePlaystyleName(raw) {
     .trim()
     .replace(/\+$/, '')
     .trim()
-    .replace(/^u?['"]+|['"]+$/gi, '')
+    .replace(/^[\[\(\s]*u?['"]*|['"\s\)\]]*$/gi, '')
     .trim();
 }
 
@@ -64,6 +64,7 @@ export const PLAYSTYLE_ICON_KEY_MAP = {
   longballpass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/7.2.png',
   tikitaka: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/8.2.png',
   whippedpass: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/9.2.png',
+  whippedcross: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/9.2.png',
   firsttouch: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/19.2.png',
   pressproven: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/21.2.png',
   rapid: 'https://game-assets.fut.gg/cdn-cgi/image/quality=85,format=auto,width=180/2027/play-styles/17.2.png',
@@ -137,10 +138,11 @@ export function extractPlaystylesPlus(row) {
 
   if (typeof rawPs === 'string' && rawPs.trim()) {
     try {
-      const parsed = JSON.parse(rawPs);
+      const parsed = JSON.parse(rawPs.replace(/'/g, '"'));
       if (Array.isArray(parsed)) return extractPlaystylesPlus({ playstyles_plus: parsed });
     } catch (_) {}
     return rawPs
+      .replace(/[\[\]]/g, '')
       .split(/[,;|]/)
       .map((s) => toPlaystyleObj(s))
       .filter(Boolean)
