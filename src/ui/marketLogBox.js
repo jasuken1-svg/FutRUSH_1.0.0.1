@@ -210,7 +210,34 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
   if (logHistory.length > MAX_LOGS) {
     logHistory.shift();
   }
-  renderMarketLogBox();
+
+  const list = currentListEl || (currentBoxEl && currentBoxEl.querySelector('.fr-market-log-list'));
+  if (list && list.isConnected) {
+    const empty = list.querySelector('.fr-market-log-empty');
+    if (empty) empty.remove();
+
+    const wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= 35;
+
+    const row = document.createElement('div');
+    row.className = 'fr-market-log-item' +
+      (entry.type === 'success' ? ' is-success' : (entry.type === 'error' ? ' is-error' : ''));
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'fr-market-log-text';
+    textSpan.textContent = `[${entry.time.slice(0, 5)}] ${entry.text}`;
+    row.appendChild(textSpan);
+
+    list.appendChild(row);
+    while (list.querySelectorAll('.fr-market-log-item').length > MAX_LOGS) {
+      list.firstElementChild.remove();
+    }
+
+    if (wasAtBottom) {
+      list.scrollTop = list.scrollHeight;
+    }
+  } else {
+    renderMarketLogBox(true);
+  }
 }
 
 export function mountMarketLogBox(targetContainer) {

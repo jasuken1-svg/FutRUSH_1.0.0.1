@@ -15,7 +15,22 @@ export function initDomEvents() {
   }, true);
 
   if (typeof MutationObserver !== 'undefined' && document.body) {
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    new MutationObserver((mutations) => {
+      // FutRUSH kendi iç DOM güncellemeleri (log ekleme, kart render vs.)
+      // için global layout scheduler'ı tetiklememeli
+      const onlyInternal = mutations.every((m) => {
+        const target = m.target;
+        return target && target.closest && (
+          target.closest('#fr-hub-view') ||
+          target.closest('#fc-snipe-panel') ||
+          target.closest('.fr-market-log-box') ||
+          target.closest('.fr-bot-logs-panel')
+        );
+      });
+      if (!onlyInternal) {
+        schedule();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
   }
   pageWindow.addEventListener('resize', schedule);
   pageWindow.addEventListener('scroll', (e) => {

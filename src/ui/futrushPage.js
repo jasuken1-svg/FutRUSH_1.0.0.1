@@ -258,11 +258,16 @@ export function ensureHubContainer() {
     botLogsPanel = document.createElement('div');
     botLogsPanel.className = 'fr-bot-logs-panel';
     sideCol.appendChild(botLogsPanel);
+    renderBotLogs(botLogsPanel);
+  } else if (!botLogsPanel.querySelector('.fr-logs-view')) {
+    renderBotLogs(botLogsPanel);
   }
-  renderBotLogs(botLogsPanel);
 
-  // Alt panel: fr-log-list / Genel Log (218px x 420px, 5px altta)
-  mountMarketLogBox(sideCol);
+  // Alt panel: fr-log-list / Genel Log (213px x 420px, 5px altta)
+  const existingLogBox = sideCol.querySelector('.fr-market-log-box');
+  if (!existingLogBox) {
+    mountMarketLogBox(sideCol);
+  }
   const logBox = sideCol.querySelector('.fr-market-log-box');
   if (botLogsPanel && logBox && logBox.previousElementSibling !== botLogsPanel) {
     sideCol.insertBefore(logBox, botLogsPanel.nextSibling);
@@ -308,11 +313,14 @@ export function openFutrushPage() {
   }
 
   const botLogsPanel = hubContainer.querySelector('.fr-bot-logs-panel');
-  if (botLogsPanel) {
+  if (botLogsPanel && !botLogsPanel.querySelector('.fr-logs-view')) {
     renderBotLogs(botLogsPanel);
   }
 
-  renderMarketLogBox();
+  const currentLogBox = hubContainer.querySelector('.fr-market-log-box');
+  if (!currentLogBox) {
+    renderMarketLogBox();
+  }
 }
 
 export function closeFutrushPage() {
@@ -347,7 +355,7 @@ export function syncPageVisibility() {
     if (state.futrushPageActive) {
       closeFutrushPage();
     }
-  } else if (state.futrushPageActive) {
+  } else if (state.futrushPageActive && (!hubContainer || hubContainer.style.display === 'none')) {
     openFutrushPage();
   }
 }

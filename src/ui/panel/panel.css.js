@@ -915,7 +915,7 @@ export const panelCss = `
     #${P.id} .fr-log-row, .fr-bot-logs-panel .fr-log-row {
       display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;
       padding: 6px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;
-      color: #bfe4ff; background: rgba(62,168,255,.12);
+      color: #bfe4ff; background: rgba(62,168,255,.12); flex: 0 0 auto;
     }
     #${P.id} .fr-log-time, .fr-bot-logs-panel .fr-log-time { color: inherit; opacity: .86; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
     #${P.id} .fr-log-message, .fr-bot-logs-panel .fr-log-message { min-width: 0; overflow-wrap: anywhere; }

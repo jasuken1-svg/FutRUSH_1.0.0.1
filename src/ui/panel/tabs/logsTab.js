@@ -115,7 +115,6 @@ function fallbackCopy(text) {
 export function renderBotLogs(content) {
   if (content.querySelector('.fr-logs-view')) {
     updateBotLogStats(content);
-    renderLogRows(content);
     return;
   }
 
