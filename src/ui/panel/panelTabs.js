@@ -4,7 +4,6 @@
 import { state } from '../../core/state.js';
 import { on } from '../../core/events.js';
 import { safetyGovernor } from '../../bot/safetyGovernor.js';
-import { getFutbinQueueStatus } from '../../futbin/requestQueue.js';
 import { renderPanelSettings } from './tabs/settingsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
 import { unmountWaitBar } from './waitBar.js';
@@ -26,7 +25,6 @@ export function renderPanelTabs(panel) {
       '</div>' +
       '<div class="fc-snipe-tabs" role="tablist" aria-label="SNIPE sekmeleri">' +
       tabs.map((tab) => '<button class="fc-snipe-tab" type="button" role="tab" data-tab="' + tab.id + '" aria-selected="' + (state.activePanelTab === tab.id) + '">' + tab.label + '</button>').join('') +
-      '<div class="fr-futbin-queue-pill" style="display: none;" title="FutBIN İstek Kuyruğu"></div>' +
       '</div><div class="fc-snipe-tab-content" role="tabpanel" aria-live="polite"></div>';
     const content = panel.querySelector('.fc-snipe-tab-content');
     renderPanelTabContent(content);
@@ -73,21 +71,6 @@ export function renderPanelTabs(panel) {
     });
     on('governor:halt', syncBanner);
     on('governor:resume', syncBanner);
-
-    const queuePill = panel.querySelector('.fr-futbin-queue-pill');
-    const syncQueueIndicator = (status = getFutbinQueueStatus()) => {
-      if (!queuePill) return;
-      if (status.pending > 0 || status.active > 0 || status.backoffMs > 0) {
-        queuePill.style.display = 'inline-flex';
-        queuePill.classList.toggle('is-backoff', status.backoffMs > 0);
-        const backoffText = status.backoffMs > 0 ? ` ⏳ ${Math.ceil(status.backoffMs / 1000)}s` : '';
-        queuePill.textContent = `FutBIN: ${status.active}/2 (${status.pending} bekleyen)${backoffText}`;
-      } else {
-        queuePill.style.display = 'none';
-      }
-    };
-    syncQueueIndicator();
-    on('futbin:queue', syncQueueIndicator);
   }
 
 export function renderPanelTabContent(content) {
