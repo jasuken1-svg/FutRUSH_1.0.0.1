@@ -641,19 +641,6 @@ export function renderTargetContent(content) {
       leagueBadge.textContent = player.leagueName;
       metaLine.appendChild(leagueBadge);
     }
-
-    if (player.price) {
-      const priceBadge = document.createElement('span');
-      priceBadge.className = 'fr-target-price-badge';
-      let trendHtml = '';
-      if (player.priceTrend === 'up') {
-        trendHtml = '<span class="fr-target-trend-up" title="Fiyat arttı">▲</span>';
-      } else if (player.priceTrend === 'down') {
-        trendHtml = '<span class="fr-target-trend-down" title="Fiyat düştü">▼</span>';
-      }
-      priceBadge.innerHTML = `FutBIN: ${Number(player.price).toLocaleString('tr-TR')}${trendHtml ? ' ' + trendHtml : ''}`;
-      metaLine.appendChild(priceBadge);
-    }
     info.append(name, metaLine);
     head.appendChild(info);
     body.appendChild(head);
@@ -798,13 +785,19 @@ export function renderTargetContent(content) {
     });
     body.appendChild(controls);
 
-    // 4. Alt Bilgi: FutBIN Fiyatı (sağ en alt, 9px)
+    // 4. Alt Bilgi: FutBIN Fiyatı ve Trend Oku (sağ en alt, 9px)
     const bottomBar = document.createElement('div');
     bottomBar.className = 'fr-target-card-bottom';
     const futbinPriceEl = document.createElement('span');
     futbinPriceEl.className = 'fr-target-futbin-price';
     const fbVal = Number(player.price) || 0;
-    futbinPriceEl.textContent = fbVal > 0 ? `FutBIN: ${fbVal.toLocaleString('tr-TR')}` : 'FutBIN: —';
+    let trendHtml = '';
+    if (player.priceTrend === 'up') {
+      trendHtml = ' <span class="fr-target-trend-up" title="Fiyat arttı">▲</span>';
+    } else if (player.priceTrend === 'down') {
+      trendHtml = ' <span class="fr-target-trend-down" title="Fiyat düştü">▼</span>';
+    }
+    futbinPriceEl.innerHTML = fbVal > 0 ? `FutBIN: ${fbVal.toLocaleString('tr-TR')}${trendHtml}` : 'FutBIN: —';
     bottomBar.appendChild(futbinPriceEl);
     body.appendChild(bottomBar);
 
