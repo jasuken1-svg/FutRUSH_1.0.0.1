@@ -685,16 +685,11 @@ export const panelCss = `
       overflow: hidden;
     }
     #${P.id} .fr-target-status {
-      display: none !important;
-      position: absolute;
-      top: 4px;
-      left: 6px;
-      right: 6px;
-      z-index: 100;
       display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
+      flex-direction: column;
+      gap: 6px;
+      padding: 7px 10px;
+      margin-bottom: 6px;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
@@ -708,7 +703,7 @@ export const panelCss = `
       pointer-events: auto;
     }
     #${P.id} .fr-target-status[hidden] {
-      display: none;
+      display: none !important;
     }
     #${P.id} .fr-target-status-exiting {
       opacity: 0;
@@ -735,11 +730,22 @@ export const panelCss = `
       background: rgba(40, 32, 10, 0.95);
       color: #fff0b3;
     }
+    #${P.id} .fr-target-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
     #${P.id} .fr-target-status-icon {
       flex: 0 0 14px;
       width: 14px;
       height: 14px;
       border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
     }
     #${P.id} .fr-target-status-icon[data-type="loading"] {
       border: 2px solid rgba(255,212,71,0.25);
@@ -749,11 +755,36 @@ export const panelCss = `
     #${P.id} .fr-target-status-main {
       flex: 1 1 auto;
       min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
     }
     #${P.id} .fr-target-status-message {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    #${P.id} .fr-target-progress-label {
+      font-size: 10px;
+      color: #aebfc8;
+      font-variant-numeric: tabular-nums;
+      flex: 0 0 auto;
+    }
+    #${P.id} .fr-target-progress {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    #${P.id} .fr-target-progress-fill {
+      height: 100%;
+      background: #00e5ff;
+      border-radius: inherit;
+      transition: width 0.25s ease;
     }
     #${P.id} .fr-target-list {
       display: flex; flex: 1 1 auto; flex-direction: column; gap: 7px;

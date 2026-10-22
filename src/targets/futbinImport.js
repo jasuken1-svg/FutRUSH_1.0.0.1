@@ -162,17 +162,58 @@ export async function importCheapestTargets(rating, count, deps = {}) {
   emit('targets:changed');
   try {
     const result = await loadPlayers(rating, count);
+    if (activeToken !== token || token.cancelled) return;
+
     if (CONFIG.targetAdd.priceSource !== 'ea') {
-      const importedPlayers = result.players.map((player) => applyTargetAddDiscount(player, CONFIG.targetAdd.discountRate));
-      const added = mergeTargetPlayers(importedPlayers);
-      const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
-      setTargetStatus({
-        type: 'success',
-        message: added ? added + ' oyuncu hedef listesine eklendi' + fallbackNote + '.' : 'Bulunan oyuncular zaten hedef listesinde.',
-        source: 'futbin',
-        progress: { done: result.players.length, total: result.players.length },
-        holdMs: CONFIG.ui.statusHoldMs
-      });
+      if (!result.players || result.players.length === 0) {
+        const added = mergeTargetPlayers([]);
+        const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
+        setTargetStatus({
+          type: 'success',
+          message: added ? added + ' oyuncu hedef listesine eklendi' + fallbackNote + '.' : 'Bulunan oyuncular zaten hedef listesinde.',
+          source: 'futbin',
+          progress: { done: 0, total: 0 },
+          holdMs: CONFIG.ui.statusHoldMs
+        });
+        return;
+      }
+
+      const total = result.players.length;
+      let addedTotal = 0;
+      for (let i = 0; i < total; i++) {
+        if (token.cancelled || activeToken !== token) break;
+        const player = result.players[i];
+        const importedPlayer = applyTargetAddDiscount(player, CONFIG.targetAdd.discountRate);
+        const added = mergeTargetPlayers([importedPlayer]);
+        if (typeof added === 'number') addedTotal += added;
+        else if (added) addedTotal += 1;
+
+        if (activeToken === token && !token.cancelled) {
+          setTargetStatus({
+            type: 'loading',
+            message: `${player.name} hedeflere eklendi (${i + 1}/${total})...`,
+            source: 'futbin',
+            progress: { done: i + 1, total }
+          });
+          emit('targets:changed');
+        }
+
+        if (i < total - 1 && !token.cancelled && activeToken === token) {
+          const delay = randomBetweenFn(1000, 2000);
+          await sleepBetweenFn(delay, token);
+        }
+      }
+
+      if (activeToken === token && !token.cancelled) {
+        const fallbackNote = result.fallback ? ' (FutBIN yedek kaynağı)' : '';
+        setTargetStatus({
+          type: 'success',
+          message: addedTotal ? `${addedTotal} oyuncu hedef listesine eklendi${fallbackNote}.` : 'Bulunan oyuncular zaten hedef listesinde.',
+          source: 'futbin',
+          progress: { done: total, total },
+          holdMs: CONFIG.ui.statusHoldMs
+        });
+      }
       return;
     }
 

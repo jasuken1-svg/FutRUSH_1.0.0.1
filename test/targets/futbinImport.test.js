@@ -268,29 +268,42 @@ describe('importCheapestTargets EA pricing', () => {
     expect(state.targetStatus.message).toBe('Bulunan oyuncular zaten hedef listesinde.');
   });
 
-  it('preserves the one-batch FutBIN behavior when configured', async () => {
+  it('imports FutBIN players sequentially with delays and progress updates when configured', async () => {
     CONFIG.targetAdd.priceSource = 'futbin';
     const players = [player('Alpha'), player('Beta', 6000, 1002)];
     const fetchMarketPage = vi.fn();
-    mergeTargetPlayers.mockReturnValue(2);
+    const randomBetween = vi.fn(() => 1500);
+    const sleepBetween = vi.fn(async () => true);
+    mergeTargetPlayers.mockReturnValue(1);
     const messages = [];
     const stop = on('targets:status', () => messages.push(state.targetStatus?.message));
 
     await importCheapestTargets(90, 2, {
       fetchCheapestPlayers: async () => ({ players, fallback: false }),
-      fetchMarketPage
+      fetchMarketPage,
+      randomBetween,
+      sleep: sleepBetween
     });
 
-    expect(mergeTargetPlayers).toHaveBeenCalledOnce();
-    expect(mergeTargetPlayers).toHaveBeenCalledWith([
-      { ...players[0], price: 5000, buyNow: 4200 },
+    expect(mergeTargetPlayers).toHaveBeenCalledTimes(2);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(1, [
+      { ...players[0], price: 5000, buyNow: 4200 }
+    ]);
+    expect(mergeTargetPlayers).toHaveBeenNthCalledWith(2, [
       { ...players[1], price: 6000, buyNow: 5100 }
     ]);
+    expect(randomBetween).toHaveBeenCalledWith(1000, 2000);
+    expect(sleepBetween).toHaveBeenCalledWith(1500, expect.any(Object));
     expect(applyTargetAddDiscount).toHaveBeenCalledTimes(2);
     expect(fetchMarketPage).not.toHaveBeenCalled();
     expect(resolveTargetEaId).not.toHaveBeenCalled();
     expect(state.targetStatus.message).toBe('2 oyuncu hedef listesine eklendi.');
-    expect(messages).toEqual(['FutBIN oyuncuları yükleniyor...', '2 oyuncu hedef listesine eklendi.']);
+    expect(messages).toEqual([
+      'FutBIN oyuncuları yükleniyor...',
+      'Alpha hedeflere eklendi (1/2)...',
+      'Beta hedeflere eklendi (2/2)...',
+      '2 oyuncu hedef listesine eklendi.'
+    ]);
     stop();
   });
 

@@ -5,6 +5,7 @@ import { state } from '../../../core/state.js';
 import { emit } from '../../../core/events.js';
 import { saveTargets } from '../../../targets/targetStore.js';
 import { setTargetStatus } from '../../../targets/targetStatus.js';
+import { normalizeTargetStatus } from '../panelLogic.js';
 import { formatFutbinRowPrice, getPlatform } from '../../../futbin/platform.js';
 import { commitCandidateTarget, hydrateTargetsWithFutbin } from '../../../targets/pinnedPlayer.js';
 import { searchPlayerAllVersions, searchUniquePlayers, fetchPlayerDetailsFromFutbinApi } from '../../../futbin/playerLookup.js';
@@ -15,6 +16,23 @@ import { addMarketLog } from '../../marketLogBox.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
+let statusRemovalTimer = null;
+
+function renderStatus(status, targetLoading) {
+  const normalized = normalizeTargetStatus(status) || (targetLoading ? {
+    type: 'loading',
+    message: 'FutBIN oyuncuları yükleniyor...',
+    source: 'futbin'
+  } : null);
+  return normalized;
+}
+
+function cancelStatusRemoval(statusElement) {
+  if (statusRemovalTimer !== null) {
+    clearTimeout(statusRemovalTimer);
+    statusRemovalTimer = null;
+  }
+}
 
 function formatRelativeTime(timestamp) {
   if (!timestamp) return 'Son güncelleme: —';
@@ -81,17 +99,101 @@ function attachHoldRepeat(button, onTrigger) {
   });
 }
 
-export function updateTargetStatus(statusElement) {
-  if (statusElement) {
+export function updateTargetStatus(statusElement, status, targetLoading) {
+  if (!statusElement) return;
+  const normalized = renderStatus(status, targetLoading);
+  if (!normalized) {
     statusElement.hidden = true;
-    statusElement.style.display = 'none';
+    statusElement.removeAttribute('data-type');
     statusElement.replaceChildren();
+    return;
+  }
+
+  cancelStatusRemoval(statusElement);
+  statusElement.classList.remove('fr-target-status-exiting');
+  statusElement.hidden = false;
+
+  const previousType = statusElement.getAttribute('data-type');
+  const previousMessage = statusElement.querySelector('.fr-target-status-message')?.textContent;
+  statusElement.setAttribute('data-type', normalized.type);
+
+  let row = statusElement.querySelector('.fr-target-status-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'fr-target-status-row';
+    const icon = document.createElement('span');
+    icon.className = 'fr-target-status-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const main = document.createElement('div');
+    main.className = 'fr-target-status-main';
+    const message = document.createElement('span');
+    message.className = 'fr-target-status-message';
+    const progressLabel = document.createElement('span');
+    progressLabel.className = 'fr-target-progress-label';
+    progressLabel.hidden = true;
+    main.append(message, progressLabel);
+    row.append(icon, main);
+    statusElement.appendChild(row);
+  }
+
+  const icon = row.querySelector('.fr-target-status-icon');
+  icon.dataset.type = normalized.type;
+  icon.textContent = normalized.type === 'loading' ? '' : normalized.type === 'success' ? '✓' : normalized.type === 'error' ? '!' : '·';
+
+  const message = row.querySelector('.fr-target-status-message');
+  if (previousMessage !== normalized.message || !message.textContent) {
+    message.textContent = normalized.message;
+  }
+
+  const progressLabel = row.querySelector('.fr-target-progress-label');
+  let progress = statusElement.querySelector('.fr-target-progress');
+  if (normalized.progress) {
+    if (!progress) {
+      progress = document.createElement('div');
+      progress.className = 'fr-target-progress';
+      const fill = document.createElement('div');
+      fill.className = 'fr-target-progress-fill';
+      progress.appendChild(fill);
+      statusElement.appendChild(progress);
+    }
+    const done = Math.max(0, Number(normalized.progress.done) || 0);
+    const total = Math.max(0, Number(normalized.progress.total) || 0);
+    const width = total ? Math.min(100, (done / total) * 100) : 0;
+    progress.querySelector('.fr-target-progress-fill').style.width = width + '%';
+    progressLabel.textContent = done + '/' + total;
+    progressLabel.hidden = false;
+  } else {
+    progress?.remove();
+    progressLabel.textContent = '';
+    progressLabel.hidden = true;
+  }
+
+  if (normalized.type === 'success' && (previousType !== 'success' || previousMessage !== normalized.message)) {
+    statusElement.classList.remove('fr-status-success-flash');
+    void statusElement.offsetWidth;
+    statusElement.classList.add('fr-status-success-flash');
+  } else {
+    statusElement.classList.remove('fr-status-success-flash');
   }
 }
 
 export function expireTargetStatus(content) {
   const statusElement = content.querySelector('.fr-target-status');
-  if (statusElement) statusElement.remove();
+  if (!statusElement || statusElement.hidden) return;
+  statusElement.classList.add('fr-target-status-exiting');
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    statusElement.hidden = true;
+    statusElement.removeAttribute('data-type');
+    statusElement.replaceChildren();
+    return;
+  }
+  statusRemovalTimer = setTimeout(() => {
+    statusElement.hidden = true;
+    statusElement.removeAttribute('data-type');
+    statusElement.replaceChildren();
+    statusRemovalTimer = null;
+  }, 220);
 }
 
 export function renderTargetContent(content) {
