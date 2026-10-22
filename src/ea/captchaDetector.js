@@ -4,6 +4,7 @@
 import { pageWindow } from '../utils/dom.js';
 import { debug } from '../core/logger.js';
 import { SafetyGovernor, safetyGovernor } from '../bot/safetyGovernor.js';
+import { on } from '../core/events.js';
 
 export const CAPTCHA_SELECTORS = [
   'iframe[src*="arkoselabs"]',
@@ -146,9 +147,60 @@ export function initNetworkCaptchaDetector(deps = {}) {
   }
 }
 
+export function syncCaptchaScreenBanner(deps = {}) {
+  const doc = deps.document || (typeof document !== 'undefined' ? document : null);
+  if (!doc) return;
+  let banner = doc.getElementById('fr-captcha-screen-banner');
+  if (safetyGovernor.isCaptchaHalted()) {
+    if (!banner && doc.body) {
+      banner = doc.createElement('div');
+      banner.id = 'fr-captcha-screen-banner';
+      banner.setAttribute('role', 'alert');
+      banner.style.cssText = [
+        'position: fixed',
+        'top: 0',
+        'left: 0',
+        'right: 0',
+        'z-index: 9999999',
+        'background: #dc2626',
+        'color: #ffffff',
+        'padding: 12px 20px',
+        'box-shadow: 0 4px 20px rgba(0,0,0,0.5)',
+        'display: flex',
+        'align-items: center',
+        'justify-content: space-between',
+        'gap: 16px',
+        'font-family: system-ui, -apple-system, sans-serif',
+        'font-size: 13px',
+        'font-weight: 700'
+      ].join(';');
+      banner.innerHTML = [
+        '<div style="display:flex;align-items:center;gap:10px;">',
+          '<span style="font-size:22px;">🚨</span>',
+          '<span><strong>CAPTCHA TESPİT EDİLDİ!</strong> EA doğrulaması tamamlanana kadar tüm bot ve EA istekleri durduruldu.</span>',
+        '</div>',
+        '<button type="button" id="fr-captcha-screen-resume-btn" style="background:#ffffff;color:#dc2626;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.25);">',
+          "Captcha'yı çözdüm, devam et",
+        '</button>'
+      ].join('');
+      doc.body.appendChild(banner);
+      banner.querySelector('#fr-captcha-screen-resume-btn')?.addEventListener('click', () => {
+        SafetyGovernor.resume();
+      });
+    } else if (banner) {
+      banner.style.display = 'flex';
+    }
+  } else if (banner) {
+    banner.remove();
+  }
+}
+
 export function initCaptchaDetector(deps = {}) {
   observerInstance = initDomCaptchaDetector(deps);
   initNetworkCaptchaDetector(deps);
+  on('governor:halt', () => syncCaptchaScreenBanner(deps));
+  on('governor:resume', () => syncCaptchaScreenBanner(deps));
+  syncCaptchaScreenBanner(deps);
   return {
     destroy: () => {
       if (observerInstance) {

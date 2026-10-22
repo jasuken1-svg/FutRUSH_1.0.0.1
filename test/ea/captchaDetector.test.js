@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import {
+  initCaptchaDetector,
   initDomCaptchaDetector,
   initNetworkCaptchaDetector,
   isCaptchaElement,
@@ -147,7 +148,7 @@ describe('Captcha Emergency Stopper (Aşama 4)', () => {
       initNetworkCaptchaDetector({ window: mockWin });
 
       expect(safetyGovernor.isCaptchaHalted()).toBe(false);
-      await mockWin.fetch('https://utas.fut.ea.com/ut/game/fc25/transfermarket');
+      await mockWin.fetch('https://utas.fut.ea.com/ut/game/fc27/transfermarket');
 
       expect(safetyGovernor.isCaptchaHalted()).toBe(true);
     });
@@ -173,7 +174,7 @@ describe('Captcha Emergency Stopper (Aşama 4)', () => {
       initNetworkCaptchaDetector({ window: mockWin });
 
       await expect(
-        mockWin.fetch('https://utas.fut.ea.com/ut/game/fc25/transfermarket')
+        mockWin.fetch('https://utas.fut.ea.com/ut/game/fc27/transfermarket')
       ).rejects.toThrow(/kilitlendi/i);
 
       expect(mockFetch).not.toHaveBeenCalled();
@@ -224,6 +225,22 @@ describe('Captcha Emergency Stopper (Aşama 4)', () => {
       resumeBtn.click();
       expect(safetyGovernor.isCaptchaHalted()).toBe(false);
       expect(banner.style.display).toBe('none');
+    });
+
+    it('displays prominent fixed red banner across top of screen upon captcha detection', () => {
+      initCaptchaDetector({ document: dom.window.document, window: dom.window });
+
+      safetyGovernor.halt('captcha');
+      const screenBanner = dom.window.document.getElementById('fr-captcha-screen-banner');
+      expect(screenBanner).not.toBeNull();
+      expect(screenBanner.textContent).toContain('CAPTCHA TESPİT EDİLDİ');
+
+      const btn = screenBanner.querySelector('#fr-captcha-screen-resume-btn');
+      expect(btn.textContent).toBe("Captcha'yı çözdüm, devam et");
+
+      btn.click();
+      expect(safetyGovernor.isCaptchaHalted()).toBe(false);
+      expect(dom.window.document.getElementById('fr-captcha-screen-banner')).toBeNull();
     });
   });
 });
