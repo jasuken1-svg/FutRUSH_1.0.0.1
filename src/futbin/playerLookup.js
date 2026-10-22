@@ -184,14 +184,14 @@ export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, e
   return null;
 }
 
-export function queryFutbinPlayersByName(name) {
+export function queryFutbinPlayersByName(name, options = {}) {
   const cleanName = String(name || '').trim();
   if (!cleanName) {
     return Promise.resolve([]);
   }
   const key = normalizePlayerName(cleanName);
   const cached = searchCache.get(key);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+  if (!options?.bypassCache && cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return Promise.resolve(cached.data);
   }
 
@@ -230,8 +230,8 @@ export function queryFutbinPlayersByName(name) {
   });
 }
 
-export async function searchPlayerAllVersions(name) {
-  const rows = await queryFutbinPlayersByName(name);
+export async function searchPlayerAllVersions(name, options = {}) {
+  const rows = await queryFutbinPlayersByName(name, options);
   if (!Array.isArray(rows) || !rows.length) return [];
   const candidates = rows.map(mapCandidate).filter(Boolean);
   return sortCandidatesByPriceAsc(candidates);

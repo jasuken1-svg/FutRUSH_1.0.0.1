@@ -13,6 +13,7 @@ import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
 import { addMarketLog } from '../../marketLogBox.js';
+import { wait } from '../../../utils/async.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
@@ -252,8 +253,13 @@ export function renderTargetContent(content) {
         ? CONFIG.targetAdd.discountRate
         : 0.1;
 
-      for (const target of state.targets) {
-        const versions = await searchPlayerAllVersions(target.name);
+      for (let i = 0; i < state.targets.length; i++) {
+        const target = state.targets[i];
+        setTargetStatus({
+          type: 'loading',
+          message: `Fiyatlar FutBIN'den alınıyor (${i + 1}/${state.targets.length}): ${target.name}...`
+        });
+        const versions = await searchPlayerAllVersions(target.name, { bypassCache: true });
         if (Array.isArray(versions) && versions.length) {
           // 1. FutBIN ID eşleşmesi (en kesin)
           let matched = target.futbinId ? versions.find((v) => String(v.futbinId) === String(target.futbinId)) : null;
@@ -323,6 +329,9 @@ export function renderTargetContent(content) {
             if (!target.futbinId && matched.futbinId) target.futbinId = matched.futbinId;
             if (!target.versionLabel && matched.versionLabel) target.versionLabel = matched.versionLabel;
           }
+        }
+        if (i < state.targets.length - 1) {
+          await wait(250);
         }
       }
       saveTargets();
