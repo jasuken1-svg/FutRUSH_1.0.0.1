@@ -233,6 +233,199 @@ export const panelCss = `
     #${P.id} .fr-counter-editable button { flex: 0 0 28px; width: 28px; height: 30px; font-size: 16px; }
     #${P.id} .fr-counter-editable .fr-counter-input { flex: 1 1 auto; min-width: 0; text-align: center; }
 
+    #${P.id} .speed-tier-top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      align-self: center;
+      padding: 3px 8px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      user-select: none;
+      transition: all .2s ease;
+    }
+    #${P.id} .speed-tier-badge-dot { font-size: 9px; line-height: 1; }
+    #${P.id} .speed-tier-badge-name { font-weight: 700; }
+    #${P.id} .speed-tier-badge-sec { color: #e8f4f6; font-variant-numeric: tabular-nums; opacity: .9; }
+
+    /* Arama Hızı 4 Kademeli Kart Grubu */
+    #${P.id} .speed-tier-setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #${P.id} .speed-tier-active-summary {
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    #${P.id} .speed-tier-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    @container (max-width: 380px) {
+      #${P.id} .speed-tier-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 480px) {
+      #${P.id} .speed-tier-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    #${P.id} .speed-tier-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 5px;
+      padding: 7px 6px 6px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px;
+      background: rgba(4,12,22,.55);
+      cursor: pointer;
+      user-select: none;
+      opacity: 0.55;
+      transition: opacity .2s ease, border-color .2s ease, box-shadow .2s ease, transform .12s ease;
+      box-sizing: border-box;
+      outline: none;
+    }
+    #${P.id} .speed-tier-card:hover {
+      opacity: 0.8;
+      border-color: rgba(255,255,255,.25);
+    }
+    #${P.id} .speed-tier-card.is-active {
+      opacity: 1;
+      border-color: var(--tier-color);
+      box-shadow: 0 0 10px var(--tier-color), inset 0 0 8px rgba(0,0,0,.4);
+      background: rgba(4,12,22,.85);
+    }
+    #${P.id} .speed-tier-top-stripe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-top-left-radius: 5px;
+      border-top-right-radius: 5px;
+      background: var(--tier-color);
+    }
+    #${P.id} .speed-tier-card-header {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 2px;
+    }
+    #${P.id} .speed-tier-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2px;
+    }
+    #${P.id} .speed-tier-name {
+      color: var(--tier-color);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #${P.id} .speed-tier-warn-icon {
+      font-size: 11px;
+      color: #ef4444;
+      font-weight: 900;
+    }
+    #${P.id} .speed-tier-reset-btn {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #8da2ae;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: color .15s ease, background .15s ease;
+    }
+    #${P.id} .speed-tier-reset-btn:hover {
+      color: #fff;
+      background: rgba(255,255,255,.12);
+    }
+    #${P.id} .speed-tier-default-hint {
+      color: #8da2ae;
+      font-size: 9.5px;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    #${P.id} .speed-tier-risk-note {
+      color: #ef4444;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-top: 1px;
+    }
+    #${P.id} .speed-tier-counter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2px;
+      margin-top: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #${P.id} .speed-tier-step-btn {
+      flex: 0 0 20px;
+      width: 20px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid var(--tier-color);
+      border-radius: 4px;
+      background: rgba(0,0,0,.35);
+      color: var(--tier-color);
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s ease, opacity .15s ease, transform .1s ease;
+    }
+    #${P.id} .speed-tier-step-btn:hover:not(:disabled) {
+      background: var(--tier-color);
+      color: #040c16;
+    }
+    #${P.id} .speed-tier-step-btn:active:not(:disabled) {
+      transform: scale(.92);
+    }
+    #${P.id} .speed-tier-step-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      border-color: rgba(255,255,255,.15);
+      color: rgba(255,255,255,.3);
+    }
+    #${P.id} .speed-tier-value {
+      flex: 1 1 auto;
+      text-align: center;
+      color: var(--tier-color);
+      font-size: 12px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
     #${P.id} .fr-speed-options { display: flex; gap: 6px; }
     #${P.id} .fr-speed-option {
       flex: 1; padding: 6px 4px; border: 1px solid rgba(255,255,255,.16); border-radius: 6px;

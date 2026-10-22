@@ -15,6 +15,7 @@ import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js
 import { addBotLog, setBotStatus } from './botLog.js';
 import { idleWait } from './idle.js';
 import { safetyGovernor } from './safetyGovernor.js';
+import { getEffectiveSpeedDelayMs } from './speedTiers.js';
 
 const defaultSearchJitterMs = [...CONFIG.bot.searchJitterMs];
 const defaultCycleJitterMs = [...CONFIG.bot.cycleJitterMs];
@@ -56,7 +57,7 @@ export async function startAutoBuyer() {
 }
 
 export async function runAutoBuyer(token, deps = {}) {
-  const speedDelay = { 0: 5000, 1: 4000, 2: 2500, 3: 1500 };
+  const getSpeedDelay = () => getEffectiveSpeedDelayMs(state.snipeSettings);
   const settings = state.snipeSettings;
   const search = deps.searchAutoBuyOffers || searchAutoBuyOffers;
   const buy = deps.buyAutoOffer || buyAutoOffer;
@@ -194,7 +195,7 @@ export async function runAutoBuyer(token, deps = {}) {
           const hasMoreSearches = attempt < attempts || state.targets.slice(targetIndex + 1).some((t) => !t.searchDisabled);
           if (checkLimitsReached()) return;
           if (hasMoreSearches && state.botRunning && token === state.botToken) {
-            const baseDelay = speedDelay[settings.speed] || 4000;
+            const baseDelay = getSpeedDelay();
             const jitter = jitterMs(searchJitterRange);
             const totalDelay = baseDelay + jitter;
             debug('[FutRUSH:bot]', 'Arama arası gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
@@ -218,12 +219,12 @@ export async function runAutoBuyer(token, deps = {}) {
           const chosenSec = Math.round(randomBetween(minSec, maxSec, rnd));
           baseDelay = chosenSec * 1000;
         } else {
-          baseDelay = speedDelay[settings.speed] || 4000;
+          baseDelay = getSpeedDelay();
         }
       } else if (typeof waitCfg === 'number' && waitCfg > 0) {
         baseDelay = waitCfg * 1000;
       } else {
-        baseDelay = speedDelay[settings.speed] || 4000;
+        baseDelay = getSpeedDelay();
       }
       const jitter = jitterMs(cycleJitterRange);
       const totalDelay = baseDelay + jitter;

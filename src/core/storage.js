@@ -16,6 +16,7 @@ const SNIPE_SETTINGS_DEFAULTS = {
   autoSell: false,
   maxPlayers: 1,
   speed: 0,
+  speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
   maxSpendCoins: 0,
   hourlySearchLimit: 1200,
   dailySearchLimit: 6000,
@@ -36,6 +37,7 @@ export function saveSnipeSettings() {
       autoSell: state.snipeSettings.autoSell,
       maxPlayers: state.snipeSettings.maxPlayers,
       speed: state.snipeSettings.speed,
+      speedDelays: state.snipeSettings.speedDelays || { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
       maxSpendCoins: state.snipeSettings.maxSpendCoins || 0,
       hourlySearchLimit: state.snipeSettings.hourlySearchLimit ?? SNIPE_SETTINGS_DEFAULTS.hourlySearchLimit,
       dailySearchLimit: state.snipeSettings.dailySearchLimit ?? SNIPE_SETTINGS_DEFAULTS.dailySearchLimit,
@@ -90,6 +92,16 @@ export function loadSnipeSettings() {
     }
     if (Number.isInteger(savedSettings.speed) && savedSettings.speed >= 0 && savedSettings.speed <= 3) {
       loadedSettings.speed = savedSettings.speed;
+    }
+    if (savedSettings.speedDelays && typeof savedSettings.speedDelays === 'object') {
+      const delays = { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 };
+      [0, 1, 2, 3].forEach((k) => {
+        const val = Number(savedSettings.speedDelays[k]);
+        if (!isNaN(val) && val >= 1.0 && val <= 10.0) {
+          delays[k] = Math.round(val * 10) / 10;
+        }
+      });
+      loadedSettings.speedDelays = delays;
     }
     if (Number.isSafeInteger(savedSettings.maxSpendCoins) && savedSettings.maxSpendCoins >= 0) {
       loadedSettings.maxSpendCoins = savedSettings.maxSpendCoins;

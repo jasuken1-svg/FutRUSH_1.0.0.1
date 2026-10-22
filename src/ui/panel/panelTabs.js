@@ -7,6 +7,7 @@ import { safetyGovernor } from '../../bot/safetyGovernor.js';
 import { renderPanelSettings } from './tabs/settingsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
 import { unmountWaitBar } from './waitBar.js';
+import { SPEED_TIERS, formatTierSeconds } from '../../bot/speedTiers.js';
 
 export function renderPanelTabs(panel) {
     unmountWaitBar();
@@ -25,6 +26,7 @@ export function renderPanelTabs(panel) {
       '</div>' +
       '<div class="fc-snipe-tabs" role="tablist" aria-label="SNIPE sekmeleri">' +
       tabs.map((tab) => '<button class="fc-snipe-tab" type="button" role="tab" data-tab="' + tab.id + '" aria-selected="' + (state.activePanelTab === tab.id) + '">' + tab.label + '</button>').join('') +
+      '<div class="speed-tier-top-badge" role="status" aria-label="Aktif arama hızı"></div>' +
       '</div><div class="fc-snipe-tab-content" role="tabpanel" aria-live="polite"></div>';
     const content = panel.querySelector('.fc-snipe-tab-content');
     renderPanelTabContent(content);
@@ -35,6 +37,20 @@ export function renderPanelTabs(panel) {
         renderPanelTabContent(content);
       });
     });
+
+    const speedBadge = panel.querySelector('.speed-tier-top-badge');
+    const syncSpeedBadge = () => {
+      if (!speedBadge) return;
+      const speed = Number.isInteger(state.snipeSettings?.speed) ? state.snipeSettings.speed : 1;
+      const tier = SPEED_TIERS[speed] || SPEED_TIERS[1];
+      const sec = state.snipeSettings?.speedDelays?.[speed] ?? tier.defaultSec;
+      const warnIcon = tier.isWarning ? '⚠ ' : '';
+      speedBadge.innerHTML = `<span class="speed-tier-badge-dot" style="color:${tier.color}">●</span> <span class="speed-tier-badge-name" style="color:${tier.color}">${warnIcon}${tier.name}</span> <span class="speed-tier-badge-sec">${formatTierSeconds(sec)} sn</span>`;
+      speedBadge.style.borderColor = tier.color + '55';
+      speedBadge.style.background = tier.color + '18';
+    };
+    syncSpeedBadge();
+    on('bot:speed-changed', syncSpeedBadge);
 
     const banner = panel.querySelector('.fr-governor-banner');
     const bannerMsg = panel.querySelector('.fr-governor-banner-msg');
