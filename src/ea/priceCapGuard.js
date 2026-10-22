@@ -11,6 +11,21 @@ import { state } from '../core/state.js';
 export const DEFAULT_MAX_PRICE_THRESHOLD = 0.50; // %50 üzeri aşırı fiyat kabul edilir
 
 /**
+ * Satın Al değerinin FutBIN referans fiyatını aşıp aşmadığını denetler.
+ * Kural: Eğer FutBIN fiyatı varsa (örn. 8000) ve SATIN AL > FutBIN (örn. 8100),
+ * kart aşırı fiyatlıdır (zararına alım / fazla fiyat).
+ * @param {number} buyNow - Hedefin veya teklifin SATIN AL fiyatı
+ * @param {number|null} futbinPrice - FutBIN referans fiyatı
+ * @returns {boolean} Fiyat FutBIN değerini aşıyor mu
+ */
+export function isExceedingFutbin(buyNow, futbinPrice) {
+  const buy = Number(buyNow) || 0;
+  const fb = Number(futbinPrice);
+  if (!Number.isFinite(fb) || fb <= 0 || buy <= 0) return false;
+  return buy > fb;
+}
+
+/**
  * Bir kart için FutBIN referans fiyatını baz alarak izin verilen maksimum tavan fiyatı hesaplar.
  * @param {number|null} futbinPrice - FutBIN referans fiyatı
  * @param {number} [thresholdRate] - Opsiyonel oran (varsayılan: state veya 0.50)
@@ -72,6 +87,17 @@ export function validatePriceCap(enteredBuyNow, futbinPrice, options = {}) {
 export function checkPriceCapGuard(target, offerPrice) {
   const futbinRef = Number(target?.price);
   const priceToCheck = offerPrice != null ? Number(offerPrice) : Number(target?.buyNow);
+
+  // Kural: FutBIN fiyatı biliniyorsa ve SATIN AL > FutBIN ise kesinlikle engelle
+  if (isExceedingFutbin(priceToCheck, futbinRef)) {
+    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Satın Al (${priceToCheck.toLocaleString('tr-TR')}) FutBIN piyasa fiyatını (${futbinRef.toLocaleString('tr-TR')}) aşıyor! Tarama ve satın alma engellendi.`;
+    addMarketLog({
+      text,
+      type: 'error'
+    });
+    emit('target:price-cap-exceeded', { target, offerPrice: priceToCheck, reason: 'exceeds_futbin' });
+    return false;
+  }
 
   const result = validatePriceCap(priceToCheck, futbinRef);
   if (!result.allowed) {

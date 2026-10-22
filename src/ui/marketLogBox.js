@@ -149,15 +149,16 @@ function ensureStyles() {
       text-overflow: ellipsis;
       position: relative;
       display: inline-block;
+      cursor: pointer;
     }
-    .fr-market-log-item:hover .fr-market-log-text.is-overflowing {
-      text-overflow: clip;
-      overflow: visible;
-      animation: fr-marquee-slide var(--marquee-duration, 6s) linear infinite alternate;
+    .fr-market-log-text.is-sliding {
+      text-overflow: clip !important;
+      overflow: visible !important;
+      animation: fr-marquee-slide var(--marquee-duration, 6s) linear infinite alternate !important;
     }
     @keyframes fr-marquee-slide {
-      0%, 20% { transform: translateX(0); }
-      80%, 100% { transform: translateX(calc(-1 * var(--marquee-overflow, 50px))); }
+      0%, 15% { transform: translateX(0); }
+      85%, 100% { transform: translateX(calc(-1 * var(--marquee-overflow, 50px))); }
     }
   `;
   document.head.appendChild(st);
@@ -255,17 +256,19 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     textSpan.title = entry.text;
     row.appendChild(textSpan);
 
-    row.addEventListener('mouseenter', () => {
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (textSpan.classList.contains('is-sliding')) {
+        textSpan.classList.remove('is-sliding');
+        return;
+      }
       if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
-        textSpan.classList.add('is-overflowing');
+        textSpan.classList.add('is-sliding');
         const overflow = textSpan.scrollWidth - textSpan.clientWidth;
         const duration = Math.max(3, Math.min(12, overflow / 20));
         textSpan.style.setProperty('--marquee-duration', `${duration}s`);
         textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
       }
-    });
-    row.addEventListener('mouseleave', () => {
-      textSpan.classList.remove('is-overflowing');
     });
 
     list.prepend(row);
@@ -381,17 +384,19 @@ export function renderMarketLogBox(forceTop = false) {
       textSpan.title = item.text;
       row.appendChild(textSpan);
 
-      row.addEventListener('mouseenter', () => {
+      row.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (textSpan.classList.contains('is-sliding')) {
+          textSpan.classList.remove('is-sliding');
+          return;
+        }
         if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
-          textSpan.classList.add('is-overflowing');
+          textSpan.classList.add('is-sliding');
           const overflow = textSpan.scrollWidth - textSpan.clientWidth;
           const duration = Math.max(3, Math.min(12, overflow / 20));
           textSpan.style.setProperty('--marquee-duration', `${duration}s`);
           textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
         }
-      });
-      row.addEventListener('mouseleave', () => {
-        textSpan.classList.remove('is-overflowing');
       });
 
       list.appendChild(row);

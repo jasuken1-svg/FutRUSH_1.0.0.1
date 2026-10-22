@@ -12,7 +12,7 @@ import { searchPlayerAllVersions, searchUniquePlayers, fetchPlayerDetailsFromFut
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
-import { validatePriceCap } from '../../../ea/priceCapGuard.js';
+import { validatePriceCap, isExceedingFutbin } from '../../../ea/priceCapGuard.js';
 import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
 import { FUTBIN_ICON_DATA } from '../../icons.js';
@@ -599,11 +599,13 @@ export function renderTargetContent(content) {
     if (!player.priceUpdatedAt) {
       player.priceUpdatedAt = Date.now();
     }
-    const isSearchActive = !player.searchDisabled && !player.insufficientBalance;
+    const isPriceExceeded = isExceedingFutbin(player.buyNow, player.price);
+    const isSearchActive = !player.searchDisabled && !player.insufficientBalance && !isPriceExceeded;
     const card = document.createElement('div');
     card.className = 'fr-target-card' +
       (isSearchActive ? '' : ' is-search-inactive') +
-      (player.insufficientBalance ? ' is-insufficient-balance' : '');
+      (player.insufficientBalance ? ' is-insufficient-balance' : '') +
+      (isPriceExceeded ? ' is-price-exceeded' : '');
     card.setAttribute('role', 'listitem');
 
     if (player.playerImageUrl || player.promoImageUrl) {
@@ -785,6 +787,10 @@ export function renderTargetContent(content) {
         value.value = formatVal(control.key, player[control.key]);
         if (control.key === 'buyNow') {
           updateProfit(player.buyNow);
+          const priceExceeded = isExceedingFutbin(player.buyNow, player.price);
+          card.classList.toggle('is-price-exceeded', priceExceeded);
+          const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+          card.classList.toggle('is-search-inactive', !active);
         }
         updateSummaryBar();
       };
@@ -806,6 +812,10 @@ export function renderTargetContent(content) {
           saveTargets();
           if (control.key === 'buyNow') {
             updateProfit(entered);
+            const priceExceeded = isExceedingFutbin(entered, player.price);
+            card.classList.toggle('is-price-exceeded', priceExceeded);
+            const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+            card.classList.toggle('is-search-inactive', !active);
           }
           updateSummaryBar();
         }
@@ -844,6 +854,10 @@ export function renderTargetContent(content) {
         saveTargets();
         if (control.key === 'buyNow') {
           updateProfit(completedValue);
+          const priceExceeded = isExceedingFutbin(completedValue, player.price);
+          card.classList.toggle('is-price-exceeded', priceExceeded);
+          const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+          card.classList.toggle('is-search-inactive', !active);
         }
         updateSummaryBar();
       };

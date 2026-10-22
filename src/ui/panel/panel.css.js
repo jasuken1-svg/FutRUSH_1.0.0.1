@@ -1050,6 +1050,26 @@ export const panelCss = `
       border-color: rgba(245, 158, 11, 0.45);
       background: rgba(245, 158, 11, 0.05);
     }
+    #${P.id} .fr-target-card.is-price-exceeded {
+      border-color: rgba(239, 68, 68, 0.8) !important;
+      background: rgba(239, 68, 68, 0.1) !important;
+      animation: fr-price-exceeded-glow 1.5s ease-in-out infinite alternate !important;
+    }
+    #${P.id} .fr-target-card.is-price-exceeded .fr-target-counter-input[aria-label="SATIN AL değeri"] {
+      border-color: #ef4444 !important;
+      color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.15) !important;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.6) !important;
+      animation: fr-input-error-pulse 1.5s ease-in-out infinite alternate !important;
+    }
+    @keyframes fr-price-exceeded-glow {
+      from { box-shadow: 0 0 4px rgba(239, 68, 68, 0.35); }
+      to { box-shadow: 0 0 16px rgba(239, 68, 68, 0.85); }
+    }
+    @keyframes fr-input-error-pulse {
+      from { box-shadow: 0 0 2px rgba(239, 68, 68, 0.4); }
+      to { box-shadow: 0 0 10px rgba(239, 68, 68, 0.9); }
+    }
     #${P.id} .fr-target-badge-insufficient {
       display: inline-flex;
       align-items: center;
