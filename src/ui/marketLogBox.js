@@ -253,7 +253,7 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     const textSpan = document.createElement('span');
     textSpan.className = 'fr-market-log-text';
     textSpan.textContent = `[${entry.time.slice(0, 5)}] ${entry.text}`;
-    textSpan.title = entry.text;
+    textSpan.title = '';
     row.appendChild(textSpan);
 
     let slideTimer = null;
@@ -268,12 +268,12 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
         textSpan.classList.add('is-sliding');
         const overflow = textSpan.scrollWidth - textSpan.clientWidth;
         textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
-        textSpan.style.setProperty('--marquee-duration', '5s');
+        textSpan.style.setProperty('--marquee-duration', '6s');
         if (slideTimer) clearTimeout(slideTimer);
         slideTimer = setTimeout(() => {
           textSpan.classList.remove('is-sliding');
           slideTimer = null;
-        }, 5000);
+        }, 20000);
       }
     });
 
@@ -387,7 +387,7 @@ export function renderMarketLogBox(forceTop = false) {
       const textSpan = document.createElement('span');
       textSpan.className = 'fr-market-log-text';
       textSpan.textContent = `[${item.time.slice(0, 5)}] ${item.text}`;
-      textSpan.title = item.text;
+      textSpan.title = '';
       row.appendChild(textSpan);
 
       let slideTimer = null;
@@ -402,12 +402,12 @@ export function renderMarketLogBox(forceTop = false) {
           textSpan.classList.add('is-sliding');
           const overflow = textSpan.scrollWidth - textSpan.clientWidth;
           textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
-          textSpan.style.setProperty('--marquee-duration', '5s');
+          textSpan.style.setProperty('--marquee-duration', '6s');
           if (slideTimer) clearTimeout(slideTimer);
           slideTimer = setTimeout(() => {
             textSpan.classList.remove('is-sliding');
             slideTimer = null;
-          }, 5000);
+          }, 20000);
         }
       });
 

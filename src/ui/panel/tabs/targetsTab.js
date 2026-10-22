@@ -160,21 +160,6 @@ export function updateTargetStatus(statusElement, status, targetLoading) {
     main.append(message, progressLabel);
     row.append(icon, main);
     statusElement.appendChild(row);
-
-    statusElement.addEventListener('mouseenter', () => {
-      const msg = statusElement.querySelector('.fr-target-status-message');
-      if (msg && msg.scrollWidth > msg.clientWidth + 1) {
-        msg.classList.add('is-overflowing');
-        const overflow = msg.scrollWidth - msg.clientWidth;
-        const duration = Math.max(3, Math.min(12, overflow / 20));
-        msg.style.setProperty('--marquee-duration', `${duration}s`);
-        msg.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
-      }
-    });
-    statusElement.addEventListener('mouseleave', () => {
-      const msg = statusElement.querySelector('.fr-target-status-message');
-      if (msg) msg.classList.remove('is-overflowing');
-    });
   }
 
   const icon = row.querySelector('.fr-target-status-icon');
@@ -185,6 +170,20 @@ export function updateTargetStatus(statusElement, status, targetLoading) {
   if (previousMessage !== normalized.message || !message.textContent) {
     message.textContent = normalized.message;
   }
+
+  // Otomatik sürekli kayan slide (hover gerektirmez, mouse hareketinden etkilenmez)
+  const scheduleMeasure = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (cb) => setTimeout(cb, 0);
+  scheduleMeasure(() => {
+    if (message && message.scrollWidth > message.clientWidth + 1) {
+      message.classList.add('is-overflowing');
+      const overflow = message.scrollWidth - message.clientWidth;
+      message.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
+      const duration = Math.max(4, Math.min(10, overflow / 25));
+      message.style.setProperty('--marquee-duration', `${duration}s`);
+    } else if (message) {
+      message.classList.remove('is-overflowing');
+    }
+  });
 
   const progressLabel = row.querySelector('.fr-target-progress-label');
   let progress = statusElement.querySelector('.fr-target-progress');
@@ -842,7 +841,8 @@ export function renderTargetContent(content) {
             value.value = formatVal(control.key, player[control.key]);
             setTargetStatus({
               type: 'error',
-              message: `Maksimum Fiyat Koruması: ${capCheck.reason}`
+              message: `Maksimum Fiyat Koruması: ${capCheck.reason}`,
+              holdMs: 25000
             });
             addMarketLog({
               text: `🛡️ [Fiyat Koruması] ${player.name}: ${capCheck.reason}`,
