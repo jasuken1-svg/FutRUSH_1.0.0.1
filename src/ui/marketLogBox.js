@@ -31,18 +31,18 @@ function ensureStyles() {
       height: 218px;
       min-height: 80px;
       max-height: 85vh;
-      background: rgba(10, 16, 26, 0.95);
+      background: rgba(21, 29, 41, 0.7);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(0, 229, 255, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 6px !important;
       box-sizing: border-box;
       display: none;
       flex-direction: column;
       z-index: 99999 !important;
       overflow: hidden;
-      font-family: inherit;
-      color: #fff;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e6f6f7;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       transition: opacity 0.15s ease;
       pointer-events: auto !important;
       user-select: none;
@@ -61,7 +61,7 @@ function ensureStyles() {
       flex: 0 0 auto;
     }
     .fr-market-log-box .fr-logs-header-title {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: #00e5ff;
       letter-spacing: 0.5px;
@@ -69,10 +69,9 @@ function ensureStyles() {
     .fr-market-log-list {
       flex: 1 1 auto;
       min-height: 0;
-      height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 6px 0;
+      padding: 4px 1px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -102,7 +101,7 @@ function ensureStyles() {
       user-select: none;
     }
     .fr-market-log-empty-sub {
-      font-size: 11px;
+      font-size: 10px;
       color: #8fa0b5;
     }
     .fr-market-log-item {
@@ -110,11 +109,11 @@ function ensureStyles() {
       align-items: center;
       justify-content: space-between;
       gap: 6px;
-      padding: 3px 6px;
-      min-height: 22px;
+      padding: 2px 6px;
+      min-height: 20px;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.25;
       color: #e2e8f0;
       flex: 0 0 auto;
@@ -268,21 +267,17 @@ function setupBoxElements(box) {
     box.appendChild(header);
   }
 
-  // Liste taşıyıcı (Scroll gizli, tekerlek kaydırma aktif)
+  // Liste taşıyıcı (Scrollbar gizli, yerel kaydırma aktif)
   let list = box.querySelector('.fr-market-log-list');
   if (!list) {
     list = document.createElement('div');
     list.className = 'fr-market-log-list fr-log-list';
-    list.addEventListener('wheel', (e) => {
-      e.stopPropagation();
-      list.scrollTop += e.deltaY;
-    }, { passive: true });
     box.appendChild(list);
   }
   currentListEl = list;
 }
 
-export function renderMarketLogBox() {
+export function renderMarketLogBox(forceBottom = false) {
   if (!currentBoxEl || !currentBoxEl.isConnected) {
     mountMarketLogBox();
     if (!currentBoxEl) return;
@@ -293,6 +288,9 @@ export function renderMarketLogBox() {
 
   const list = currentListEl || currentBoxEl.querySelector('.fr-market-log-list');
   if (!list) return;
+
+  const wasAtBottom = forceBottom || (list.scrollHeight - list.scrollTop - list.clientHeight <= 35);
+  const prevScrollTop = list.scrollTop;
 
   list.replaceChildren();
 
@@ -316,8 +314,11 @@ export function renderMarketLogBox() {
     });
   }
 
-  // Her zaman alta kaydır (yeni loglar alta eklenir ve yukarı doğru akar)
-  list.scrollTop = list.scrollHeight;
+  if (wasAtBottom) {
+    list.scrollTop = list.scrollHeight;
+  } else {
+    list.scrollTop = prevScrollTop;
+  }
 }
 
 // Target tab log veya info bildirimlerini otomatik log kutusuna aktar

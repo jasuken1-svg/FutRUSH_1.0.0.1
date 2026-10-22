@@ -147,9 +147,18 @@ function ensureStyles() {
       min-height: 218px !important;
       max-height: 218px !important;
       flex: 0 0 218px !important;
+      background: rgba(21, 29, 41, 0.7) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.18) !important;
       border-radius: 6px !important;
+      box-sizing: border-box !important;
+      padding: 10px !important;
       display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+      color: #e6f6f7 !important;
     }
   `;
   document.head.appendChild(style);

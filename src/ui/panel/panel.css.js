@@ -905,7 +905,12 @@ export const panelCss = `
       transition: background .16s ease, border-color .16s ease, color .16s ease;
     }
     #${P.id} .fr-log-clear:hover, .fr-bot-logs-panel .fr-log-clear:hover { background: rgba(255,82,97,.12); color: #ffb3ba; }
-    #${P.id} .fr-log-list, .fr-bot-logs-panel .fr-log-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px; min-height: 0; overflow-y: auto; color: #c8d7df; font-size: 11px; scrollbar-width: none; }
+    #${P.id} .fr-log-list, .fr-bot-logs-panel .fr-log-list {
+      display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px;
+      min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+      padding: 1px 3px 2px 1px; scrollbar-width: none; -ms-overflow-style: none;
+      color: #c8d7df; font-size: 11px;
+    }
     #${P.id} .fr-log-list::-webkit-scrollbar, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar { display: none; }
     #${P.id} .fr-log-row, .fr-bot-logs-panel .fr-log-row {
       display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;

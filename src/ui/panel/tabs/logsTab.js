@@ -62,9 +62,11 @@ function getFilteredLogs() {
   return logs;
 }
 
-function renderLogRows(content) {
+function renderLogRows(content, forceBottom = false) {
   const list = content.querySelector('.fr-log-list');
   if (!list) return;
+  const wasAtBottom = forceBottom || shouldAutoScrollLogList(list);
+  const prevScrollTop = list.scrollTop;
   const entries = chronologicalBotLogs(getFilteredLogs());
   list.replaceChildren();
   if (!entries.length) {
@@ -75,7 +77,11 @@ function renderLogRows(content) {
     return;
   }
   entries.forEach((entry) => list.appendChild(createLogRow(entry, false)));
-  list.scrollTop = list.scrollHeight;
+  if (wasAtBottom) {
+    list.scrollTop = list.scrollHeight;
+  } else {
+    list.scrollTop = prevScrollTop;
+  }
 }
 
 function copyToClipboard(text) {
@@ -142,7 +148,7 @@ export function renderBotLogs(content) {
       content.querySelectorAll('.fr-log-filter-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       activeLogFilter = btn.dataset.filter;
-      renderLogRows(content);
+      renderLogRows(content, true);
     });
   });
 
@@ -184,20 +190,11 @@ export function renderBotLogs(content) {
     e.preventDefault();
     e.stopPropagation();
     state.botLogs.length = 0;
-    renderLogRows(content);
+    renderLogRows(content, true);
   });
 
-  const list = content.querySelector('.fr-log-list');
-  if (list && !list.dataset.frWheel) {
-    list.dataset.frWheel = 'true';
-    list.addEventListener('wheel', (e) => {
-      e.stopPropagation();
-      list.scrollTop += e.deltaY;
-    }, { passive: true });
-  }
-
   updateBotLogStats(content);
-  renderLogRows(content);
+  renderLogRows(content, true);
   mountWaitBar(content.querySelector('.fr-waitbar'));
 }
 
