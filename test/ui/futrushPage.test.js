@@ -60,7 +60,7 @@ describe('futrushPage', () => {
     expect(tab.querySelector('.fr-tab-icon')).toBeTruthy();
   });
 
-  it('opens FutRUSH page, updates navbar title to FutRUSH Panel, shows header view with Genel Log, and panel on the left in hub view', () => {
+  it('opens FutRUSH page, updates navbar title to FutRUSH Panel, places header log icon, and sets panel on the left in hub view', () => {
     futrushPage.placeFutrushTab();
     futrushPage.openFutrushPage();
 
@@ -79,13 +79,12 @@ describe('futrushPage', () => {
     const eaContent = document.querySelector('.ut-navigation-container-view--content');
     expect(eaContent.style.display).toBe('none');
 
-    // Header container contains Genel Log box
-    const header = futrushPage.getHeaderContainer();
-    expect(header).toBeTruthy();
-    expect(header.style.display).toBe('flex');
-    const logBox = header.querySelector('.fr-market-log-box');
-    expect(logBox).toBeTruthy();
-    expect(logBox.textContent).toContain('Genel Log');
+    // Header log icon button exists and has tooltip
+    const logBtn = futrushPage.getHeaderLogButton();
+    expect(logBtn).toBeTruthy();
+    expect(logBtn.style.display).toBe('inline-flex');
+    expect(logBtn.title).toBe('Genel Logları göster');
+    expect(logBtn.textContent).toContain('Genel Logları göster');
 
     // Hub container contains fc-snipe-panel as first child on the left
     const hub = futrushPage.getHubContainer();
@@ -94,9 +93,15 @@ describe('futrushPage', () => {
     const panelEl = hub.querySelector('#fc-snipe-panel');
     expect(panelEl).toBeTruthy();
     expect(hub.children[0]).toBe(panelEl);
+
+    // Genel Log floating box exists with draggable head and resize handle
+    const logBox = document.querySelector('.fr-market-log-box');
+    expect(logBox).toBeTruthy();
+    expect(logBox.textContent).toContain('Genel Log');
+    expect(logBox.querySelector('.fr-log-resize-handle')).toBeTruthy();
   });
 
-  it('closes FutRUSH page, hides header view and hub view, and restores navbar title and EA content when an EA tab is clicked', () => {
+  it('closes FutRUSH page, hides hub view, and restores navbar title and EA content when an EA tab is clicked', () => {
     futrushPage.placeFutrushTab();
     futrushPage.openFutrushPage();
 
@@ -112,9 +117,6 @@ describe('futrushPage', () => {
     expect(state.futrushPageActive).toBe(false);
     const tab = futrushPage.getTabElement();
     expect(tab.classList.contains('selected')).toBe(false);
-
-    const header = futrushPage.getHeaderContainer();
-    expect(header.style.display).toBe('none');
 
     const hub = futrushPage.getHubContainer();
     expect(hub.style.display).toBe('none');

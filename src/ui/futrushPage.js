@@ -5,11 +5,11 @@ import { LOGO_SVG } from './icons.js';
 import { state } from '../core/state.js';
 import { panel, applyGeom } from './panel/panel.js';
 import { renderPanelTabs } from './panel/panelTabs.js';
-import { mountMarketLogBox, renderMarketLogBox } from './marketLogBox.js';
+import { toggleMarketLogBox, renderMarketLogBox } from './marketLogBox.js';
 
 let tabEl = null;
 let hubContainer = null;
-let headerContainer = null;
+let logIconBtn = null;
 let eaContentHidden = false;
 let stylesInjected = false;
 
@@ -72,40 +72,73 @@ function ensureStyles() {
       line-height: 1.2;
     }
 
-    .fc-header-view {
+    .fr-header-log-btn {
       position: relative;
-      width: 100%;
-      box-sizing: border-box;
-      display: none;
-      flex-direction: row;
+      display: inline-flex;
       align-items: center;
-      justify-content: flex-start;
-      padding: 8px 16px;
-      background: rgba(10, 17, 28, 0.95);
-      border-bottom: 1px solid rgba(0, 229, 255, 0.15);
-      flex: 0 0 auto;
-      gap: 12px;
-      z-index: 10;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      margin: 0 8px;
+      padding: 0;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      border-radius: 6px;
+      cursor: pointer;
+      color: #00e5ff;
+      transition: all 0.2s ease;
+      z-index: 100;
+      box-sizing: border-box;
+      vertical-align: middle;
     }
-    .fc-header-view .fr-market-log-box {
-      position: relative !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      width: 440px !important;
-      max-width: 100% !important;
-      height: 84px !important;
-      flex: 0 0 auto !important;
-      display: flex !important;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+    .fr-header-log-btn:hover {
+      background: rgba(0, 229, 255, 0.25);
+      border-color: #00e5ff;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
+      transform: scale(1.05);
+    }
+    .fr-header-log-btn .fr-header-log-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+    }
+    .fr-header-log-btn .fr-header-log-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+    .fr-header-log-tooltip {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f1a2c;
+      border: 1px solid rgba(0, 229, 255, 0.5);
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+    }
+    .fr-header-log-btn:hover .fr-header-log-tooltip {
+      opacity: 1;
+      visibility: visible;
     }
 
     #fr-hub-view {
       position: relative;
       width: 100%;
       height: 100%;
-      min-height: calc(100vh - 150px);
+      min-height: calc(100vh - 70px);
       box-sizing: border-box;
       display: none;
       flex-direction: row;
@@ -153,6 +186,48 @@ export function updateNavigationTitle(isFutrushActive) {
   }
 }
 
+export function placeHeaderLogButton() {
+  const header = document.querySelector('.fc-header-view, fc-header-view, #fc-header-view')
+    || document.querySelector('.ut-navigation-bar-view');
+  if (!header) return null;
+
+  if (!logIconBtn) {
+    logIconBtn = document.createElement('button');
+    logIconBtn.type = 'button';
+    logIconBtn.className = 'fr-header-log-btn';
+    logIconBtn.title = 'Genel Logları göster';
+    logIconBtn.setAttribute('aria-label', 'Genel Logları göster');
+    logIconBtn.innerHTML =
+      '<span class="fr-header-log-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>' +
+          '<polyline points="14 2 14 8 20 8"></polyline>' +
+          '<line x1="16" y1="13" x2="8" y2="13"></line>' +
+          '<line x1="16" y1="17" x2="8" y2="17"></line>' +
+          '<polyline points="10 9 9 9 8 9"></polyline>' +
+        '</svg>' +
+      '</span>' +
+      '<span class="fr-header-log-tooltip">Genel Logları göster</span>';
+    logIconBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMarketLogBox();
+    });
+  }
+
+  const titleEl = header.querySelector('.title, h1, [class*="title"]');
+  if (titleEl && titleEl.parentElement) {
+    if (logIconBtn.previousElementSibling !== titleEl) {
+      titleEl.parentElement.insertBefore(logIconBtn, titleEl.nextSibling);
+    }
+  } else if (logIconBtn.parentElement !== header) {
+    header.appendChild(logIconBtn);
+  }
+
+  logIconBtn.style.display = state.futrushPageActive ? 'inline-flex' : 'none';
+  return logIconBtn;
+}
+
 function setupGlobalTabListeners() {
   document.addEventListener('click', (e) => {
     const clickedItem = e.target.closest && e.target.closest('.ut-tab-bar-item');
@@ -168,42 +243,6 @@ function setupGlobalTabListeners() {
 export function initFutrushPage() {
   ensureStyles();
   setupGlobalTabListeners();
-}
-
-export function ensureHeaderContainer() {
-  if (!headerContainer || !headerContainer.isConnected) {
-    let existing = document.querySelector('.fc-header-view, fc-header-view, #fc-header-view');
-    if (!existing) {
-      existing = document.createElement('div');
-      existing.className = 'fc-header-view';
-      existing.id = 'fc-header-view';
-    }
-    headerContainer = existing;
-
-    const navContainer = document.querySelector('.ut-navigation-container-view');
-    const contentArea = document.querySelector('.ut-navigation-container-view--content');
-    const hub = document.getElementById('fr-hub-view');
-
-    if (navContainer) {
-      if (existing.parentElement !== navContainer) {
-        if (hub && hub.parentElement === navContainer) {
-          navContainer.insertBefore(existing, hub);
-        } else {
-          navContainer.appendChild(existing);
-        }
-      }
-    } else if (contentArea && contentArea.parentElement) {
-      if (existing.parentElement !== contentArea.parentElement) {
-        contentArea.parentElement.appendChild(existing);
-      }
-    } else if (document.body && existing.parentElement !== document.body) {
-      document.body.appendChild(existing);
-    }
-  }
-
-  // Genel Log kutusu fc-header-view icine baglanir
-  mountMarketLogBox(headerContainer);
-  return headerContainer;
 }
 
 export function ensureHubContainer() {
@@ -230,7 +269,7 @@ export function ensureHubContainer() {
     }
   }
 
-  // fc-snipe-panel hub container icinde en sola baglanir
+  // fc-snipe-panel hub container icinde en solda konumlanir
   if (panel && panel.parentElement !== hubContainer) {
     if (hubContainer.firstChild) {
       hubContainer.insertBefore(panel, hubContainer.firstChild);
@@ -255,17 +294,13 @@ export function openFutrushPage() {
     });
   }
 
-  ensureHeaderContainer();
   ensureHubContainer();
+  placeHeaderLogButton();
 
   const contentArea = document.querySelector('.ut-navigation-container-view--content');
   if (contentArea) {
     contentArea.style.setProperty('display', 'none', 'important');
     eaContentHidden = true;
-  }
-
-  if (headerContainer) {
-    headerContainer.style.setProperty('display', 'flex', 'important');
   }
 
   if (hubContainer) {
@@ -291,8 +326,8 @@ export function closeFutrushPage() {
     tabEl.classList.remove('selected');
   }
 
-  if (headerContainer) {
-    headerContainer.style.setProperty('display', 'none', 'important');
+  if (logIconBtn) {
+    logIconBtn.style.display = 'none';
   }
 
   if (hubContainer) {
@@ -380,8 +415,8 @@ export function placeFutrushTab() {
     }
   }
 
-  ensureHeaderContainer();
   ensureHubContainer();
+  placeHeaderLogButton();
   syncPageVisibility();
 }
 
@@ -393,6 +428,6 @@ export function getHubContainer() {
   return hubContainer;
 }
 
-export function getHeaderContainer() {
-  return headerContainer;
+export function getHeaderLogButton() {
+  return logIconBtn;
 }
