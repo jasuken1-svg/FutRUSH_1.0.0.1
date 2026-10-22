@@ -84,6 +84,29 @@ export function clearFutbinSearchCache() {
   detailsCache.clear();
 }
 
+function rowMatchesPlayer(row, { eaId = 0, futbinId = '', name = '', rating = 0 } = {}) {
+  if (!row) return false;
+  const rowEaId = Number(row.resource_id || row.playerid || 0);
+  if (eaId && rowEaId && (rowEaId === Number(eaId) || (rowEaId & 0xffffff) === (Number(eaId) & 0xffffff))) {
+    return true;
+  }
+  if (futbinId && String(row.ID ?? row.id) === String(futbinId)) {
+    return true;
+  }
+  if (name) {
+    const normWanted = normalizePlayerName(name);
+    const rowPlayername = normalizePlayerName(row.playername || '');
+    const rowCommonName = normalizePlayerName(row.common_name || '');
+    const nameMatches = (rowPlayername && (rowPlayername === normWanted || rowPlayername.includes(normWanted) || normWanted.includes(rowPlayername))) ||
+                        (rowCommonName && (rowCommonName === normWanted || rowCommonName.includes(normWanted) || normWanted.includes(rowCommonName)));
+    if (nameMatches) {
+      if (rating && Number(row.rating) !== Number(rating)) return false;
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, eaId = 0, futbinId = '' } = {}) {
   const cacheKey = `${eaId || futbinId || normalizePlayerName(name)}_${rating}`;
   const cached = detailsCache.get(cacheKey);
@@ -91,45 +114,38 @@ export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, e
     return cached.data;
   }
 
-  const cfg = CONFIG.futbin;
-  const isPc = cfg.platform === 'pc';
+  let targetRating = Number(rating) || 0;
+  let targetFutbinId = futbinId ? String(futbinId) : '';
+  let targetEaId = eaId ? Number(eaId) : 0;
 
-  // 1. search parametresi ile getFilteredPlayers sorgula
-  if (name) {
+  if ((!targetRating || !targetFutbinId) && name) {
     try {
-      const searchUrl = new URL(cfg.apiBaseUrl);
-      searchUrl.searchParams.set('platform', isPc ? 'PC' : 'PS');
-      searchUrl.searchParams.set('page', '1');
-      searchUrl.searchParams.set('search', String(name).trim());
-      if (rating) searchUrl.searchParams.set('rating', `${rating}-${rating}`);
-      const res = await requestFutbinApi(searchUrl.toString());
-      if (res && res.status >= 200 && res.status < 300) {
-        const payload = JSON.parse(res.responseText || '{}');
-        if (Array.isArray(payload?.data) && payload.data.length > 0) {
-          const matchedRow = payload.data.find((row) =>
-            (eaId && (Number(row.resource_id) === Number(eaId) || Number(row.playerid) === Number(eaId))) ||
-            (futbinId && String(row.ID ?? row.id) === String(futbinId)) ||
-            (rating && Number(row.rating) === Number(rating))
-          ) || payload.data[0];
-          if (matchedRow) {
-            const candidate = mapCandidate(matchedRow);
-            if (candidate) {
-              detailsCache.set(cacheKey, { data: candidate, timestamp: Date.now() });
-              return candidate;
-            }
-          }
+      const searchRows = await queryFutbinPlayersByName(name);
+      if (Array.isArray(searchRows) && searchRows.length > 0) {
+        const found = searchRows.find((r) =>
+          (targetEaId && (Number(r.resource_id) === targetEaId || Number(r.playerid) === targetEaId)) ||
+          (targetRating && Number(r.rating) === targetRating)
+        ) || searchRows[0];
+        if (found) {
+          if (!targetRating && found.rating) targetRating = Number(found.rating);
+          if (!targetFutbinId && found.ID) targetFutbinId = String(found.ID);
+          if (!targetEaId && (found.resource_id || found.playerid)) targetEaId = Number(found.resource_id || found.playerid);
         }
       }
     } catch (_) {}
   }
 
-  // 2. Reyting biliniyorsa doğrudan reyting sayfasından sorgula (getFilteredPlayers API)
-  if (rating > 0) {
+  if (!targetRating) return null;
+
+  const cfg = CONFIG.futbin;
+  const isPc = cfg.platform === 'pc';
+
+  for (let page = 1; page <= 3; page++) {
     try {
       const ratingUrl = new URL(cfg.apiBaseUrl);
       ratingUrl.searchParams.set('platform', isPc ? 'PC' : 'PS');
-      ratingUrl.searchParams.set('page', '1');
-      ratingUrl.searchParams.set('rating', `${rating}-${rating}`);
+      ratingUrl.searchParams.set('page', String(page));
+      ratingUrl.searchParams.set('rating', `${targetRating}-${targetRating}`);
       ratingUrl.searchParams.set(isPc ? 'pcprice' : 'ps4price', cfg.priceRange);
       ratingUrl.searchParams.set('sort', isPc ? 'pc_price' : 'ps_price');
       ratingUrl.searchParams.set('order', 'asc');
@@ -137,16 +153,14 @@ export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, e
       if (res && res.status >= 200 && res.status < 300) {
         const payload = JSON.parse(res.responseText || '{}');
         if (Array.isArray(payload?.data) && payload.data.length > 0) {
-          const normWanted = name ? normalizePlayerName(name) : '';
-          const matchedRow = payload.data.find((row) => {
-            if (eaId && (Number(row.resource_id) === Number(eaId) || Number(row.playerid) === Number(eaId))) return true;
-            if (futbinId && String(row.ID ?? row.id) === String(futbinId)) return true;
-            if (normWanted) {
-              const rowName = normalizePlayerName(row.playername || row.common_name || '');
-              return rowName === normWanted || rowName.includes(normWanted) || normWanted.includes(rowName);
-            }
-            return false;
-          });
+          const matchedRow = payload.data.find((row) =>
+            rowMatchesPlayer(row, {
+              eaId: targetEaId,
+              futbinId: targetFutbinId,
+              name,
+              rating: targetRating
+            })
+          );
           if (matchedRow) {
             const candidate = mapCandidate(matchedRow);
             if (candidate) {
@@ -154,9 +168,16 @@ export async function fetchPlayerDetailsFromFutbinApi({ name = '', rating = 0, e
               return candidate;
             }
           }
+          if (payload.data.length < 30) break;
+        } else {
+          break;
         }
+      } else {
+        break;
       }
-    } catch (_) {}
+    } catch (_) {
+      break;
+    }
   }
 
   return null;

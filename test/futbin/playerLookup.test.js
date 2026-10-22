@@ -371,7 +371,8 @@ describe('fetchFutbinPlayerId', () => {
       const details = await fetchPlayerDetailsFromFutbinApi({
         name: 'Pernille Harder',
         rating: 85,
-        eaId: 231478
+        eaId: 231478,
+        futbinId: '999'
       });
 
       expect(details).not.toBeNull();
@@ -381,19 +382,56 @@ describe('fetchFutbinPlayerId', () => {
         expect.objectContaining({ name: 'Precision Header' })
       ]);
       expect(requests[0]).toContain('https://www.futbin.org/futbin/api/27/getFilteredPlayers');
-      expect(requests[0]).toContain('search=Pernille+Harder');
+      expect(requests[0]).toContain('rating=85-85');
+    });
+
+    it('matches exact player by name/ID among same-rating players without hijacking (e.g. Putellas 91 vs Haaland 91)', async () => {
+      globalThis.GM_xmlhttpRequest = vi.fn((options) => {
+        options.onload({
+          status: 200,
+          responseText: JSON.stringify({
+            data: [
+              {
+                ID: '1',
+                playername: 'Erling Haaland',
+                rating: '91',
+                resource_id: '239085',
+                playerid: '239085',
+                playstyles_plus: "u'Low Driven Shot'"
+              },
+              {
+                ID: '5',
+                playername: 'Alexia Putellas Segura',
+                common_name: 'Alexia Putellas',
+                rating: '91',
+                resource_id: '227203',
+                playerid: '227203',
+                playstyles_plus: "u'Incisive Pass'"
+              }
+            ]
+          })
+        });
+      });
+
+      const putellas = await fetchPlayerDetailsFromFutbinApi({
+        name: 'Alexia Putellas',
+        rating: 91,
+        eaId: 227203,
+        futbinId: '5'
+      });
+
+      expect(putellas).not.toBeNull();
+      expect(putellas.name).toBe('Alexia Putellas');
+      expect(putellas.playstylesPlus).toEqual([
+        expect.objectContaining({ name: 'Incisive Pass' })
+      ]);
+      expect(putellas.playstylesPlus[0].iconUrl).toContain('play-styles/5.3.png');
     });
 
     it('falls back to rating search and caches results', async () => {
       let callCount = 0;
       globalThis.GM_xmlhttpRequest = vi.fn((options) => {
         callCount++;
-        // search returns empty data
-        if (options.url.includes('search=')) {
-          options.onload({ status: 200, responseText: '{"data":[]}' });
-          return;
-        }
-        // rating query returns player
         options.onload({
           status: 200,
           responseText: JSON.stringify({
