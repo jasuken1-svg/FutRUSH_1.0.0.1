@@ -256,18 +256,24 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     textSpan.title = entry.text;
     row.appendChild(textSpan);
 
+    let slideTimer = null;
     row.addEventListener('click', (e) => {
       e.stopPropagation();
       if (textSpan.classList.contains('is-sliding')) {
         textSpan.classList.remove('is-sliding');
+        if (slideTimer) { clearTimeout(slideTimer); slideTimer = null; }
         return;
       }
       if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
         textSpan.classList.add('is-sliding');
         const overflow = textSpan.scrollWidth - textSpan.clientWidth;
-        const duration = Math.max(3, Math.min(12, overflow / 20));
-        textSpan.style.setProperty('--marquee-duration', `${duration}s`);
         textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
+        textSpan.style.setProperty('--marquee-duration', '5s');
+        if (slideTimer) clearTimeout(slideTimer);
+        slideTimer = setTimeout(() => {
+          textSpan.classList.remove('is-sliding');
+          slideTimer = null;
+        }, 5000);
       }
     });
 
@@ -384,18 +390,24 @@ export function renderMarketLogBox(forceTop = false) {
       textSpan.title = item.text;
       row.appendChild(textSpan);
 
+      let slideTimer = null;
       row.addEventListener('click', (e) => {
         e.stopPropagation();
         if (textSpan.classList.contains('is-sliding')) {
           textSpan.classList.remove('is-sliding');
+          if (slideTimer) { clearTimeout(slideTimer); slideTimer = null; }
           return;
         }
         if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
           textSpan.classList.add('is-sliding');
           const overflow = textSpan.scrollWidth - textSpan.clientWidth;
-          const duration = Math.max(3, Math.min(12, overflow / 20));
-          textSpan.style.setProperty('--marquee-duration', `${duration}s`);
           textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
+          textSpan.style.setProperty('--marquee-duration', '5s');
+          if (slideTimer) clearTimeout(slideTimer);
+          slideTimer = setTimeout(() => {
+            textSpan.classList.remove('is-sliding');
+            slideTimer = null;
+          }, 5000);
         }
       });
 

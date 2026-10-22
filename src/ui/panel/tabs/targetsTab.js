@@ -633,7 +633,9 @@ export function renderTargetContent(content) {
       const active = !player.searchDisabled;
       searchToggle.className = 'fr-target-search-toggle ' + (active ? 'is-active' : 'is-inactive');
       searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
-      card.classList.toggle('is-search-inactive', !active || !!player.insufficientBalance);
+      const priceExceeded = isExceedingFutbin(player.buyNow, player.price);
+      card.classList.toggle('is-price-exceeded', priceExceeded);
+      card.classList.toggle('is-search-inactive', !active || !!player.insufficientBalance || priceExceeded);
     });
 
     const topRight = document.createElement('div');

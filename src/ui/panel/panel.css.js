@@ -1046,6 +1046,10 @@ export const panelCss = `
       opacity: 0.55;
       filter: grayscale(0.85);
     }
+    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded {
+      opacity: 0.85;
+      filter: none;
+    }
     #${P.id} .fr-target-card.is-insufficient-balance {
       border-color: rgba(245, 158, 11, 0.45);
       background: rgba(245, 158, 11, 0.05);

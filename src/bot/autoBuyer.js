@@ -119,9 +119,10 @@ export async function runAutoBuyer(token, deps = {}) {
         const target = state.targets[targetIndex];
         if (target.searchDisabled || target.insufficientBalance) continue;
 
-        // Tavan Fiyat Kontrolü: Hedefin Buy Now değeri FutBIN tavanını aşıyorsa bu hedefi hiç arama
+        // Tavan Fiyat Kontrolü: Hedefin Buy Now değeri FutBIN tavanını aşıyorsa botu durdur
         if (!checkPriceCapGuard(target, target.buyNow)) {
-          continue;
+          stopAutoBuyer(`Fiyat koruması: ${target.name} (Buy Now: ${Number(target.buyNow).toLocaleString('tr-TR')} > FutBIN: ${Number(target.price).toLocaleString('tr-TR')})`);
+          return;
         }
 
         const eaId = Number(target.eaId) || 0;
@@ -147,7 +148,10 @@ export async function runAutoBuyer(token, deps = {}) {
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             if (!checkPilesProtection(governor)) return;
-            if (!checkPriceCapGuard(target, offer.price)) continue;
+            if (!checkPriceCapGuard(target, offer.price)) {
+              stopAutoBuyer(`Fiyat koruması: ${target.name} teklif fiyatı FutBIN referansını aşıyor (${offer.price.toLocaleString('tr-TR')})`);
+              return;
+            }
             const balance = coinBalance();
             if (balance != null && offer.price > balance) {
               addMarketLog({
