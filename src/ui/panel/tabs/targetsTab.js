@@ -12,6 +12,7 @@ import { searchPlayerAllVersions, searchUniquePlayers, fetchPlayerDetailsFromFut
 import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
+import { validatePriceCap } from '../../../ea/priceCapGuard.js';
 import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
 import { FUTBIN_ICON_DATA } from '../../icons.js';
@@ -807,6 +808,21 @@ export function renderTargetContent(content) {
             message: control.label + ' için ' + control.min + ' veya daha büyük bir tam sayı girin.'
           });
           return;
+        }
+        if (control.key === 'buyNow') {
+          const capCheck = validatePriceCap(completedValue, player.price);
+          if (!capCheck.allowed) {
+            value.value = formatVal(control.key, player[control.key]);
+            setTargetStatus({
+              type: 'error',
+              message: `Maksimum Fiyat Koruması: ${capCheck.reason}`
+            });
+            addMarketLog({
+              text: `🛡️ [Fiyat Koruması] ${player.name}: ${capCheck.reason}`,
+              type: 'warn'
+            });
+            return;
+          }
         }
         player[control.key] = completedValue;
         value.value = formatVal(control.key, completedValue);

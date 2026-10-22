@@ -23,7 +23,8 @@ const SNIPE_SETTINGS_DEFAULTS = {
   dailySearchLimit: 6000,
   consecutiveErrorLimit: 3,
   transferListCapacity: 100,
-  transferListWarnThreshold: 5
+  transferListWarnThreshold: 5,
+  maxPriceCapThreshold: 0.50
 };
 
 function isNumberInRange(value, min, max) {
@@ -47,7 +48,8 @@ export function saveSnipeSettings() {
       dailySearchLimit: state.snipeSettings.dailySearchLimit ?? SNIPE_SETTINGS_DEFAULTS.dailySearchLimit,
       consecutiveErrorLimit: state.snipeSettings.consecutiveErrorLimit ?? SNIPE_SETTINGS_DEFAULTS.consecutiveErrorLimit,
       transferListCapacity: state.snipeSettings.transferListCapacity ?? SNIPE_SETTINGS_DEFAULTS.transferListCapacity,
-      transferListWarnThreshold: state.snipeSettings.transferListWarnThreshold ?? SNIPE_SETTINGS_DEFAULTS.transferListWarnThreshold
+      transferListWarnThreshold: state.snipeSettings.transferListWarnThreshold ?? SNIPE_SETTINGS_DEFAULTS.transferListWarnThreshold,
+      maxPriceCapThreshold: state.snipeSettings.maxPriceCapThreshold ?? SNIPE_SETTINGS_DEFAULTS.maxPriceCapThreshold
     }));
   } catch (e) {
     logError('SNIPE ayarları localStorage’a kaydedilemedi.', e);
@@ -129,6 +131,9 @@ export function loadSnipeSettings() {
     }
     if (Number.isSafeInteger(savedSettings.transferListWarnThreshold) && savedSettings.transferListWarnThreshold >= 0 && savedSettings.transferListWarnThreshold <= 50) {
       loadedSettings.transferListWarnThreshold = savedSettings.transferListWarnThreshold;
+    }
+    if (typeof savedSettings.maxPriceCapThreshold === 'number' && Number.isFinite(savedSettings.maxPriceCapThreshold) && savedSettings.maxPriceCapThreshold >= 0.1 && savedSettings.maxPriceCapThreshold <= 5.0) {
+      loadedSettings.maxPriceCapThreshold = savedSettings.maxPriceCapThreshold;
     }
   }
 

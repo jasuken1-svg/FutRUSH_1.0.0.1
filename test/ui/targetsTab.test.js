@@ -95,7 +95,7 @@ describe('player target controls', () => {
 
   it('rounds manually entered prices down to the EA tier and allows exact search counts', () => {
     state.targets = [
-      { id: 'manual', name: 'Manual', rating: 90, price: 1000, searches: 3, buyNow: 1000 }
+      { id: 'manual', name: 'Manual', rating: 90, price: 100000, searches: 3, buyNow: 1000 }
     ];
     const content = document.createElement('div');
     renderTargetContent(content);

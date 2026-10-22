@@ -12,6 +12,7 @@ import { searchAutoBuyOffers, buyAutoOffer } from '../ea/market.js';
 import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
 import { checkPilesProtection } from '../ea/piles.js';
+import { checkPriceCapGuard } from '../ea/priceCapGuard.js';
 import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { addMarketLog } from '../ui/marketLogBox.js';
@@ -140,6 +141,7 @@ export async function runAutoBuyer(token, deps = {}) {
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             if (!checkPilesProtection(governor)) return;
+            if (!checkPriceCapGuard(target, offer.price)) continue;
             const balance = coinBalance();
             if (balance != null && offer.price > balance) {
               addMarketLog({

@@ -34,7 +34,8 @@ const defaults = {
   dailySearchLimit: 6000,
   consecutiveErrorLimit: 3,
   transferListCapacity: 100,
-  transferListWarnThreshold: 5
+  transferListWarnThreshold: 5,
+  maxPriceCapThreshold: 0.50
 };
 
 function loadRecord(record) {
@@ -96,7 +97,8 @@ describe('snipe settings storage', () => {
       dailySearchLimit: 6000,
       consecutiveErrorLimit: 3,
       transferListCapacity: 100,
-      transferListWarnThreshold: 5
+      transferListWarnThreshold: 5,
+      maxPriceCapThreshold: 0.50
     });
   });
 
@@ -183,7 +185,8 @@ describe('snipe settings storage', () => {
       dailySearchLimit: 6000,
       consecutiveErrorLimit: 3,
       transferListCapacity: 100,
-      transferListWarnThreshold: 5
+      transferListWarnThreshold: 5,
+      maxPriceCapThreshold: 0.50
     });
   });
 });
