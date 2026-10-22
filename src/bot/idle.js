@@ -12,7 +12,8 @@ export async function idleWait(ms, token, kind) {
     kind,
     baseMs: prevMeta.baseMs ?? duration,
     jitterMs: prevMeta.jitterMs ?? 0,
-    nextTargetName: prevMeta.nextTargetName ?? null,
+    totalMs: duration,
+    tierRgb: prevMeta.tierRgb ?? '56, 189, 248',
     tierColor: prevMeta.tierColor ?? '#38bdf8'
   };
   let elapsed = 0;

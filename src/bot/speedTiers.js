@@ -1,10 +1,10 @@
 // Snipe botu arama hızı kademeleri ve süre yapılandırması.
 
 export const SPEED_TIERS = [
-  { id: 0, key: 'safe', name: 'Güvenli', defaultSec: 5.0, color: '#22c55e', riskNote: null, isWarning: false },
-  { id: 1, key: 'balanced', name: 'Dengeli', defaultSec: 4.0, color: '#a3e635', riskNote: null, isWarning: false },
-  { id: 2, key: 'fast', name: 'Hızlı', defaultSec: 2.5, color: '#f59e0b', riskNote: null, isWarning: false },
-  { id: 3, key: 'turbo', name: 'Turbo', defaultSec: 1.5, color: '#ef4444', riskNote: 'Yüksek ban riski', isWarning: true }
+  { id: 0, key: 'safe', name: 'Güvenli', defaultSec: 5.0, color: '#22c55e', rgb: '34, 197, 94', riskNote: null, isWarning: false },
+  { id: 1, key: 'balanced', name: 'Dengeli', defaultSec: 4.0, color: '#a3e635', rgb: '163, 230, 53', riskNote: null, isWarning: false },
+  { id: 2, key: 'fast', name: 'Hızlı', defaultSec: 2.5, color: '#f59e0b', rgb: '245, 158, 11', riskNote: null, isWarning: false },
+  { id: 3, key: 'turbo', name: 'Turbo', defaultSec: 1.5, color: '#ef4444', rgb: '239, 68, 68', riskNote: 'Yüksek ban riski', isWarning: true }
 ];
 
 export const SPEED_LIMITS = {

@@ -6,21 +6,21 @@ import { state } from '../../../core/state.js';
 import { on } from '../../../core/events.js';
 import { botLogType, logTone, summarizeBotStats } from '../panelLogic.js';
 import { mountWaitBar } from '../waitBar.js';
-import { addBotLog } from '../../../bot/botLog.js';
 
 let activeLogFilter = 'all';
-let activeWaitRow = null;
-let activeWaitTicker = null;
+let activeAnimatedRow = null;
 let waitEventsRegistered = false;
+
+function clearActiveWaitAnimation() {
+  if (activeAnimatedRow) {
+    activeAnimatedRow.classList.remove('log-wait-active', 'log-wait-fading');
+    activeAnimatedRow = null;
+  }
+}
 
 function createLogRow(entry, animate) {
   const row = document.createElement('div');
-  const isWait = entry.kind === 'wait';
-  row.className = 'fr-log-row' + (animate ? ' fr-log-enter' : '');
-  if (isWait) {
-    row.classList.add('log-wait', 'is-done');
-    if (entry.tierColor) row.style.setProperty('--tier', entry.tierColor);
-  }
+  row.className = 'fr-log-row log-row' + (animate ? ' fr-log-enter' : '');
 
   const type = botLogType(entry);
   row.dataset.type = type;
@@ -53,9 +53,7 @@ function createLogRow(entry, animate) {
   const message = document.createElement('span');
   message.className = 'fr-log-message';
 
-  if (entry.kind === 'wait') {
-    message.textContent = entry.message || '';
-  } else if (entry.kind === 'success' || entry.kind === 'missed' || entry.kind === 'dryRun') {
+  if (entry.kind === 'success' || entry.kind === 'missed' || entry.kind === 'dryRun') {
     if (entry.kind === 'dryRun') {
       message.appendChild(document.createTextNode(
         'KURU ÇALIŞTIRMA: ' + String(entry.name) + ' (' + entry.rating + ') ' + Number(entry.price).toLocaleString('tr-TR') + ' fiyatından alınırdı'
@@ -82,9 +80,18 @@ function createLogRow(entry, animate) {
       }
     }
   } else {
-    message.textContent = entry.message;
+    message.textContent = entry.message || '';
   }
+
   row.append(time, message);
+
+  if (entry.baseMs != null && entry.jitterMs != null && entry.totalMs != null) {
+    const tag = document.createElement('span');
+    tag.className = 'log-wait-tag';
+    tag.textContent = `${entry.baseMs} ms + ${entry.jitterMs} ms jitter = ${entry.totalMs} ms`;
+    row.appendChild(tag);
+  }
+
   return row;
 }
 
@@ -114,15 +121,12 @@ function renderLogRows(content, forceTop = false) {
   const prevScrollTop = list.scrollTop;
   const entries = getFilteredLogs();
   list.replaceChildren();
-  if (!entries.length && !activeWaitRow) {
+  if (!entries.length) {
     const empty = document.createElement('div');
     empty.className = 'fr-target-empty';
     empty.textContent = 'Henüz FutRUSH işlem kaydı yok.';
     list.appendChild(empty);
     return;
-  }
-  if (activeWaitRow && activeLogFilter === 'all') {
-    list.appendChild(activeWaitRow);
   }
   entries.forEach((entry) => list.appendChild(createLogRow(entry, false)));
   if (wasAtTop) {
@@ -160,111 +164,56 @@ function fallbackCopy(text) {
   return Promise.resolve();
 }
 
-function createLiveWaitElement(wait) {
-  const el = document.createElement('div');
-  el.className = 'fr-log-row log-wait';
-  el.dataset.type = 'wait';
-  el.dataset.tone = 'info';
-  const tierColor = wait.tierColor || '#38bdf8';
-  el.style.setProperty('--tier', tierColor);
-  el.style.setProperty('--wait-ms', `${wait.duration}ms`);
-
-  const targetName = wait.nextTargetName || 'Hedefler';
-  const jitterText = wait.jitterMs > 0
-    ? `${wait.jitterMs} ms jitter`
-    : '0 ms (jitter kapalı)';
-  const breakdownText = `${wait.baseMs} ms + ${jitterText} = ${wait.duration} ms`;
-
-  el.innerHTML = `
-    <div class="log-wait-top">
-      <div class="log-wait-left">
-        <span aria-hidden="true">⏱</span>
-        <span>Sıradaki: <span class="log-wait-target">${targetName}</span></span>
-      </div>
-      <div class="log-wait-countdown">...</div>
-    </div>
-    <div class="log-wait-breakdown">${breakdownText}</div>
-    <div class="log-wait-bar" aria-hidden="true"></div>
-  `;
-  return el;
-}
-
-function finalizeLiveWait(isCancelled = false) {
-  if (activeWaitTicker) {
-    clearInterval(activeWaitTicker);
-    activeWaitTicker = null;
-  }
-  if (!activeWaitRow) return;
-
-  const row = activeWaitRow;
-  activeWaitRow = null;
-
-  const wait = row._waitData;
-  if (!wait) {
-    row.remove();
-    return;
-  }
-
-  const cancelNotice = isCancelled ? ' (iptal edildi)' : '';
-  const logMessage = `⏱ Bekleme ${wait.baseMs} + ${wait.jitterMs} = ${wait.duration} ms · ${wait.nextTargetName || 'Hedefler'}${cancelNotice}`;
-
-  // Statik log kaydina donustur
-  addBotLog({
-    kind: 'wait',
-    message: logMessage,
-    tierColor: wait.tierColor,
-    baseMs: wait.baseMs,
-    jitterMs: wait.jitterMs,
-    targetName: wait.nextTargetName
-  });
-
-  row.remove();
-}
-
 function handleLiveWaitUpdate() {
   const wait = state.botWait;
-  const logLists = document.querySelectorAll('.fr-log-list');
-
   if (!wait || !state.botRunning || wait.duration <= 0) {
-    if (activeWaitRow) {
-      finalizeLiveWait(!state.botRunning);
-    }
+    clearActiveWaitAnimation();
     return;
   }
 
-  // Eger hali hazirda bir canli bekleme satiri varsa ve ayni bekleme ise sadece ticker calisir
-  if (activeWaitRow && activeWaitRow._waitData?.start === wait.start) {
+  const latestEntry = state.botLogs[0];
+  if (!latestEntry || !latestEntry.message?.includes('uygun ilan bulunamadı')) {
+    clearActiveWaitAnimation();
     return;
   }
 
-  // Onceki varsa kapat
-  if (activeWaitRow) {
-    finalizeLiveWait(false);
-  }
+  latestEntry.baseMs = wait.baseMs;
+  latestEntry.jitterMs = wait.jitterMs;
+  latestEntry.totalMs = wait.totalMs || wait.duration;
 
-  // Yeni canli bekleme satiri olustur
-  activeWaitRow = createLiveWaitElement(wait);
-  activeWaitRow._waitData = wait;
+  const panelLists = document.querySelectorAll('.fr-bot-logs-panel .fr-log-list, #fc-snipe-panel .fr-log-list, .fr-logs-view .fr-log-list');
+  panelLists.forEach((list) => {
+    const row = list.querySelector(`[data-log-id="${latestEntry.id}"]`) || list.firstElementChild;
+    if (!row || !row.classList.contains('fr-log-row')) return;
 
-  const countdownEl = activeWaitRow.querySelector('.log-wait-countdown');
-  const updateCountdown = () => {
-    if (!activeWaitRow || !countdownEl) return;
-    const remainingMs = Math.max(0, wait.duration - (Date.now() - wait.start));
-    countdownEl.textContent = (remainingMs / 1000).toFixed(1) + ' sn';
-    if (remainingMs <= 0 || !state.botRunning) {
-      finalizeLiveWait(!state.botRunning);
+    let tag = row.querySelector('.log-wait-tag');
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'log-wait-tag';
+      row.appendChild(tag);
     }
-  };
-  updateCountdown();
-  activeWaitTicker = setInterval(updateCountdown, 100);
+    tag.textContent = `${wait.baseMs} ms + ${wait.jitterMs} ms jitter = ${latestEntry.totalMs} ms`;
 
-  // Tum acik log listelerine ekle
-  logLists.forEach((list) => {
-    if (activeLogFilter === 'all') {
-      const empty = list.querySelector('.fr-target-empty');
-      if (empty) empty.remove();
-      list.prepend(activeWaitRow);
-    }
+    clearActiveWaitAnimation();
+
+    row.style.setProperty('--wait-ms', `${wait.duration}ms`);
+    row.style.setProperty('--tier-rgb', wait.tierRgb || '56, 189, 248');
+    row.classList.add('log-wait-active');
+    activeAnimatedRow = row;
+
+    const onAnimationEnd = (e) => {
+      if (e.animationName === 'logWaitSlide') {
+        row.removeEventListener('animationend', onAnimationEnd);
+        row.classList.add('log-wait-fading');
+        setTimeout(() => {
+          row.classList.remove('log-wait-active', 'log-wait-fading');
+          if (activeAnimatedRow === row) {
+            activeAnimatedRow = null;
+          }
+        }, 300);
+      }
+    };
+    row.addEventListener('animationend', onAnimationEnd);
   });
 }
 
@@ -272,6 +221,7 @@ function ensureWaitEvents() {
   if (waitEventsRegistered) return;
   waitEventsRegistered = true;
   on('bot:wait', handleLiveWaitUpdate);
+  on('bot:stop', clearActiveWaitAnimation);
 }
 
 export function renderBotLogs(content) {
@@ -320,21 +270,22 @@ export function renderBotLogs(content) {
     e.stopPropagation();
     const lines = getFilteredLogs().map((l) => {
       const time = new Date(l.at).toLocaleTimeString('tr-TR');
-      if (l.kind === 'wait') {
-        return `[${time}] ${l.message || ''}`;
-      }
+      let baseStr = '';
       if (l.kind === 'success') {
         const profitVal = Number(l.totalProfit ?? l.profit ?? 0);
         const profitFormatted = profitVal !== 0 ? (profitVal > 0 ? '+' : '') + profitVal.toLocaleString('tr-TR') : '0';
-        return `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😍 ALINDI. Toplam kâr ${profitFormatted}`;
+        baseStr = `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😍 ALINDI. Toplam kâr ${profitFormatted}`;
+      } else if (l.kind === 'missed') {
+        baseStr = `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😡 BAŞKASI ALDI.`;
+      } else if (l.kind === 'dryRun') {
+        baseStr = `[${time}] KURU ÇALIŞTIRMA: ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} fiyatından alınırdı`;
+      } else {
+        baseStr = `[${time}] ${l.name ? l.name + ' - ' : ''}${l.message || ''}`;
       }
-      if (l.kind === 'missed') {
-        return `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😡 BAŞKASI ALDI.`;
+      if (l.baseMs != null && l.jitterMs != null && l.totalMs != null) {
+        baseStr += ` [bekleme ${l.baseMs}+${l.jitterMs}=${l.totalMs} ms]`;
       }
-      if (l.kind === 'dryRun') {
-        return `[${time}] KURU ÇALIŞTIRMA: ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} fiyatından alınırdı`;
-      }
-      return `[${time}] ${l.name ? l.name + ' - ' : ''}${l.message || ''}`;
+      return baseStr;
     });
     copyToClipboard(lines.join('\n')).then(() => {
       const orig = copyBtn.textContent;
@@ -386,12 +337,7 @@ export function addBotLogEntry(content) {
   const empty = list.querySelector('.fr-target-empty');
   if (empty) empty.remove();
 
-  const newRow = createLogRow(entry, true);
-  if (activeWaitRow && list.contains(activeWaitRow)) {
-    activeWaitRow.after(newRow);
-  } else {
-    list.prepend(newRow);
-  }
+  list.prepend(createLogRow(entry, true));
 
   while (list.querySelectorAll('.fr-log-row').length > 100) list.lastElementChild.remove();
   if (wasAtTop) list.scrollTop = 0;

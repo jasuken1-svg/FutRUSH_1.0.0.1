@@ -1199,19 +1199,19 @@ export const panelCss = `
       box-shadow: 0 0 4px rgba(0, 229, 255, 0.8) !important;
     }
     #${P.id} .fr-log-row, .fr-bot-logs-panel .fr-log-row {
-      display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;
-      padding: 6px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      padding: 5px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;
       color: #bfe4ff; background: rgba(62,168,255,.12); flex: 0 0 auto;
     }
-    #${P.id} .fr-log-time, .fr-bot-logs-panel .fr-log-time { color: inherit; opacity: .86; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    #${P.id} .fr-log-message, .fr-bot-logs-panel .fr-log-message { min-width: 0; overflow-wrap: anywhere; }
+    #${P.id} .fr-log-time, .fr-bot-logs-panel .fr-log-time { flex: 0 0 auto; color: inherit; opacity: .86; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #${P.id} .fr-log-message, .fr-bot-logs-panel .fr-log-message { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
     #${P.id} .fr-log-row[data-tone="success"], .fr-bot-logs-panel .fr-log-row[data-tone="success"] { border-left-color: #51d88a; color: #b7f5cf; background: rgba(81,216,138,.12); }
     #${P.id} .fr-log-row[data-tone="info"], .fr-bot-logs-panel .fr-log-row[data-tone="info"] { border-left-color: #3ea8ff; color: #bfe4ff; background: rgba(62,168,255,.12); }
     #${P.id} .fr-log-row[data-tone="error"], .fr-bot-logs-panel .fr-log-row[data-tone="error"] { border-left-color: #ff5261; color: #ffb3ba; background: rgba(255,82,97,.14); }
     #${P.id} .fr-log-enter, .fr-bot-logs-panel .fr-log-enter { animation: fr-log-enter .2s ease both; }
     #${P.id} .fr-log-missed-pulse, .fr-bot-logs-panel .fr-log-missed-pulse { animation: fr-log-enter .2s ease both, fr-log-missed-pulse .55s ease-out; }
 
-    /* Parlama (Glow) ve Canlı Bekleme Satırı */
+    /* Parlama (Glow) Animasyonu */
     #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success { --fx: 34,197,94; }
     #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost { --fx: 239,68,68; }
     #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success,
@@ -1238,51 +1238,52 @@ export const panelCss = `
     }
     @keyframes logFxShine { to { transform: translateX(120%); } }
 
-    /* Canlı Bekleme Satırı */
-    #${P.id} .log-wait, .fr-bot-logs-panel .log-wait {
+    /* Satır Üzeri Kayan Bekleme Animasyonu */
+    #${P.id} .fr-log-row.log-wait-active, .fr-bot-logs-panel .fr-log-row.log-wait-active,
+    #${P.id} .log-row.log-wait-active, .fr-bot-logs-panel .log-row.log-wait-active {
       position: relative; overflow: hidden;
-      border-left: 3px solid var(--tier, #38bdf8);
-      background: rgba(8, 24, 40, 0.7);
-      animation: logWaitBreathe 1.6s ease-in-out infinite alternate;
-      display: flex; flex-direction: column; gap: 3px;
     }
-    @keyframes logWaitBreathe {
-      from { opacity: .85; }
-      to { opacity: 1; }
+    #${P.id} .fr-log-row.log-wait-active > *, .fr-bot-logs-panel .fr-log-row.log-wait-active > *,
+    #${P.id} .log-row.log-wait-active > *, .fr-bot-logs-panel .log-row.log-wait-active > * {
+      position: relative; z-index: 1;
     }
-    #${P.id} .log-wait-top, .fr-bot-logs-panel .log-wait-top {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    #${P.id} .fr-log-row.log-wait-active::before, .fr-bot-logs-panel .fr-log-row.log-wait-active::before,
+    #${P.id} .log-row.log-wait-active::before, .fr-bot-logs-panel .log-row.log-wait-active::before {
+      content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background: linear-gradient(90deg, rgba(var(--tier-rgb,56,189,248),.08), rgba(var(--tier-rgb,56,189,248),.30));
+      border-right: 2px solid rgba(var(--tier-rgb,56,189,248),.9);
+      box-shadow: 4px 0 14px rgba(var(--tier-rgb,56,189,248),.55);
+      transform: translateX(-100%);
+      animation: logWaitSlide var(--wait-ms, 2500ms) linear forwards;
     }
-    #${P.id} .log-wait-left, .fr-bot-logs-panel .log-wait-left {
-      display: flex; align-items: center; gap: 6px; font-weight: 700; color: #e8f4f6;
+    #${P.id} .fr-log-row.log-wait-fading::before, .fr-bot-logs-panel .fr-log-row.log-wait-fading::before,
+    #${P.id} .log-row.log-wait-fading::before, .fr-bot-logs-panel .log-row.log-wait-fading::before {
+      opacity: 0;
+      transition: opacity 300ms ease;
     }
-    #${P.id} .log-wait-target, .fr-bot-logs-panel .log-wait-target {
-      color: #ffd447;
+    @keyframes logWaitSlide {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(0); }
     }
-    #${P.id} .log-wait-countdown, .fr-bot-logs-panel .log-wait-countdown {
-      font-weight: 800; font-variant-numeric: tabular-nums; color: var(--tier, #38bdf8);
+    #${P.id} .log-wait-tag, .fr-bot-logs-panel .log-wait-tag {
+      margin-left: auto;
+      opacity: .7;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+      color: #94a3b8;
     }
-    #${P.id} .log-wait-breakdown, .fr-bot-logs-panel .log-wait-breakdown {
-      font-size: 9.5px; opacity: .75; font-variant-numeric: tabular-nums; color: #aebfc8;
-    }
-    #${P.id} .log-wait-bar, .fr-bot-logs-panel .log-wait-bar {
-      position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-      background: var(--tier, #38bdf8);
-      transform-origin: left;
-      animation: logWaitDrain var(--wait-ms, 2000ms) linear forwards;
-    }
-    @keyframes logWaitDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-    #${P.id} .log-wait.is-done, .fr-bot-logs-panel .log-wait.is-done {
-      opacity: .6 !important;
-      animation: none !important;
-    }
-    #${P.id} .log-wait.is-done .log-wait-bar, .fr-bot-logs-panel .log-wait.is-done .log-wait-bar { display: none !important; }
     @media (prefers-reduced-motion: reduce) {
       #${P.id} .log-fx-new, .fr-bot-logs-panel .log-fx-new,
-      #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after,
-      #${P.id} .log-wait, .fr-bot-logs-panel .log-wait,
-      #${P.id} .log-wait-bar, .fr-bot-logs-panel .log-wait-bar {
+      #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after {
         animation: none !important;
+      }
+      #${P.id} .fr-log-row.log-wait-active::before, .fr-bot-logs-panel .fr-log-row.log-wait-active::before,
+      #${P.id} .log-row.log-wait-active::before, .fr-bot-logs-panel .log-row.log-wait-active::before {
+        animation: none !important;
+        transform: translateX(0);
+        opacity: .5;
       }
     }
 

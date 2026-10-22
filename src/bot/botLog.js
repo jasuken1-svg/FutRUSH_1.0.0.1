@@ -15,20 +15,13 @@ export function addBotLog(message, type) {
         price: Number(message.price) || 0,
         profit: Number(message.profit) || 0,
         totalProfit: Number(message.totalProfit) || 0,
-        kind: String(message.kind || type || 'info')
+        kind: String(message.kind || type || 'info'),
+        message: String(message.message ?? ''),
+        baseMs: message.baseMs != null ? Number(message.baseMs) : undefined,
+        jitterMs: message.jitterMs != null ? Number(message.jitterMs) : undefined,
+        totalMs: message.totalMs != null ? Number(message.totalMs) : undefined
       }
     : { id: state.botLogId, at: Date.now(), message: String(message), type: type || 'info' };
-  if (entry.kind === 'wait') {
-    let waitCount = 0;
-    for (let i = state.botLogs.length - 1; i >= 0; i--) {
-      if (state.botLogs[i].kind === 'wait') {
-        waitCount++;
-        if (waitCount >= 30) {
-          state.botLogs.splice(i, 1);
-        }
-      }
-    }
-  }
   state.botLogs.unshift(entry);
   state.botLogs.length = Math.min(state.botLogs.length, 100);
   emit('log:added');

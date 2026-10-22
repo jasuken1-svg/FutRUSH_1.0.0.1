@@ -24,6 +24,8 @@ export function stopAutoBuyer(reason) {
   if (!state.botRunning) return;
   state.botRunning = false;
   state.botToken++;
+  state.botWait = null;
+  emit('bot:wait');
   setBotStatus(reason || 'Tarama durduruldu.');
   addBotLog(state.botStatus, 'error');
 }
@@ -212,21 +214,19 @@ export async function runAutoBuyer(token, deps = {}) {
             const jitter = jitterMs(searchJitterRange);
             const totalDelay = baseDelay + jitter;
             debug('[FutRUSH:bot]', 'Arama arası gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
-            let nextTargetName = target.name;
-            if (attempt >= attempts) {
-              const nextTarget = state.targets.slice(targetIndex + 1).find((t) => !t.searchDisabled);
-              if (nextTarget) nextTargetName = nextTarget.name;
-            }
             const activeTier = SPEED_TIERS[state.snipeSettings?.speed] || SPEED_TIERS[1];
-            if (state.botWait) {
-              Object.assign(state.botWait, {
-                baseMs: baseDelay,
-                jitterMs: jitter,
-                nextTargetName,
-                tierColor: activeTier.color
-              });
-            } else {
-              state.botWait = { baseMs: baseDelay, jitterMs: jitter, nextTargetName, tierColor: activeTier.color };
+            state.botWait = {
+              baseMs: baseDelay,
+              jitterMs: jitter,
+              totalMs: totalDelay,
+              duration: totalDelay,
+              tierColor: activeTier.color,
+              tierRgb: activeTier.rgb || '56, 189, 248'
+            };
+            if (state.botLogs[0] && state.botLogs[0].message?.includes('uygun ilan bulunamadı')) {
+              state.botLogs[0].baseMs = baseDelay;
+              state.botLogs[0].jitterMs = jitter;
+              state.botLogs[0].totalMs = totalDelay;
             }
             await idle(totalDelay, token, 'search');
           }
@@ -258,18 +258,19 @@ export async function runAutoBuyer(token, deps = {}) {
       const jitter = jitterMs(cycleJitterRange);
       const totalDelay = baseDelay + jitter;
       debug('[FutRUSH:bot]', 'Döngü sonu gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
-      const firstNext = state.targets.find((t) => !t.searchDisabled);
-      const nextTargetName = firstNext ? firstNext.name : (state.targets[0]?.name || 'Hedefler');
       const activeTier = SPEED_TIERS[state.snipeSettings?.speed] || SPEED_TIERS[1];
-      if (state.botWait) {
-        Object.assign(state.botWait, {
-          baseMs: baseDelay,
-          jitterMs: jitter,
-          nextTargetName,
-          tierColor: activeTier.color
-        });
-      } else {
-        state.botWait = { baseMs: baseDelay, jitterMs: jitter, nextTargetName, tierColor: activeTier.color };
+      state.botWait = {
+        baseMs: baseDelay,
+        jitterMs: jitter,
+        totalMs: totalDelay,
+        duration: totalDelay,
+        tierColor: activeTier.color,
+        tierRgb: activeTier.rgb || '56, 189, 248'
+      };
+      if (state.botLogs[0] && state.botLogs[0].message?.includes('uygun ilan bulunamadı')) {
+        state.botLogs[0].baseMs = baseDelay;
+        state.botLogs[0].jitterMs = jitter;
+        state.botLogs[0].totalMs = totalDelay;
       }
       await idle(totalDelay, token, 'cycle');
     } while (state.botRunning && token === state.botToken);

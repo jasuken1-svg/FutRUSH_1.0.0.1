@@ -312,7 +312,7 @@ function setupBoxElements(box) {
   let list = box.querySelector('.fr-market-log-list');
   if (!list) {
     list = document.createElement('div');
-    list.className = 'fr-market-log-list fr-log-list';
+    list.className = 'fr-market-log-list';
     box.appendChild(list);
   }
   currentListEl = list;
