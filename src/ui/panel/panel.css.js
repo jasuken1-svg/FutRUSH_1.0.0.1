@@ -999,6 +999,17 @@ export const panelCss = `
       white-space: nowrap;
       flex: 1 1 auto;
       min-width: 0;
+      position: relative;
+    }
+    #${P.id} .fr-target-status:hover .fr-target-status-message {
+      text-overflow: clip;
+    }
+    #${P.id} .fr-target-status:hover .fr-target-status-message.is-overflowing {
+      animation: fr-status-marquee var(--marquee-duration, 8s) linear infinite;
+    }
+    @keyframes fr-status-marquee {
+      0%, 15% { transform: translateX(0); }
+      85%, 100% { transform: translateX(calc(-100% + var(--marquee-visible-width, 250px))); }
     }
     #${P.id} .fr-target-progress-label {
       font-size: 10px;

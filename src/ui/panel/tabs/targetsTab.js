@@ -160,6 +160,21 @@ export function updateTargetStatus(statusElement, status, targetLoading) {
     main.append(message, progressLabel);
     row.append(icon, main);
     statusElement.appendChild(row);
+
+    statusElement.addEventListener('mouseenter', () => {
+      const msg = statusElement.querySelector('.fr-target-status-message');
+      if (msg && msg.scrollWidth > msg.clientWidth + 2) {
+        msg.classList.add('is-overflowing');
+        const overflowDistance = msg.scrollWidth - msg.clientWidth;
+        const duration = Math.max(4, Math.min(15, overflowDistance / 25));
+        msg.style.setProperty('--marquee-duration', `${duration}s`);
+        msg.style.setProperty('--marquee-visible-width', `${msg.clientWidth}px`);
+      }
+    });
+    statusElement.addEventListener('mouseleave', () => {
+      const msg = statusElement.querySelector('.fr-target-status-message');
+      if (msg) msg.classList.remove('is-overflowing');
+    });
   }
 
   const icon = row.querySelector('.fr-target-status-icon');
