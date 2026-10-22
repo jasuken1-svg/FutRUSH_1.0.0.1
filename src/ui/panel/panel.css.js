@@ -960,10 +960,29 @@ export const panelCss = `
     #${P.id} .fr-log-list, .fr-bot-logs-panel .fr-log-list {
       display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px;
       min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-      padding: 1px 3px 2px 1px; scrollbar-width: none; -ms-overflow-style: none;
+      padding: 1px 3px 2px 1px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 229, 255, 0.35) transparent;
       color: #c8d7df; font-size: 11px;
     }
-    #${P.id} .fr-log-list::-webkit-scrollbar, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar { display: none; }
+    #${P.id} .fr-log-list::-webkit-scrollbar, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar {
+      width: 1px !important;
+      height: 1px !important;
+      background: transparent !important;
+    }
+    #${P.id} .fr-log-list::-webkit-scrollbar-track, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25) !important;
+      border-radius: 1px;
+    }
+    #${P.id} .fr-log-list::-webkit-scrollbar-thumb, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 229, 255, 0.35) !important;
+      border-radius: 1px;
+      transition: background 0.2s ease;
+    }
+    #${P.id} .fr-log-list::-webkit-scrollbar-thumb:hover, .fr-bot-logs-panel .fr-log-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 229, 255, 0.75) !important;
+      box-shadow: 0 0 4px rgba(0, 229, 255, 0.8) !important;
+    }
     #${P.id} .fr-log-row, .fr-bot-logs-panel .fr-log-row {
       display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;
       padding: 6px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;

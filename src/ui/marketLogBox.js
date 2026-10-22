@@ -75,16 +75,29 @@ function ensureStyles() {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 229, 255, 0.35) transparent;
       overscroll-behavior: contain;
       pointer-events: auto !important;
       cursor: default;
     }
     .fr-market-log-list::-webkit-scrollbar {
-      display: none !important;
-      width: 0 !important;
-      height: 0 !important;
+      width: 1px !important;
+      height: 1px !important;
+      background: transparent !important;
+    }
+    .fr-market-log-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25) !important;
+      border-radius: 1px;
+    }
+    .fr-market-log-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 229, 255, 0.35) !important;
+      border-radius: 1px;
+      transition: background 0.2s ease;
+    }
+    .fr-market-log-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 229, 255, 0.75) !important;
+      box-shadow: 0 0 4px rgba(0, 229, 255, 0.8) !important;
     }
     .fr-market-log-empty {
       display: flex;
@@ -206,9 +219,9 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
   if (!text) return;
   const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const entry = { text, type, time, undoAction, id: Date.now() + Math.random() };
-  logHistory.push(entry);
+  logHistory.unshift(entry);
   if (logHistory.length > MAX_LOGS) {
-    logHistory.shift();
+    logHistory.pop();
   }
 
   const list = currentListEl || (currentBoxEl && currentBoxEl.querySelector('.fr-market-log-list'));
@@ -216,7 +229,7 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     const empty = list.querySelector('.fr-market-log-empty');
     if (empty) empty.remove();
 
-    const wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= 35;
+    const wasAtTop = list.scrollTop <= 15;
 
     const row = document.createElement('div');
     row.className = 'fr-market-log-item' +
@@ -227,13 +240,13 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     textSpan.textContent = `[${entry.time.slice(0, 5)}] ${entry.text}`;
     row.appendChild(textSpan);
 
-    list.appendChild(row);
+    list.prepend(row);
     while (list.querySelectorAll('.fr-market-log-item').length > MAX_LOGS) {
-      list.firstElementChild.remove();
+      list.lastElementChild.remove();
     }
 
-    if (wasAtBottom) {
-      list.scrollTop = list.scrollHeight;
+    if (wasAtTop) {
+      list.scrollTop = 0;
     }
   } else {
     renderMarketLogBox(true);
@@ -305,7 +318,7 @@ function setupBoxElements(box) {
   currentListEl = list;
 }
 
-export function renderMarketLogBox(forceBottom = false) {
+export function renderMarketLogBox(forceTop = false) {
   if (typeof document === 'undefined') return;
   if (!currentBoxEl || !currentBoxEl.isConnected) {
     mountMarketLogBox();
@@ -318,7 +331,7 @@ export function renderMarketLogBox(forceBottom = false) {
   const list = currentListEl || currentBoxEl.querySelector('.fr-market-log-list');
   if (!list) return;
 
-  const wasAtBottom = forceBottom || (list.scrollHeight - list.scrollTop - list.clientHeight <= 35);
+  const wasAtTop = forceTop || (list.scrollTop <= 15);
   const prevScrollTop = list.scrollTop;
 
   list.replaceChildren();
@@ -343,8 +356,8 @@ export function renderMarketLogBox(forceBottom = false) {
     });
   }
 
-  if (wasAtBottom) {
-    list.scrollTop = list.scrollHeight;
+  if (wasAtTop) {
+    list.scrollTop = 0;
   } else {
     list.scrollTop = prevScrollTop;
   }

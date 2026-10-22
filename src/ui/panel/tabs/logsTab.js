@@ -3,7 +3,7 @@
 // Bagimlilik: core/state.
 
 import { state } from '../../../core/state.js';
-import { botLogType, chronologicalBotLogs, logTone, shouldAutoScrollLogList, summarizeBotStats } from '../panelLogic.js';
+import { botLogType, logTone, summarizeBotStats } from '../panelLogic.js';
 import { mountWaitBar } from '../waitBar.js';
 
 let activeLogFilter = 'all';
@@ -68,12 +68,12 @@ function getFilteredLogs() {
   return logs;
 }
 
-function renderLogRows(content, forceBottom = false) {
+function renderLogRows(content, forceTop = false) {
   const list = content.querySelector('.fr-log-list');
   if (!list) return;
-  const wasAtBottom = forceBottom || shouldAutoScrollLogList(list);
+  const wasAtTop = forceTop || list.scrollTop <= 15;
   const prevScrollTop = list.scrollTop;
-  const entries = chronologicalBotLogs(getFilteredLogs());
+  const entries = getFilteredLogs();
   list.replaceChildren();
   if (!entries.length) {
     const empty = document.createElement('div');
@@ -83,8 +83,8 @@ function renderLogRows(content, forceBottom = false) {
     return;
   }
   entries.forEach((entry) => list.appendChild(createLogRow(entry, false)));
-  if (wasAtBottom) {
-    list.scrollTop = list.scrollHeight;
+  if (wasAtTop) {
+    list.scrollTop = 0;
   } else {
     list.scrollTop = prevScrollTop;
   }
@@ -219,10 +219,10 @@ export function addBotLogEntry(content) {
   if (activeLogFilter === 'success' && entry.kind !== 'success') return;
   if (activeLogFilter === 'error' && entry.kind !== 'error') return;
 
-  const wasAtBottom = shouldAutoScrollLogList(list);
+  const wasAtTop = list.scrollTop <= 15;
   const empty = list.querySelector('.fr-target-empty');
   if (empty) empty.remove();
-  list.appendChild(createLogRow(entry, true));
-  while (list.querySelectorAll('.fr-log-row').length > 100) list.firstElementChild.remove();
-  if (wasAtBottom) list.scrollTop = list.scrollHeight;
+  list.prepend(createLogRow(entry, true));
+  while (list.querySelectorAll('.fr-log-row').length > 100) list.lastElementChild.remove();
+  if (wasAtTop) list.scrollTop = 0;
 }
