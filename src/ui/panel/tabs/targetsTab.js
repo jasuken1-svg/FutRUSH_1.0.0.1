@@ -19,6 +19,7 @@ import { FUTBIN_ICON_DATA } from '../../icons.js';
 let isHydrating = false;
 let isUpdatingPrices = false;
 let statusRemovalTimer = null;
+let lastUpdateInterval = null;
 
 function renderStatus(status, targetLoading) {
   const normalized = normalizeTargetStatus(status) || (targetLoading ? {
@@ -71,7 +72,7 @@ export function formatPriceHistoryTooltip(player) {
   return lines.join('\n');
 }
 
-function attachHoldRepeat(button, onTrigger) {
+export function attachHoldRepeat(button, onTrigger) {
   let timer = null;
   let interval = null;
   let didTriggerOnDown = false;
@@ -220,6 +221,10 @@ export function expireTargetStatus(content) {
 }
 
 export function renderTargetContent(content) {
+  if (lastUpdateInterval) {
+    clearInterval(lastUpdateInterval);
+    lastUpdateInterval = null;
+  }
   const previousStatus = content.querySelector('.fr-target-status');
   content.innerHTML =
     '<div class="fr-target-view"><div class="fr-target-status" aria-live="polite"></div><div class="fr-target-list" role="list"></div>' +
@@ -611,6 +616,7 @@ export function renderTargetContent(content) {
 
     const lastUpdate = document.createElement('span');
     lastUpdate.className = 'fr-target-last-update';
+    lastUpdate.dataset.updatedAt = String(player.priceUpdatedAt || 0);
     lastUpdate.textContent = formatRelativeTime(player.priceUpdatedAt);
     if (player.priceUpdatedAt) {
       lastUpdate.setAttribute('title', new Date(player.priceUpdatedAt).toLocaleString('tr-TR'));
@@ -663,12 +669,6 @@ export function renderTargetContent(content) {
     badge.textContent = effectiveVersion;
     metaLine.appendChild(badge);
 
-    if (player.leagueName) {
-      const leagueBadge = document.createElement('span');
-      leagueBadge.className = 'fr-target-league-badge';
-      leagueBadge.textContent = player.leagueName;
-      metaLine.appendChild(leagueBadge);
-    }
     info.append(name, metaLine);
     head.appendChild(info);
     body.appendChild(head);
@@ -836,6 +836,20 @@ export function renderTargetContent(content) {
     card.appendChild(body);
     list.appendChild(card);
   });
+
+  if (state.targets.length > 0) {
+    lastUpdateInterval = setInterval(() => {
+      if (!content.isConnected) {
+        clearInterval(lastUpdateInterval);
+        lastUpdateInterval = null;
+        return;
+      }
+      content.querySelectorAll('.fr-target-last-update').forEach((el) => {
+        const ts = Number(el.dataset.updatedAt);
+        if (ts) el.textContent = formatRelativeTime(ts);
+      });
+    }, 10000);
+  }
 
   content.querySelector('[data-filter-mode="save"]').addEventListener('click', () => {
     if (!state.targets.length) {

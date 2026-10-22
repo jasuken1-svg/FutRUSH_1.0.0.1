@@ -222,10 +222,16 @@ export const panelCss = `
     #${P.id} .fr-counter button {
       width: 27px; height: 27px; padding: 0; border: 1px solid rgba(255,255,255,.22);
       border-radius: 6px; color: #e8f4f6; background: rgba(255,255,255,.08); font-size: 18px; cursor: pointer;
-      transition: background .16s ease, transform .16s ease;
+      transition: background .16s ease, transform .16s ease; user-select: none;
     }
     #${P.id} .fr-counter button:active { transform: scale(.92); background: rgba(0,229,255,.2); }
     #${P.id} .fr-counter-value { min-width: 22px; text-align: center; color: #00e5ff; font-size: 15px; font-weight: 700; }
+    #${P.id} .fr-counter-compact { gap: 4px; width: 100%; }
+    #${P.id} .fr-counter-compact button { flex: 0 0 24px; width: 24px; height: 28px; font-size: 15px; }
+    #${P.id} .fr-counter-compact .fr-counter-input { flex: 1 1 auto; min-width: 0; text-align: center; }
+    #${P.id} .fr-counter-editable { gap: 6px; width: 100%; }
+    #${P.id} .fr-counter-editable button { flex: 0 0 28px; width: 28px; height: 30px; font-size: 16px; }
+    #${P.id} .fr-counter-editable .fr-counter-input { flex: 1 1 auto; min-width: 0; text-align: center; }
 
     #${P.id} .fr-speed-options { display: flex; gap: 6px; }
     #${P.id} .fr-speed-option {
@@ -246,6 +252,14 @@ export const panelCss = `
       font-size: 13px;
       outline: none;
       transition: border-color .18s ease, box-shadow .18s ease;
+      font-variant-numeric: tabular-nums;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+    #${P.id} .fr-setting-input::-webkit-inner-spin-button,
+    #${P.id} .fr-setting-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
     #${P.id} .fr-setting-input:focus {
       border-color: #00e5ff;
@@ -800,7 +814,6 @@ export const panelCss = `
     #${P.id} .fr-target-meta-line { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
     #${P.id} .fr-target-rating { color: #c8d7df; font-size: 11px; font-weight: 700; }
     #${P.id} .fr-target-version-badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
-    #${P.id} .fr-target-league-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,.08); color: #c8d7df; }
     #${P.id} .fr-target-trend-up { color: #52c41a; font-weight: 800; font-size: 10px; line-height: 1; cursor: help; }
     #${P.id} .fr-target-trend-down { color: #ff4d4f; font-weight: 800; font-size: 10px; line-height: 1; cursor: help; }
     #${P.id} .fr-target-trend-same { color: #fadb14; font-size: 9px; line-height: 1; cursor: help; vertical-align: middle; }

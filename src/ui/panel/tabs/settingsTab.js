@@ -5,6 +5,7 @@ import { state } from '../../../core/state.js';
 import { saveSnipeSettings } from '../../../core/storage.js';
 import { startAutoBuyer, stopAutoBuyer } from '../../../bot/autoBuyer.js';
 import { clampPrice, roundToPriceStep } from '../../../ea/priceSteps.js';
+import { attachHoldRepeat } from './targetsTab.js';
 
 export function renderPanelSettings(content) {
 const s = state.snipeSettings;
@@ -24,14 +25,32 @@ content.innerHTML =
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Oyuncu listesi tekrarı</span><span class="fr-setting-value" data-value="repeat">' + s.repeat + '</span></div><input class="fr-range" data-setting="repeat" type="range" min="0" max="50" step="1" value="' + s.repeat + '" aria-label="Oyuncu listesi kaç kez tekrarlanacak"></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Bekleme süresi (arama bitince)</span><span class="fr-setting-value" data-value="waitSeconds">' + waitDisplay + '</span></div>' +
       '<div class="fr-range-dual">' +
-        '<label class="fr-dual-field"><span>Min (sn)</span><input class="fr-setting-input" data-setting="waitSeconds.0" type="number" min="1" max="120" step="1" value="' + waitRange[0] + '" aria-label="Minimum bekleme saniyesi"></label>' +
-        '<label class="fr-dual-field"><span>Max (sn)</span><input class="fr-setting-input" data-setting="waitSeconds.1" type="number" min="1" max="120" step="1" value="' + waitRange[1] + '" aria-label="Maksimum bekleme saniyesi"></label>' +
+        '<div class="fr-dual-field"><span>Min (sn)</span>' +
+          '<div class="fr-counter fr-counter-compact">' +
+            '<button type="button" data-wait-step="-1" data-wait-idx="0" aria-label="Min bekleme azalt">−</button>' +
+            '<input class="fr-setting-input fr-counter-input" data-setting="waitSeconds.0" type="number" min="1" max="120" step="1" value="' + waitRange[0] + '" aria-label="Minimum bekleme saniyesi">' +
+            '<button type="button" data-wait-step="1" data-wait-idx="0" aria-label="Min bekleme artır">+</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fr-dual-field"><span>Max (sn)</span>' +
+          '<div class="fr-counter fr-counter-compact">' +
+            '<button type="button" data-wait-step="-1" data-wait-idx="1" aria-label="Max bekleme azalt">−</button>' +
+            '<input class="fr-setting-input fr-counter-input" data-setting="waitSeconds.1" type="number" min="1" max="120" step="1" value="' + waitRange[1] + '" aria-label="Maksimum bekleme saniyesi">' +
+            '<button type="button" data-wait-step="1" data-wait-idx="1" aria-label="Max bekleme artır">+</button>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
     '</div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Arama hızı</span><span class="fr-setting-value" data-value="speed">' + (speedLabels[s.speed] || '') + '</span></div><input class="fr-range" data-setting="speed" type="range" min="0" max="3" step="1" value="' + s.speed + '" aria-label="Arama hızı 0 ile 3 arasında"></div>' +
-    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Harcama limiti (coin)</span><span class="fr-setting-value" data-value="maxSpendCoins">' + (s.maxSpendCoins ? Number(s.maxSpendCoins).toLocaleString('tr-TR') : 'Limitsiz') + '</span></div><input class="fr-setting-input" data-setting="maxSpendCoins" type="number" min="0" step="1000" placeholder="0 = limitsiz" value="' + (s.maxSpendCoins || '') + '" aria-label="Harcama limiti coin olarak"></div>' +
+    '<div class="fr-setting-row"><div class="fr-setting-head"><span>Harcama limiti (coin)</span><span class="fr-setting-value" data-value="maxSpendCoins">' + (s.maxSpendCoins ? Number(s.maxSpendCoins).toLocaleString('tr-TR') : 'Limitsiz') + '</span></div>' +
+      '<div class="fr-counter fr-counter-editable">' +
+        '<button type="button" data-spend-step="-1000" aria-label="Harcama limitini 1000 azalt">−</button>' +
+        '<input class="fr-setting-input fr-counter-input" data-setting="maxSpendCoins" type="number" min="0" step="1000" placeholder="0 = limitsiz" value="' + (s.maxSpendCoins || '') + '" aria-label="Harcama limiti coin olarak">' +
+        '<button type="button" data-spend-step="1000" aria-label="Harcama limitini 1000 artır">+</button>' +
+      '</div>' +
+    '</div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Saatlik arama limiti</span><span class="fr-setting-value" data-value="hourlySearchLimit">' + hourlyDisplay + '</span></div><input class="fr-setting-input" data-setting="hourlySearchLimit" type="number" min="0" step="50" placeholder="Varsayılan= 1200" value="' + hourlyVal + '" aria-label="Saatlik arama limiti"></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Günlük arama limiti</span><span class="fr-setting-value" data-value="dailySearchLimit">' + dailyDisplay + '</span></div><input class="fr-setting-input" data-setting="dailySearchLimit" type="number" min="0" step="100" placeholder="Varsayılan=6000" value="' + dailyVal + '" aria-label="Günlük arama limiti"></div>' +
     '<div class="fr-setting-row"><div class="fr-setting-head"><span>Ardışık hata limiti</span><span class="fr-setting-value" data-value="consecutiveErrorLimit">' + (s.consecutiveErrorLimit || 3) + '</span></div><input class="fr-setting-input" data-setting="consecutiveErrorLimit" type="number" min="1" max="20" step="1" value="' + (s.consecutiveErrorLimit || 3) + '" aria-label="Ardışık 429/500 hata limiti"></div>' +
@@ -81,6 +100,29 @@ content.querySelectorAll('.fr-setting-input[data-setting^="waitSeconds."]').forE
     saveSnipeSettings();
   });
 });
+
+content.querySelectorAll('[data-wait-step]').forEach((btn) => {
+  const step = Number(btn.dataset.waitStep) || 0;
+  const idx = Number(btn.dataset.waitIdx) || 0;
+  attachHoldRepeat(btn, () => {
+    const input = content.querySelector(`.fr-setting-input[data-setting="waitSeconds.${idx}"]`);
+    if (!input) return;
+    const current = Math.min(120, Math.max(1, Math.floor(Number(input.value) || 1)));
+    const next = Math.min(120, Math.max(1, current + step));
+    input.value = String(next);
+    const minInput = content.querySelector('.fr-setting-input[data-setting="waitSeconds.0"]');
+    const maxInput = content.querySelector('.fr-setting-input[data-setting="waitSeconds.1"]');
+    const minVal = Math.min(120, Math.max(1, Math.floor(Number(minInput?.value) || 1)));
+    const maxVal = Math.min(120, Math.max(1, Math.floor(Number(maxInput?.value) || 1)));
+    s.waitSeconds = [Math.min(minVal, maxVal), Math.max(minVal, maxVal)];
+    const text = s.waitSeconds[0] === s.waitSeconds[1]
+      ? s.waitSeconds[0] + ' sn'
+      : s.waitSeconds[0] + ' - ' + s.waitSeconds[1] + ' sn';
+    content.querySelector('[data-value="waitSeconds"]').textContent = text;
+    saveSnipeSettings();
+  });
+});
+
 const spendInput = content.querySelector('.fr-setting-input[data-setting="maxSpendCoins"]');
 if (spendInput) {
   const updateSpend = () => {
@@ -99,17 +141,34 @@ if (spendInput) {
   };
   spendInput.addEventListener('change', commitSpend);
   spendInput.addEventListener('blur', commitSpend);
+
+  content.querySelectorAll('[data-spend-step]').forEach((btn) => {
+    const step = Number(btn.dataset.spendStep) || 0;
+    attachHoldRepeat(btn, () => {
+      const raw = Math.max(0, Math.floor(Number(spendInput.value) || 0));
+      let next = raw + step;
+      if (next < 0) next = 0;
+      const val = next > 0 ? clampPrice(roundToPriceStep(next, 'nearest')) : 0;
+      s.maxSpendCoins = val;
+      spendInput.value = val > 0 ? String(val) : '';
+      content.querySelector('[data-value="maxSpendCoins"]').textContent = val ? val.toLocaleString('tr-TR') : 'Limitsiz';
+      saveSnipeSettings();
+    });
+  });
 }
 content.querySelector('.fr-toggle').addEventListener('click', (event) => {
   s.autoSell = !s.autoSell;
   event.currentTarget.setAttribute('aria-checked', String(s.autoSell));
   saveSnipeSettings();
 });
-content.querySelectorAll('[data-count]').forEach((button) => button.addEventListener('click', () => {
-  s.maxPlayers = Math.max(1, s.maxPlayers + Number(button.dataset.count));
-  content.querySelector('[data-value="maxPlayers"]').textContent = String(s.maxPlayers);
-  saveSnipeSettings();
-}));
+content.querySelectorAll('[data-count]').forEach((button) => {
+  const step = Number(button.dataset.count) || 0;
+  attachHoldRepeat(button, () => {
+    s.maxPlayers = Math.max(1, s.maxPlayers + step);
+    content.querySelector('[data-value="maxPlayers"]').textContent = String(s.maxPlayers);
+    saveSnipeSettings();
+  });
+});
 content.querySelector('.fr-start').addEventListener('click', () => {
   if (state.botRunning) stopAutoBuyer('Kullanıcı tarafından durduruldu.');
   else startAutoBuyer();
