@@ -28,7 +28,7 @@ function ensureStyles() {
       width: 420px;
       min-width: 260px;
       max-width: 90vw;
-      height: 218px;
+      height: 213px;
       min-height: 80px;
       max-height: 85vh;
       background: rgba(21, 29, 41, 0.7);

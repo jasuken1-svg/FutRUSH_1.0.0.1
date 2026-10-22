@@ -143,10 +143,10 @@ function ensureStyles() {
       width: 420px !important;
       min-width: 420px !important;
       max-width: 420px !important;
-      height: 218px !important;
-      min-height: 218px !important;
-      max-height: 218px !important;
-      flex: 0 0 218px !important;
+      height: 213px !important;
+      min-height: 213px !important;
+      max-height: 213px !important;
+      flex: 0 0 213px !important;
       background: rgba(21, 29, 41, 0.7) !important;
       backdrop-filter: blur(8px) !important;
       border: 1px solid rgba(255, 255, 255, 0.18) !important;

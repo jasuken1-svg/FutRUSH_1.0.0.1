@@ -125,7 +125,7 @@ describe('futrushPage', () => {
     expect(styleEl.textContent).toContain('gap: 5px');
     expect(styleEl.textContent).toContain('height: 380px !important');
     expect(styleEl.textContent).toContain('width: 420px !important');
-    expect(styleEl.textContent).toContain('height: 218px !important');
+    expect(styleEl.textContent).toContain('height: 213px !important');
     expect(styleEl.textContent).toContain('border-radius: 6px !important');
 
     // Genel Loglar header and content checks
