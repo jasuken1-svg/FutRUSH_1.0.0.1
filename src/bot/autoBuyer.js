@@ -11,6 +11,7 @@ import { randomBetween } from '../utils/cancelToken.js';
 import { searchAutoBuyOffers, buyAutoOffer } from '../ea/market.js';
 import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
+import { checkPilesProtection } from '../ea/piles.js';
 import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { addMarketLog } from '../ui/marketLogBox.js';
@@ -95,6 +96,7 @@ export async function runAutoBuyer(token, deps = {}) {
   const newlyResolvedTargets = new Set();
 
   const checkLimitsReached = (nextCost = 0) => {
+    if (!checkPilesProtection(governor)) return true;
     const check = governor.canSearch({ currentSpent: totalSpent, currentBought: bought, nextCost });
     return !check.allowed;
   };
@@ -137,6 +139,7 @@ export async function runAutoBuyer(token, deps = {}) {
           } else {
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
+            if (!checkPilesProtection(governor)) return;
             const balance = coinBalance();
             if (balance != null && offer.price > balance) {
               addMarketLog({

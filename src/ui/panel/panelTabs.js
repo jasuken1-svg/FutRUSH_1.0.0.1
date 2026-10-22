@@ -95,6 +95,13 @@ export function renderPanelTabs(panel) {
             resumeBtn.textContent = "Captcha'yı çözdüm, devam et";
             resumeBtn.classList.add('fr-governor-resume-btn--captcha');
           }
+        } else if (safetyGovernor.getHaltReason() === 'liste_dolu') {
+          banner.classList.remove('fr-governor-banner--captcha');
+          bannerMsg.textContent = '⛔ Transfer Listesi dolu! Devam etmek için listede yer açın.';
+          if (resumeBtn) {
+            resumeBtn.textContent = 'Devam Et ▶';
+            resumeBtn.classList.remove('fr-governor-resume-btn--captcha');
+          }
         } else {
           banner.classList.remove('fr-governor-banner--captcha');
           bannerMsg.textContent = '⛔ ' + safetyGovernor.getHaltReason();

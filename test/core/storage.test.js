@@ -32,7 +32,9 @@ const defaults = {
   maxSpendCoins: 0,
   hourlySearchLimit: 1200,
   dailySearchLimit: 6000,
-  consecutiveErrorLimit: 3
+  consecutiveErrorLimit: 3,
+  transferListCapacity: 100,
+  transferListWarnThreshold: 5
 };
 
 function loadRecord(record) {
@@ -92,7 +94,9 @@ describe('snipe settings storage', () => {
       maxSpendCoins: 0,
       hourlySearchLimit: 1200,
       dailySearchLimit: 6000,
-      consecutiveErrorLimit: 3
+      consecutiveErrorLimit: 3,
+      transferListCapacity: 100,
+      transferListWarnThreshold: 5
     });
   });
 
@@ -177,7 +181,9 @@ describe('snipe settings storage', () => {
       maxSpendCoins: 250000,
       hourlySearchLimit: 1200,
       dailySearchLimit: 6000,
-      consecutiveErrorLimit: 3
+      consecutiveErrorLimit: 3,
+      transferListCapacity: 100,
+      transferListWarnThreshold: 5
     });
   });
 });

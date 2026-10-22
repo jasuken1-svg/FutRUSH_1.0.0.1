@@ -94,6 +94,7 @@ export function renderPanelSettings(content) {
       '<div class="fr-setting-row"><div class="fr-setting-head"><span>Saatlik arama limiti</span><span class="fr-setting-value" data-value="hourlySearchLimit">' + hourlyDisplay + '</span></div><input class="fr-setting-input" data-setting="hourlySearchLimit" type="number" min="0" step="50" placeholder="Varsayılan= 1200" value="' + hourlyVal + '" aria-label="Saatlik arama limiti"></div>' +
       '<div class="fr-setting-row"><div class="fr-setting-head"><span>Günlük arama limiti</span><span class="fr-setting-value" data-value="dailySearchLimit">' + dailyDisplay + '</span></div><input class="fr-setting-input" data-setting="dailySearchLimit" type="number" min="0" step="100" placeholder="Varsayılan=6000" value="' + dailyVal + '" aria-label="Günlük arama limiti"></div>' +
       '<div class="fr-setting-row"><div class="fr-setting-head"><span>Ardışık hata limiti</span><span class="fr-setting-value" data-value="consecutiveErrorLimit">' + (s.consecutiveErrorLimit || 3) + '</span></div><input class="fr-setting-input" data-setting="consecutiveErrorLimit" type="number" min="1" max="20" step="1" value="' + (s.consecutiveErrorLimit || 3) + '" aria-label="Ardışık 429/500 hata limiti"></div>' +
+      '<div class="fr-setting-row"><div class="fr-setting-head"><span>Transfer Listesi doluluk uyarısı</span><span class="fr-setting-value" data-value="transferListWarnThreshold">' + (s.transferListWarnThreshold ?? 5) + ' slot</span></div><input class="fr-setting-input" data-setting="transferListWarnThreshold" type="number" min="1" max="50" step="1" value="' + (s.transferListWarnThreshold ?? 5) + '" aria-label="Transfer listesi boş slot uyarı eşiği"></div>' +
       '<button class="fr-start" type="button" data-state="' + (state.botRunning ? 'running' : 'idle') + '" aria-pressed="' + state.botRunning + '" aria-label="' + (state.botRunning ? 'Durdur FutRUSH' : 'Başlat FutRUSH') + '">' +
         '<svg class="fr-start-icon fr-start-icon-idle" viewBox="0 0 24 32" aria-hidden="true"><path d="M14 1 3 18h7l-1 13 12-19h-8z" fill="currentColor" stroke="rgba(255,255,255,.8)" stroke-width="1" stroke-linejoin="round"/></svg>' +
         '<svg class="fr-start-icon fr-start-icon-running" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>' +
@@ -293,19 +294,19 @@ export function renderPanelSettings(content) {
     else startAutoBuyer();
   });
 
-  ['hourlySearchLimit', 'dailySearchLimit', 'consecutiveErrorLimit'].forEach((key) => {
+  ['hourlySearchLimit', 'dailySearchLimit', 'consecutiveErrorLimit', 'transferListWarnThreshold'].forEach((key) => {
     const inp = content.querySelector('.fr-setting-input[data-setting="' + key + '"]');
     if (!inp) return;
     const updateVal = () => {
       const raw = inp.value.trim();
       if (raw === '') {
-        const def = (key === 'hourlySearchLimit' ? 1200 : (key === 'dailySearchLimit' ? 6000 : 3));
+        const def = (key === 'hourlySearchLimit' ? 1200 : (key === 'dailySearchLimit' ? 6000 : (key === 'consecutiveErrorLimit' ? 3 : 5)));
         s[key] = def;
-        content.querySelector('[data-value="' + key + '"]').textContent = String(def);
+        content.querySelector('[data-value="' + key + '"]').textContent = key === 'transferListWarnThreshold' ? (def + ' slot') : String(def);
       } else {
         const val = Math.max(0, Math.floor(Number(raw) || 0));
         s[key] = val;
-        content.querySelector('[data-value="' + key + '"]').textContent = val ? String(val) : (key === 'consecutiveErrorLimit' ? '3' : 'Limitsiz');
+        content.querySelector('[data-value="' + key + '"]').textContent = key === 'transferListWarnThreshold' ? (val + ' slot') : (val ? String(val) : (key === 'consecutiveErrorLimit' ? '3' : 'Limitsiz'));
       }
     };
     inp.addEventListener('input', updateVal);
