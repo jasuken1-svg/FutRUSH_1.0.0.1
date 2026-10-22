@@ -801,8 +801,9 @@ export const panelCss = `
     #${P.id} .fr-target-rating { color: #c8d7df; font-size: 11px; font-weight: 700; }
     #${P.id} .fr-target-version-badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(0,229,255,.15); color: #00e5ff; }
     #${P.id} .fr-target-league-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,.08); color: #c8d7df; }
-    #${P.id} .fr-target-trend-up { color: #52c41a; font-weight: 800; font-size: 10px; line-height: 1; }
-    #${P.id} .fr-target-trend-down { color: #ff4d4f; font-weight: 800; font-size: 10px; line-height: 1; }
+    #${P.id} .fr-target-trend-up { color: #52c41a; font-weight: 800; font-size: 10px; line-height: 1; cursor: help; }
+    #${P.id} .fr-target-trend-down { color: #ff4d4f; font-weight: 800; font-size: 10px; line-height: 1; cursor: help; }
+    #${P.id} .fr-target-trend-same { color: #fadb14; font-size: 9px; line-height: 1; cursor: help; vertical-align: middle; }
     #${P.id} .fr-target-remove {
       flex: 0 0 18px; width: 18px; height: 18px; margin: 0; padding: 0; border: 0;
       color: #ff5261; background: transparent; font: 700 16px/18px Arial,sans-serif; cursor: pointer;

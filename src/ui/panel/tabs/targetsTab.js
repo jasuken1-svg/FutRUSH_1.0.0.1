@@ -50,6 +50,27 @@ function formatRelativeTime(timestamp) {
   return `Son güncelleme: ${diffDays} gün önce`;
 }
 
+export function formatPriceHistoryTooltip(player) {
+  const history = Array.isArray(player?.priceHistory) && player.priceHistory.length ? player.priceHistory : [];
+  if (!history.length) {
+    if (player?.price) {
+      const d = player.priceUpdatedAt ? new Date(player.priceUpdatedAt) : new Date();
+      const dateStr = d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      return `Mevcut Fiyat: ${Number(player.price).toLocaleString('tr-TR')} coin (${dateStr} ${timeStr})`;
+    }
+    return 'Fiyat geçmişi bulunmuyor';
+  }
+  const lines = ['Son Fiyat Güncellemeleri:'];
+  history.slice(0, 5).forEach((item, idx) => {
+    const d = new Date(item.at || Date.now());
+    const dateStr = d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    lines.push(`${idx + 1}. ${Number(item.price).toLocaleString('tr-TR')} coin · ${dateStr} ${timeStr}`);
+  });
+  return lines.join('\n');
+}
+
 function attachHoldRepeat(button, onTrigger) {
   let timer = null;
   let interval = null;
@@ -314,6 +335,12 @@ export function renderTargetContent(content) {
               target.priceUpdatedAt = Date.now();
               target.buyNow = Math.max(150, roundDownToStep(Math.round(futbinPrice * 0.95 * (1 - discountRate))));
               target.priceTrend = oldPrice > 0 ? (futbinPrice > oldPrice ? 'up' : (futbinPrice < oldPrice ? 'down' : 'same')) : 'same';
+              target.priceHistory = Array.isArray(target.priceHistory) ? target.priceHistory : [];
+              if (oldPrice > 0 && target.priceHistory.length === 0) {
+                target.priceHistory.push({ price: oldPrice, at: target.priceUpdatedAt - 1000 });
+              }
+              target.priceHistory.unshift({ price: futbinPrice, at: Date.now() });
+              target.priceHistory.length = Math.min(target.priceHistory.length, 5);
               updatedCount++;
             }
             if (!target.playerImageUrl && matched.playerImageUrl) target.playerImageUrl = matched.playerImageUrl;
@@ -793,10 +820,13 @@ export function renderTargetContent(content) {
     futbinPriceEl.className = 'fr-target-futbin-price';
     const fbVal = Number(player.price) || 0;
     let trendHtml = '';
+    const tooltipText = formatPriceHistoryTooltip(player);
     if (player.priceTrend === 'up') {
-      trendHtml = ' <span class="fr-target-trend-up" title="Fiyat arttı">▲</span>';
+      trendHtml = ` <span class="fr-target-trend-up" title="${tooltipText}" role="button" aria-label="Fiyat arttı">▲</span>`;
     } else if (player.priceTrend === 'down') {
-      trendHtml = ' <span class="fr-target-trend-down" title="Fiyat düştü">▼</span>';
+      trendHtml = ` <span class="fr-target-trend-down" title="${tooltipText}" role="button" aria-label="Fiyat düştü">▼</span>`;
+    } else if (player.priceTrend === 'same') {
+      trendHtml = ` <span class="fr-target-trend-same" title="${tooltipText}" role="button" aria-label="Fiyat değişmedi">■</span>`;
     }
     const iconHtml = `<img src="${FUTBIN_ICON_DATA}" class="fr-target-futbin-icon" width="12" height="12" alt="FutBIN" />`;
     futbinPriceEl.innerHTML = fbVal > 0 ? `${iconHtml} <span>${fbVal.toLocaleString('tr-TR')}</span>${trendHtml}` : `${iconHtml} <span>—</span>`;

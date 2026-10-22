@@ -315,4 +315,26 @@ describe('player target controls', () => {
     // Gereken should update in real time: 8500*3 + 18250*2 + 27000*2 = 25500 + 36500 + 54000 = 116.000
     expect(summaryBar.querySelectorAll('.fr-summary-val')[1].textContent).toBe('116.000');
   });
+
+  it('renders trend indicators (▲, ▼, ■) with price history tooltip', () => {
+    state.targets = [
+      {
+        name: 'Player One',
+        price: 50000,
+        buyNow: 40000,
+        priceTrend: 'same',
+        priceHistory: [
+          { price: 50000, at: Date.now() },
+          { price: 50000, at: Date.now() - 60000 }
+        ]
+      }
+    ];
+    const content = dom.window.document.createElement('div');
+    renderTargetContent(content);
+    const sameIndicator = content.querySelector('.fr-target-trend-same');
+    expect(sameIndicator).not.toBeNull();
+    expect(sameIndicator.textContent).toBe('■');
+    expect(sameIndicator.getAttribute('title')).toContain('Son Fiyat Güncellemeleri');
+    expect(sameIndicator.getAttribute('title')).toContain('50.000 coin');
+  });
 });
