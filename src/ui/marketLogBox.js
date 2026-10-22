@@ -1,5 +1,4 @@
-// Transfer Market ve FutRUSH ekranlarinda kaydirilabilir, 4 kosesinden boyutlandirilabilir
-// duz koseli Genel Log kutusunu yonetir.
+// Transfer Market ve FutRUSH ekranlarinda Genel Log kutusunu yonetir.
 // Bagimliliklar: core/events ve core/state.
 
 import { on } from '../core/events.js';
@@ -10,7 +9,6 @@ let currentBoxEl = null;
 let currentListEl = null;
 let observer = null;
 let isOpenFloating = false;
-let isEventsBound = false;
 const MAX_LOGS = 25;
 const logHistory = [];
 
@@ -48,33 +46,25 @@ function ensureStyles() {
       transition: opacity 0.15s ease;
       pointer-events: auto !important;
       user-select: none;
+      padding: 10px;
     }
     .fr-market-log-box * {
       box-sizing: border-box;
     }
-    .fr-market-log-close-btn {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      width: 20px;
-      height: 20px;
+    .fr-market-log-box .fr-logs-header {
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 0 !important;
-      color: #8fa0b5;
-      font-size: 11px;
-      line-height: 1;
-      cursor: pointer;
-      z-index: 30;
-      transition: background 0.15s, color 0.15s;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      flex: 0 0 auto;
     }
-    .fr-market-log-close-btn:hover {
-      background: rgba(255, 77, 79, 0.35);
-      border-color: #ff4d4f;
-      color: #fff;
+    .fr-market-log-box .fr-logs-header-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #00e5ff;
+      letter-spacing: 0.5px;
     }
     .fr-market-log-list {
       flex: 1 1 auto;
@@ -82,16 +72,20 @@ function ensureStyles() {
       height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 6px 8px;
-      padding-right: 28px;
+      padding: 6px 0;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(0, 229, 255, 0.3) transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       overscroll-behavior: contain;
       pointer-events: auto !important;
-      cursor: move;
+      cursor: default;
+    }
+    .fr-market-log-list::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
     }
     .fr-market-log-empty {
       display: flex;
@@ -107,13 +101,6 @@ function ensureStyles() {
       line-height: 1.5;
       user-select: none;
     }
-    .fr-market-log-empty-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #00e5ff;
-      margin-bottom: 4px;
-      letter-spacing: 0.5px;
-    }
     .fr-market-log-empty-sub {
       font-size: 11px;
       color: #8fa0b5;
@@ -126,7 +113,7 @@ function ensureStyles() {
       padding: 3px 6px;
       min-height: 22px;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 0 !important;
+      border-radius: 4px;
       font-size: 11px;
       line-height: 1.25;
       color: #e2e8f0;
@@ -145,37 +132,6 @@ function ensureStyles() {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    /* 4 Köşe Görünmez Boyutlandırma Tutamaçları */
-    .fr-log-resize-corner {
-      position: absolute;
-      width: 14px;
-      height: 14px;
-      z-index: 25;
-      background: transparent !important;
-      border: none !important;
-      opacity: 0 !important;
-    }
-    .fr-log-resize-corner.fr-corner-tl {
-      top: 0;
-      left: 0;
-      cursor: nwse-resize;
-    }
-    .fr-log-resize-corner.fr-corner-tr {
-      top: 0;
-      right: 0;
-      cursor: nesw-resize;
-    }
-    .fr-log-resize-corner.fr-corner-bl {
-      bottom: 0;
-      left: 0;
-      cursor: nesw-resize;
-    }
-    .fr-log-resize-corner.fr-corner-br {
-      bottom: 0;
-      right: 0;
-      cursor: nwse-resize;
     }
   `;
   document.head.appendChild(st);
@@ -215,8 +171,6 @@ export function openMarketLogBox() {
   if (currentBoxEl) {
     currentBoxEl.style.display = 'flex';
   }
-  const logBtn = document.querySelector('.fr-header-log-btn');
-  if (logBtn) logBtn.classList.add('fr-active');
 }
 
 export function closeMarketLogBox() {
@@ -224,8 +178,6 @@ export function closeMarketLogBox() {
   if (currentBoxEl) {
     currentBoxEl.style.display = 'none';
   }
-  const logBtn = document.querySelector('.fr-header-log-btn');
-  if (logBtn) logBtn.classList.remove('fr-active');
 }
 
 export function toggleMarketLogBox(force) {
@@ -236,131 +188,6 @@ export function toggleMarketLogBox(force) {
     closeMarketLogBox();
   }
   return isOpenFloating;
-}
-
-function makeDraggable(box) {
-  let isDragging = false;
-  let startX = 0;
-  let startY = 0;
-  let initLeft = 0;
-  let initTop = 0;
-
-  box.addEventListener('mousedown', (e) => {
-    // Butonlara veya köşe tutamaçlarına tıklandığında taşıma yapma
-    if (e.target.closest('button, .fr-log-resize-corner, .fr-market-log-undo-btn')) return;
-
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const r = box.getBoundingClientRect();
-    initLeft = r.left;
-    initTop = r.top;
-    box.classList.add('fr-dragged');
-
-    box.style.left = initLeft + 'px';
-    box.style.top = initTop + 'px';
-    box.style.right = 'auto';
-    box.style.bottom = 'auto';
-
-    const onMove = (ev) => {
-      if (!isDragging) return;
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      const maxL = Math.max(0, window.innerWidth - box.offsetWidth);
-      const maxT = Math.max(0, window.innerHeight - box.offsetHeight);
-      box.style.left = Math.max(0, Math.min(maxL, initLeft + dx)) + 'px';
-      box.style.top = Math.max(0, Math.min(maxT, initTop + dy)) + 'px';
-    };
-
-    const onUp = () => {
-      isDragging = false;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  });
-}
-
-function makeCornerResizable(box, cornerEl, direction) {
-  let isResizing = false;
-  let startX = 0;
-  let startY = 0;
-  let startW = 0;
-  let startH = 0;
-  let initLeft = 0;
-  let initTop = 0;
-
-  cornerEl.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    isResizing = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    startW = box.offsetWidth;
-    startH = box.offsetHeight;
-    const r = box.getBoundingClientRect();
-    initLeft = r.left;
-    initTop = r.top;
-    box.classList.add('fr-dragged');
-
-    box.style.left = initLeft + 'px';
-    box.style.top = initTop + 'px';
-    box.style.right = 'auto';
-    box.style.bottom = 'auto';
-
-    const onMove = (ev) => {
-      if (!isResizing) return;
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      const minW = 260;
-      const minH = 80;
-
-      if (direction === 'br') {
-        const newW = Math.max(minW, Math.min(window.innerWidth - initLeft, startW + dx));
-        const newH = Math.max(minH, Math.min(window.innerHeight - initTop, startH + dy));
-        box.style.width = newW + 'px';
-        box.style.height = newH + 'px';
-      } else if (direction === 'bl') {
-        const newW = Math.max(minW, startW - dx);
-        const newH = Math.max(minH, Math.min(window.innerHeight - initTop, startH + dy));
-        if (newW !== minW || dx < 0) {
-          box.style.left = Math.max(0, initLeft + dx) + 'px';
-          box.style.width = newW + 'px';
-        }
-        box.style.height = newH + 'px';
-      } else if (direction === 'tr') {
-        const newW = Math.max(minW, Math.min(window.innerWidth - initLeft, startW + dx));
-        const newH = Math.max(minH, startH - dy);
-        if (newH !== minH || dy < 0) {
-          box.style.top = Math.max(0, initTop + dy) + 'px';
-          box.style.height = newH + 'px';
-        }
-        box.style.width = newW + 'px';
-      } else if (direction === 'tl') {
-        const newW = Math.max(minW, startW - dx);
-        const newH = Math.max(minH, startH - dy);
-        if (newW !== minW || dx < 0) {
-          box.style.left = Math.max(0, initLeft + dx) + 'px';
-          box.style.width = newW + 'px';
-        }
-        if (newH !== minH || dy < 0) {
-          box.style.top = Math.max(0, initTop + dy) + 'px';
-          box.style.height = newH + 'px';
-        }
-      }
-    };
-
-    const onUp = () => {
-      isResizing = false;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  });
 }
 
 function setupObserver(searchPrices) {
@@ -432,35 +259,16 @@ function setupBoxElements(box) {
   if (box.dataset.frSetup) return;
   box.dataset.frSetup = 'true';
 
-  // Kapat butonu
-  const closeBtn = document.createElement('button');
-  closeBtn.type = 'button';
-  closeBtn.className = 'fr-market-log-close-btn';
-  closeBtn.title = 'Kapat';
-  closeBtn.setAttribute('aria-label', 'Kapat');
-  closeBtn.textContent = '✕';
-  closeBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    closeMarketLogBox();
-  });
-  box.appendChild(closeBtn);
+  // Panel Başlığı: "Genel Loglar" (Loglar paneli ile birebir aynı stil)
+  let header = box.querySelector('.fr-logs-header');
+  if (!header) {
+    header = document.createElement('div');
+    header.className = 'fr-logs-header';
+    header.innerHTML = '<span class="fr-logs-header-title">Genel Loglar</span>';
+    box.appendChild(header);
+  }
 
-  // 4 Köşe görünmez boyutlandırma tutamaçları
-  const corners = [
-    { dir: 'tl', cls: 'fr-corner-tl' },
-    { dir: 'tr', cls: 'fr-corner-tr' },
-    { dir: 'bl', cls: 'fr-corner-bl' },
-    { dir: 'br', cls: 'fr-corner-br' }
-  ];
-  corners.forEach(({ dir, cls }) => {
-    const c = document.createElement('div');
-    c.className = `fr-log-resize-corner ${cls}`;
-    box.appendChild(c);
-    makeCornerResizable(box, c, dir);
-  });
-
-  // Liste taşıyıcı
+  // Liste taşıyıcı (Scroll gizli, tekerlek kaydırma aktif)
   let list = box.querySelector('.fr-market-log-list');
   if (!list) {
     list = document.createElement('div');
@@ -472,11 +280,6 @@ function setupBoxElements(box) {
     box.appendChild(list);
   }
   currentListEl = list;
-
-  if (!isEventsBound) {
-    makeDraggable(box);
-    isEventsBound = true;
-  }
 }
 
 export function renderMarketLogBox() {
@@ -496,9 +299,7 @@ export function renderMarketLogBox() {
   if (!logHistory.length) {
     const empty = document.createElement('div');
     empty.className = 'fr-market-log-empty';
-    empty.innerHTML =
-      '<span class="fr-market-log-empty-title">Genel Log Listesi</span>' +
-      '<span class="fr-market-log-empty-sub">Hedef ve işlem bildirimleri burada anlık olarak gösterilir.</span>';
+    empty.innerHTML = '<span class="fr-market-log-empty-sub">Hedef ve işlem bildirimleri burada anlık olarak gösterilir.</span>';
     list.appendChild(empty);
   } else {
     logHistory.forEach((item) => {
@@ -515,6 +316,7 @@ export function renderMarketLogBox() {
     });
   }
 
+  // Her zaman alta kaydır (yeni loglar alta eklenir ve yukarı doğru akar)
   list.scrollTop = list.scrollHeight;
 }
 

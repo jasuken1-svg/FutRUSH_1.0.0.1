@@ -128,11 +128,23 @@ describe('futrushPage', () => {
     expect(styleEl.textContent).toContain('height: 218px !important');
     expect(styleEl.textContent).toContain('border-radius: 6px !important');
 
-    expect(logBox.querySelector('.fr-market-log-head')).toBeNull();
-    // Geri Al button is completely removed
+    // Genel Loglar header and content checks
+    expect(logBox.querySelector('.fr-logs-header-title').textContent).toBe('Genel Loglar');
+    expect(logBox.querySelector('.fr-market-log-close-btn')).toBeNull();
+    expect(logBox.querySelector('.fr-log-resize-corner')).toBeNull();
     expect(logBox.querySelector('.fr-market-log-undo-btn')).toBeNull();
-    expect(logBox.textContent).toContain('Genel Log Listesi');
     expect(logBox.textContent).toContain('Hedef ve işlem bildirimleri burada anlık olarak gösterilir.');
+
+    // Loglar panel buttons are clickable and functional
+    const filterBtns = botLogsPanel.querySelectorAll('.fr-log-filter-btn');
+    expect(filterBtns.length).toBe(3);
+    filterBtns[1].click();
+    expect(filterBtns[1].classList.contains('active')).toBe(true);
+    expect(filterBtns[0].classList.contains('active')).toBe(false);
+
+    const clearBtn = botLogsPanel.querySelector('.fr-log-clear');
+    expect(clearBtn).toBeTruthy();
+    clearBtn.click();
   });
 
   it('closes FutRUSH page, hides hub view, and restores navbar title and EA content when an EA tab is clicked', () => {

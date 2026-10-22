@@ -64,6 +64,7 @@ function getFilteredLogs() {
 
 function renderLogRows(content) {
   const list = content.querySelector('.fr-log-list');
+  if (!list) return;
   const entries = chronologicalBotLogs(getFilteredLogs());
   list.replaceChildren();
   if (!entries.length) {
@@ -77,7 +78,41 @@ function renderLogRows(content) {
   list.scrollTop = list.scrollHeight;
 }
 
+function copyToClipboard(text) {
+  if (typeof globalThis.GM_setClipboard === 'function') {
+    globalThis.GM_setClipboard(text, 'text');
+    return Promise.resolve();
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return fallbackCopy(text);
+}
+
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  } catch {
+    // Ignore fallback copy error
+  }
+  return Promise.resolve();
+}
+
 export function renderBotLogs(content) {
+  if (content.querySelector('.fr-logs-view')) {
+    updateBotLogStats(content);
+    renderLogRows(content);
+    return;
+  }
+
   content.innerHTML =
     '<div class="fr-logs-view">' +
       '<div class="fr-logs-header">' +
@@ -101,7 +136,9 @@ export function renderBotLogs(content) {
     '</div>';
 
   content.querySelectorAll('.fr-log-filter-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       content.querySelectorAll('.fr-log-filter-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       activeLogFilter = btn.dataset.filter;
@@ -109,34 +146,55 @@ export function renderBotLogs(content) {
     });
   });
 
-  content.querySelector('.fr-log-copy').addEventListener('click', () => {
+  const copyBtn = content.querySelector('.fr-log-copy');
+  copyBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const lines = getFilteredLogs().map((l) => {
       const time = new Date(l.at).toLocaleTimeString('tr-TR');
       return `[${time}] ${l.name ? l.name + ' - ' : ''}${l.message || (l.kind === 'success' ? 'ALINDI' : '')}`;
     });
-    navigator.clipboard?.writeText(lines.join('\n')).then(() => {
-      const btn = content.querySelector('.fr-log-copy');
-      const orig = btn.textContent;
-      btn.textContent = 'Kopyalandı!';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
+    copyToClipboard(lines.join('\n')).then(() => {
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = 'Kopyalandı!';
+      setTimeout(() => { copyBtn.textContent = orig; }, 1500);
     });
   });
 
-  content.querySelector('.fr-log-export').addEventListener('click', () => {
+  const exportBtn = content.querySelector('.fr-log-export');
+  exportBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const data = JSON.stringify(getFilteredLogs(), null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `futrush-logs-${Date.now()}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 100);
   });
 
-  content.querySelector('.fr-log-clear').addEventListener('click', () => {
+  const clearBtn = content.querySelector('.fr-log-clear');
+  clearBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     state.botLogs.length = 0;
     renderLogRows(content);
   });
+
+  const list = content.querySelector('.fr-log-list');
+  if (list && !list.dataset.frWheel) {
+    list.dataset.frWheel = 'true';
+    list.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+      list.scrollTop += e.deltaY;
+    }, { passive: true });
+  }
 
   updateBotLogStats(content);
   renderLogRows(content);

@@ -13,7 +13,7 @@ export function chronologicalBotLogs(logs = []) {
 }
 
 export function shouldAutoScrollLogList({ scrollHeight = 0, scrollTop = 0, clientHeight = 0 } = {}) {
-  return scrollHeight - scrollTop - clientHeight <= 2;
+  return scrollHeight - scrollTop - clientHeight <= 35;
 }
 
 export function summarizeBotStats(stats = {}) {
