@@ -183,12 +183,12 @@ export const panelCss = `
 
     #${P.id} .fr-range::-webkit-slider-thumb {
       width: 13px; height: 13px; appearance: none; border: 2px solid #eaffff; border-radius: 50%;
-      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: grab;
+      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: pointer;
     }
 
     #${P.id} .fr-range::-moz-range-thumb {
       width: 10px; height: 10px; border: 2px solid #eaffff; border-radius: 50%;
-      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: grab;
+      background: #00cfe8; box-shadow: 0 0 8px rgba(0,229,255,.55); cursor: pointer;
     }
 
     #${P.id} .fr-toggle {

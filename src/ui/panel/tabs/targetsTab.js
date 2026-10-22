@@ -50,7 +50,10 @@ function attachHoldRepeat(button, onTrigger) {
   };
 
   const start = (e) => {
-    if (e.type === 'mousedown' && e.button !== 0) return;
+    if (e.type === 'mousedown' && e.button !== 0) {
+      if (e.button === 1) e.preventDefault();
+      return;
+    }
     didTriggerOnDown = true;
     if (timer) clearTimeout(timer);
     if (interval) clearInterval(interval);
@@ -68,6 +71,7 @@ function attachHoldRepeat(button, onTrigger) {
   button.addEventListener('touchstart', start, { passive: true });
   button.addEventListener('touchend', stop);
   button.addEventListener('touchcancel', stop);
+  window.addEventListener('blur', stop);
 
   button.addEventListener('click', (e) => {
     e.preventDefault();

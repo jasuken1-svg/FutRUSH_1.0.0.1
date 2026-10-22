@@ -14,7 +14,26 @@ export function initDomEvents() {
     schedule();
   }, true);
 
-  new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  }
   pageWindow.addEventListener('resize', schedule);
-  pageWindow.addEventListener('scroll', schedule, true);
+  pageWindow.addEventListener('scroll', (e) => {
+    // FutRUSH içi kaydırmalarda gereksiz layout sync tetikleme
+    if (e.target && e.target.closest && (e.target.closest('#fr-hub-view') || e.target.closest('#fc-snipe-panel'))) {
+      return;
+    }
+    schedule();
+  }, true);
+
+  // Orta mouse tuşunun (Mouse 3 / tekerlek tıklaması) tarayıcıda yanlışlıkla
+  // otomatik kaydırma (autoscroll) modunu tetiklemesini ve imlecin takılı kalmasını engelle
+  const preventMiddleClickAutoscroll = (e) => {
+    if (e.button === 1) {
+      e.preventDefault();
+    }
+  };
+  document.addEventListener('pointerdown', preventMiddleClickAutoscroll, { capture: true });
+  document.addEventListener('mousedown', preventMiddleClickAutoscroll, { capture: true });
+  document.addEventListener('auxclick', preventMiddleClickAutoscroll, { capture: true });
 }
