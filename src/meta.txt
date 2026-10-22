@@ -13,4 +13,6 @@
 // @connect      www.futbin.com
 // @connect      futbin.org
 // @connect      www.futbin.org
+// @connect      fut.gg
+// @connect      game-assets.fut.gg
 // ==/UserScript==
