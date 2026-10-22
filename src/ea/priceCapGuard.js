@@ -75,10 +75,10 @@ export function checkPriceCapGuard(target, offerPrice) {
 
   const result = validatePriceCap(priceToCheck, futbinRef);
   if (!result.allowed) {
-    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Satın alma engellendi! ${result.reason}`;
+    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Aşırı fiyat/fazla sıfır engellendi! ${result.reason}`;
     addMarketLog({
       text,
-      type: 'warn'
+      type: 'error'
     });
     emit('target:price-cap-exceeded', { target, offerPrice: priceToCheck, result });
     return false;

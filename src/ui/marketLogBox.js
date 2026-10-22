@@ -132,6 +132,8 @@ function ensureStyles() {
       flex: 0 0 auto;
       user-select: text;
       cursor: default;
+      overflow: hidden;
+      width: 100%;
     }
     .fr-market-log-item.is-success {
       border-left: 2px solid #52c41a;
@@ -140,21 +142,22 @@ function ensureStyles() {
       border-left: 2px solid #ff4d4f;
     }
     .fr-market-log-text {
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       position: relative;
-    }
-    .fr-market-log-item:hover .fr-market-log-text {
-      text-overflow: clip;
+      display: inline-block;
     }
     .fr-market-log-item:hover .fr-market-log-text.is-overflowing {
-      animation: fr-marquee-slide var(--marquee-duration, 8s) linear infinite;
+      text-overflow: clip;
+      overflow: visible;
+      animation: fr-marquee-slide var(--marquee-duration, 6s) linear infinite alternate;
     }
     @keyframes fr-marquee-slide {
-      0%, 15% { transform: translateX(0); }
-      85%, 100% { transform: translateX(calc(-100% + var(--marquee-visible-width, 300px))); }
+      0%, 20% { transform: translateX(0); }
+      80%, 100% { transform: translateX(calc(-1 * var(--marquee-overflow, 50px))); }
     }
   `;
   document.head.appendChild(st);
@@ -253,12 +256,12 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
     row.appendChild(textSpan);
 
     row.addEventListener('mouseenter', () => {
-      if (textSpan.scrollWidth > textSpan.clientWidth + 2) {
+      if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
         textSpan.classList.add('is-overflowing');
-        const overflowDistance = textSpan.scrollWidth - textSpan.clientWidth;
-        const duration = Math.max(4, Math.min(15, overflowDistance / 25));
+        const overflow = textSpan.scrollWidth - textSpan.clientWidth;
+        const duration = Math.max(3, Math.min(12, overflow / 20));
         textSpan.style.setProperty('--marquee-duration', `${duration}s`);
-        textSpan.style.setProperty('--marquee-visible-width', `${textSpan.clientWidth}px`);
+        textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
       }
     });
     row.addEventListener('mouseleave', () => {
@@ -375,7 +378,21 @@ export function renderMarketLogBox(forceTop = false) {
       const textSpan = document.createElement('span');
       textSpan.className = 'fr-market-log-text';
       textSpan.textContent = `[${item.time.slice(0, 5)}] ${item.text}`;
+      textSpan.title = item.text;
       row.appendChild(textSpan);
+
+      row.addEventListener('mouseenter', () => {
+        if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
+          textSpan.classList.add('is-overflowing');
+          const overflow = textSpan.scrollWidth - textSpan.clientWidth;
+          const duration = Math.max(3, Math.min(12, overflow / 20));
+          textSpan.style.setProperty('--marquee-duration', `${duration}s`);
+          textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
+        }
+      });
+      row.addEventListener('mouseleave', () => {
+        textSpan.classList.remove('is-overflowing');
+      });
 
       list.appendChild(row);
     });

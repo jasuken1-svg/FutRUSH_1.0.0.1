@@ -163,12 +163,12 @@ export function updateTargetStatus(statusElement, status, targetLoading) {
 
     statusElement.addEventListener('mouseenter', () => {
       const msg = statusElement.querySelector('.fr-target-status-message');
-      if (msg && msg.scrollWidth > msg.clientWidth + 2) {
+      if (msg && msg.scrollWidth > msg.clientWidth + 1) {
         msg.classList.add('is-overflowing');
-        const overflowDistance = msg.scrollWidth - msg.clientWidth;
-        const duration = Math.max(4, Math.min(15, overflowDistance / 25));
+        const overflow = msg.scrollWidth - msg.clientWidth;
+        const duration = Math.max(3, Math.min(12, overflow / 20));
         msg.style.setProperty('--marquee-duration', `${duration}s`);
-        msg.style.setProperty('--marquee-visible-width', `${msg.clientWidth}px`);
+        msg.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
       }
     });
     statusElement.addEventListener('mouseleave', () => {

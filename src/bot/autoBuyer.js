@@ -118,6 +118,12 @@ export async function runAutoBuyer(token, deps = {}) {
       for (let targetIndex = 0; targetIndex < state.targets.length; targetIndex++) {
         const target = state.targets[targetIndex];
         if (target.searchDisabled || target.insufficientBalance) continue;
+
+        // Tavan Fiyat Kontrolü: Hedefin Buy Now değeri FutBIN tavanını aşıyorsa bu hedefi hiç arama
+        if (!checkPriceCapGuard(target, target.buyNow)) {
+          continue;
+        }
+
         const eaId = Number(target.eaId) || 0;
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {

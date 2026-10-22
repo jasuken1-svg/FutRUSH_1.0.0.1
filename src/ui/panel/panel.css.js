@@ -1001,15 +1001,14 @@ export const panelCss = `
       min-width: 0;
       position: relative;
     }
-    #${P.id} .fr-target-status:hover .fr-target-status-message {
+    #${P.id} .fr-target-status-message.is-overflowing {
       text-overflow: clip;
-    }
-    #${P.id} .fr-target-status:hover .fr-target-status-message.is-overflowing {
-      animation: fr-status-marquee var(--marquee-duration, 8s) linear infinite;
+      overflow: visible;
+      animation: fr-status-marquee var(--marquee-duration, 6s) linear infinite alternate;
     }
     @keyframes fr-status-marquee {
-      0%, 15% { transform: translateX(0); }
-      85%, 100% { transform: translateX(calc(-100% + var(--marquee-visible-width, 250px))); }
+      0%, 20% { transform: translateX(0); }
+      80%, 100% { transform: translateX(calc(-1 * var(--marquee-overflow, 50px))); }
     }
     #${P.id} .fr-target-progress-label {
       font-size: 10px;
