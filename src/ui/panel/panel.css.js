@@ -547,23 +547,55 @@ export const panelCss = `
     #${P.id} .fr-ea-card .fr-ea-crest-club { width: 13cqw !important; height: 11.5cqw !important; }
 
     /* 6. PlayStyle+ Simgeleri (B4) */
-    #${P.id} .fr-ea-card .fr-ea-card-playstyles {
-      position: absolute; top: 38%; left: 13%;
-      display: flex; flex-direction: column; gap: 2cqw;
-      z-index: 4; pointer-events: none;
+    #${P.id} .fr-ea-card .fr-ea-card-playstyles,
+    .fr-ea-card .fr-ea-card-playstyles {
+      position: absolute !important;
+      top: 45.5% !important;
+      left: 12.5% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 2cqw !important;
+      z-index: 4 !important;
+      pointer-events: none !important;
     }
-    #${P.id} .fr-ea-card .fr-ea-ps {
-      position: relative; box-sizing: border-box; width: 11cqw; height: 11cqw;
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(circle at 30% 30%, #fff2b0, #d9a900 70%);
-      border: 1px solid #fff6c2; box-shadow: 0 1px 2px rgba(0,0,0,.7);
-      color: #3a2a00; font-weight: 900; font-size: 5.50cqw; line-height: 1; pointer-events: auto;
+    #${P.id} .fr-ea-card .fr-ea-ps,
+    .fr-ea-card .fr-ea-ps {
+      position: relative !important;
+      box-sizing: border-box !important;
+      width: 11cqw !important;
+      height: 11cqw !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: radial-gradient(circle at 30% 30%, #fff2b0, #d9a900 70%) !important;
+      border: 1px solid #fff6c2 !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,.7) !important;
+      pointer-events: auto !important;
     }
-    #${P.id} .fr-ea-card .fr-ea-ps img { width: 80%; height: 80%; object-fit: contain; }
-    #${P.id} .fr-ea-card .fr-ea-ps::after {
-      content: '+'; position: absolute; top: -25%; right: -25%; width: 55%; height: 55%;
-      border-radius: 50%; background: #00e5ff; color: #001018; font-size: 4.95cqw;
-      font-weight: 900; display: flex; align-items: center; justify-content: center; line-height: 1;
+    #${P.id} .fr-ea-card .fr-ea-ps img,
+    .fr-ea-card .fr-ea-ps img {
+      width: 150% !important;
+      height: 150% !important;
+      object-fit: contain !important;
+    }
+    #${P.id} .fr-ea-card .fr-ea-ps::after,
+    .fr-ea-card .fr-ea-ps::after {
+      content: '+' !important;
+      position: absolute !important;
+      top: -88% !important;
+      right: -25% !important;
+      width: 0% !important;
+      height: 0% !important;
+      border-radius: 50% !important;
+      background: #00e5ff !important;
+      color: #001018 !important;
+      font-size: 0cqw !important;
+      font-weight: 900 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 1 !important;
     }
 
     #${P.id} .fr-ea-card.fr-ea-card-holo {
