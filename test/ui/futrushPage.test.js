@@ -94,11 +94,14 @@ describe('futrushPage', () => {
     expect(panelEl).toBeTruthy();
     expect(hub.children[0]).toBe(panelEl);
 
-    // Genel Log floating box exists with draggable head and resize handle
+    // Genel Log floating box exists, head is removed, 4 invisible corner handles and close button exist
     const logBox = document.querySelector('.fr-market-log-box');
     expect(logBox).toBeTruthy();
-    expect(logBox.textContent).toContain('Genel Log');
-    expect(logBox.querySelector('.fr-log-resize-handle')).toBeTruthy();
+    expect(logBox.querySelector('.fr-market-log-head')).toBeNull();
+    expect(logBox.querySelector('.fr-market-log-close-btn')).toBeTruthy();
+    expect(logBox.querySelectorAll('.fr-log-resize-corner').length).toBe(4);
+    expect(logBox.textContent).toContain('Genel Log Listesi');
+    expect(logBox.textContent).toContain('Hedef ve işlem bildirimleri burada anlık olarak gösterilir.');
   });
 
   it('closes FutRUSH page, hides hub view, and restores navbar title and EA content when an EA tab is clicked', () => {
@@ -124,5 +127,25 @@ describe('futrushPage', () => {
 
     // Navbar title restored
     expect(navTitle.textContent).toBe('Home');
+  });
+
+  it('closes log bar when close button is clicked and toggles back via header icon button', async () => {
+    const { openMarketLogBox, closeMarketLogBox } = await import('../../src/ui/marketLogBox.js');
+    futrushPage.openFutrushPage();
+
+    openMarketLogBox();
+    const logBox = document.querySelector('.fr-market-log-box');
+    expect(logBox.style.display).toBe('flex');
+
+    const closeBtn = logBox.querySelector('.fr-market-log-close-btn');
+    closeBtn.click();
+    expect(logBox.style.display).toBe('none');
+
+    const logBtn = futrushPage.getHeaderLogButton();
+    logBtn.click();
+    expect(logBox.style.display).toBe('flex');
+
+    closeMarketLogBox();
+    expect(logBox.style.display).toBe('none');
   });
 });

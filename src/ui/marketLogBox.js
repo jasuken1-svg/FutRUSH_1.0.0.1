@@ -1,5 +1,5 @@
-// Transfer Market ve FutRUSH ekranlarinda kaydirilabilir ve boyutu ayarlanabilir
-// Genel Log penceresini yonetir.
+// Transfer Market ve FutRUSH ekranlarinda kaydirilabilir, 4 kosesinden boyutlandirilabilir
+// duz koseli Genel Log kutusunu yonetir.
 // Bagimliliklar: core/events ve core/state.
 
 import { on } from '../core/events.js';
@@ -7,9 +7,10 @@ import { state } from '../core/state.js';
 import { bindPriceStepRounding } from '../ea/priceSteps.js';
 
 let currentBoxEl = null;
+let currentListEl = null;
 let observer = null;
 let isOpenFloating = false;
-let isInitializedDraggable = false;
+let isEventsBound = false;
 const MAX_LOGS = 25;
 const logHistory = [];
 
@@ -32,10 +33,10 @@ function ensureStyles() {
       height: 180px;
       min-height: 80px;
       max-height: 85vh;
-      background: rgba(10, 16, 26, 0.94);
+      background: rgba(10, 16, 26, 0.95);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(0, 229, 255, 0.35);
-      border-radius: 8px;
+      border-radius: 0 !important;
       box-sizing: border-box;
       display: none;
       flex-direction: column;
@@ -43,61 +44,46 @@ function ensureStyles() {
       overflow: hidden;
       font-family: inherit;
       color: #fff;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
       transition: opacity 0.15s ease;
       pointer-events: auto !important;
-      resize: both;
-    }
-    .fr-market-log-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 10px;
-      background: rgba(0, 229, 255, 0.15);
-      border-bottom: 1px solid rgba(0, 229, 255, 0.25);
-      font-size: 12px;
-      font-weight: 700;
-      color: #00e5ff;
-      letter-spacing: 0.5px;
-      flex: 0 0 auto;
-      line-height: 1.2;
       user-select: none;
-      cursor: move;
     }
-    .fr-market-log-head-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .fr-market-log-live-badge {
-      font-size: 10px;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: rgba(0, 229, 255, 0.2);
-      border: 1px solid rgba(0, 229, 255, 0.4);
-      color: #00e5ff;
+    .fr-market-log-box * {
+      box-sizing: border-box;
     }
     .fr-market-log-close-btn {
-      background: transparent;
-      border: 0;
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0 !important;
       color: #8fa0b5;
-      font-size: 12px;
-      cursor: pointer;
-      padding: 2px 5px;
+      font-size: 11px;
       line-height: 1;
-      border-radius: 3px;
+      cursor: pointer;
+      z-index: 30;
+      transition: background 0.15s, color 0.15s;
     }
     .fr-market-log-close-btn:hover {
-      background: rgba(255, 77, 79, 0.2);
-      color: #ff4d4f;
+      background: rgba(255, 77, 79, 0.35);
+      border-color: #ff4d4f;
+      color: #fff;
     }
     .fr-market-log-list {
       flex: 1 1 auto;
       min-height: 0;
-      max-height: 100%;
+      height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 4px 8px;
+      padding: 6px 8px;
+      padding-right: 28px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -105,14 +91,32 @@ function ensureStyles() {
       scrollbar-color: rgba(0, 229, 255, 0.3) transparent;
       overscroll-behavior: contain;
       pointer-events: auto !important;
+      cursor: move;
     }
     .fr-market-log-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 100px;
+      text-align: center;
+      color: #8fa0b5;
+      padding: 10px;
+      margin: auto 0;
+      line-height: 1.5;
+      user-select: none;
+    }
+    .fr-market-log-empty-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #00e5ff;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+    .fr-market-log-empty-sub {
       font-size: 11px;
       color: #8fa0b5;
-      text-align: center;
-      margin-top: 14px;
-      padding: 0 8px;
-      line-height: 1.35;
     }
     .fr-market-log-item {
       display: flex;
@@ -121,13 +125,14 @@ function ensureStyles() {
       gap: 6px;
       padding: 3px 6px;
       min-height: 22px;
-      box-sizing: border-box;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
+      border-radius: 0 !important;
       font-size: 11px;
       line-height: 1.25;
       color: #e2e8f0;
       flex: 0 0 auto;
+      user-select: text;
+      cursor: default;
     }
     .fr-market-log-item.is-undo {
       border-left: 2px solid #ff4d4f;
@@ -148,7 +153,7 @@ function ensureStyles() {
       background: rgba(255, 77, 79, 0.15);
       color: #ff4d4f;
       border: 1px solid rgba(255, 77, 79, 0.6);
-      border-radius: 3px;
+      border-radius: 0 !important;
       padding: 1px 4px;
       font-size: 11px;
       line-height: 1;
@@ -161,33 +166,36 @@ function ensureStyles() {
       background: rgba(255, 77, 79, 0.3);
       transform: scale(1.08);
     }
-    .fr-log-resize-handle {
+
+    /* 4 Köşe Görünmez Boyutlandırma Tutamaçları */
+    .fr-log-resize-corner {
       position: absolute;
+      width: 14px;
+      height: 14px;
+      z-index: 25;
+      background: transparent !important;
+      border: none !important;
+      opacity: 0 !important;
+    }
+    .fr-log-resize-corner.fr-corner-tl {
+      top: 0;
+      left: 0;
+      cursor: nwse-resize;
+    }
+    .fr-log-resize-corner.fr-corner-tr {
+      top: 0;
       right: 0;
+      cursor: nesw-resize;
+    }
+    .fr-log-resize-corner.fr-corner-bl {
       bottom: 0;
-      width: 18px;
-      height: 18px;
-      cursor: se-resize;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      left: 0;
+      cursor: nesw-resize;
     }
-    .fr-log-resize-handle::after {
-      content: '';
-      position: absolute;
-      right: 3px;
-      bottom: 3px;
-      width: 8px;
-      height: 8px;
-      border-right: 2px solid #00e5ff;
-      border-bottom: 2px solid #00e5ff;
-      opacity: 0.8;
-      transition: opacity 0.15s, border-color 0.15s;
-    }
-    .fr-log-resize-handle:hover::after {
-      opacity: 1;
-      border-color: #fff;
+    .fr-log-resize-corner.fr-corner-br {
+      bottom: 0;
+      right: 0;
+      cursor: nwse-resize;
     }
   `;
   document.head.appendChild(st);
@@ -206,8 +214,8 @@ function isPinnedListOpen() {
 
 export function syncMarketLogVisibility() {
   if (!currentBoxEl) return;
-  if (isOpenFloating) {
-    currentBoxEl.style.display = 'flex';
+  if (!isOpenFloating) {
+    currentBoxEl.style.display = 'none';
     return;
   }
   const inSearchPrices = currentBoxEl.closest && currentBoxEl.closest('.search-prices');
@@ -227,6 +235,8 @@ export function openMarketLogBox() {
   if (currentBoxEl) {
     currentBoxEl.style.display = 'flex';
   }
+  const logBtn = document.querySelector('.fr-header-log-btn');
+  if (logBtn) logBtn.classList.add('fr-active');
 }
 
 export function closeMarketLogBox() {
@@ -234,6 +244,8 @@ export function closeMarketLogBox() {
   if (currentBoxEl) {
     currentBoxEl.style.display = 'none';
   }
+  const logBtn = document.querySelector('.fr-header-log-btn');
+  if (logBtn) logBtn.classList.remove('fr-active');
 }
 
 export function toggleMarketLogBox(force) {
@@ -246,21 +258,24 @@ export function toggleMarketLogBox(force) {
   return isOpenFloating;
 }
 
-function makeDraggable(box, handle) {
+function makeDraggable(box) {
   let isDragging = false;
   let startX = 0;
   let startY = 0;
   let initLeft = 0;
   let initTop = 0;
 
-  handle.addEventListener('mousedown', (e) => {
-    if (e.target.closest('button')) return;
+  box.addEventListener('mousedown', (e) => {
+    // Butonlara veya köşe tutamaçlarına tıklandığında taşıma yapma
+    if (e.target.closest('button, .fr-log-resize-corner, .fr-market-log-undo-btn')) return;
+
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
     const r = box.getBoundingClientRect();
     initLeft = r.left;
     initTop = r.top;
+
     box.style.left = initLeft + 'px';
     box.style.top = initTop + 'px';
     box.style.right = 'auto';
@@ -287,14 +302,16 @@ function makeDraggable(box, handle) {
   });
 }
 
-function makeResizable(box, grip) {
+function makeCornerResizable(box, cornerEl, direction) {
   let isResizing = false;
   let startX = 0;
   let startY = 0;
   let startW = 0;
   let startH = 0;
+  let initLeft = 0;
+  let initTop = 0;
 
-  grip.addEventListener('mousedown', (e) => {
+  cornerEl.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
     isResizing = true;
@@ -302,15 +319,55 @@ function makeResizable(box, grip) {
     startY = e.clientY;
     startW = box.offsetWidth;
     startH = box.offsetHeight;
+    const r = box.getBoundingClientRect();
+    initLeft = r.left;
+    initTop = r.top;
+
+    box.style.left = initLeft + 'px';
+    box.style.top = initTop + 'px';
+    box.style.right = 'auto';
+    box.style.bottom = 'auto';
 
     const onMove = (ev) => {
       if (!isResizing) return;
-      const dw = ev.clientX - startX;
-      const dh = ev.clientY - startY;
-      const newW = Math.max(260, Math.min(window.innerWidth - (box.offsetLeft || 0), startW + dw));
-      const newH = Math.max(80, Math.min(window.innerHeight - (box.offsetTop || 0), startH + dh));
-      box.style.width = newW + 'px';
-      box.style.height = newH + 'px';
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const minW = 260;
+      const minH = 80;
+
+      if (direction === 'br') {
+        const newW = Math.max(minW, Math.min(window.innerWidth - initLeft, startW + dx));
+        const newH = Math.max(minH, Math.min(window.innerHeight - initTop, startH + dy));
+        box.style.width = newW + 'px';
+        box.style.height = newH + 'px';
+      } else if (direction === 'bl') {
+        const newW = Math.max(minW, startW - dx);
+        const newH = Math.max(minH, Math.min(window.innerHeight - initTop, startH + dy));
+        if (newW !== minW || dx < 0) {
+          box.style.left = Math.max(0, initLeft + dx) + 'px';
+          box.style.width = newW + 'px';
+        }
+        box.style.height = newH + 'px';
+      } else if (direction === 'tr') {
+        const newW = Math.max(minW, Math.min(window.innerWidth - initLeft, startW + dx));
+        const newH = Math.max(minH, startH - dy);
+        if (newH !== minH || dy < 0) {
+          box.style.top = Math.max(0, initTop + dy) + 'px';
+          box.style.height = newH + 'px';
+        }
+        box.style.width = newW + 'px';
+      } else if (direction === 'tl') {
+        const newW = Math.max(minW, startW - dx);
+        const newH = Math.max(minH, startH - dy);
+        if (newW !== minW || dx < 0) {
+          box.style.left = Math.max(0, initLeft + dx) + 'px';
+          box.style.width = newW + 'px';
+        }
+        if (newH !== minH || dy < 0) {
+          box.style.top = Math.max(0, initTop + dy) + 'px';
+          box.style.height = newH + 'px';
+        }
+      }
     };
 
     const onUp = () => {
@@ -368,6 +425,7 @@ export function mountMarketLogBox(targetContainer) {
       targetContainer.appendChild(box);
     }
     currentBoxEl = box;
+    setupBoxElements(box);
     renderMarketLogBox();
     return;
   }
@@ -380,9 +438,61 @@ export function mountMarketLogBox(targetContainer) {
       document.body.appendChild(box);
     }
     currentBoxEl = box;
+    setupBoxElements(box);
   }
 
   renderMarketLogBox();
+}
+
+function setupBoxElements(box) {
+  if (box.dataset.frSetup) return;
+  box.dataset.frSetup = 'true';
+
+  // Kapat butonu
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'fr-market-log-close-btn';
+  closeBtn.title = 'Kapat';
+  closeBtn.setAttribute('aria-label', 'Kapat');
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeMarketLogBox();
+  });
+  box.appendChild(closeBtn);
+
+  // 4 Köşe görünmez boyutlandırma tutamaçları
+  const corners = [
+    { dir: 'tl', cls: 'fr-corner-tl' },
+    { dir: 'tr', cls: 'fr-corner-tr' },
+    { dir: 'bl', cls: 'fr-corner-bl' },
+    { dir: 'br', cls: 'fr-corner-br' }
+  ];
+  corners.forEach(({ dir, cls }) => {
+    const c = document.createElement('div');
+    c.className = `fr-log-resize-corner ${cls}`;
+    box.appendChild(c);
+    makeCornerResizable(box, c, dir);
+  });
+
+  // Liste taşıyıcı
+  let list = box.querySelector('.fr-market-log-list');
+  if (!list) {
+    list = document.createElement('div');
+    list.className = 'fr-market-log-list';
+    list.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+      list.scrollTop += e.deltaY;
+    }, { passive: true });
+    box.appendChild(list);
+  }
+  currentListEl = list;
+
+  if (!isEventsBound) {
+    makeDraggable(box);
+    isEventsBound = true;
+  }
 }
 
 export function renderMarketLogBox() {
@@ -391,35 +501,20 @@ export function renderMarketLogBox() {
     if (!currentBoxEl) return;
   }
 
+  setupBoxElements(currentBoxEl);
   syncMarketLogVisibility();
-  currentBoxEl.replaceChildren();
 
-  const head = document.createElement('div');
-  head.className = 'fr-market-log-head';
-  head.innerHTML =
-    '<span>⚡ Genel Log</span>' +
-    '<div class="fr-market-log-head-actions">' +
-      '<span class="fr-market-log-live-badge">Canlı</span>' +
-      '<button type="button" class="fr-market-log-close-btn" title="Kapat" aria-label="Kapat">✕</button>' +
-    '</div>';
-  head.querySelector('.fr-market-log-close-btn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    closeMarketLogBox();
-  });
-  currentBoxEl.appendChild(head);
+  const list = currentListEl || currentBoxEl.querySelector('.fr-market-log-list');
+  if (!list) return;
 
-  const list = document.createElement('div');
-  list.className = 'fr-market-log-list';
-  list.addEventListener('wheel', (e) => {
-    e.stopPropagation();
-    list.scrollTop += e.deltaY;
-  }, { passive: true });
+  list.replaceChildren();
 
   if (!logHistory.length) {
     const empty = document.createElement('div');
     empty.className = 'fr-market-log-empty';
-    empty.textContent = 'Hedef ve işlem bildirimleri burada anlık olarak gösterilir.';
+    empty.innerHTML =
+      '<span class="fr-market-log-empty-title">Genel Log Listesi</span>' +
+      '<span class="fr-market-log-empty-sub">Hedef ve işlem bildirimleri burada anlık olarak gösterilir.</span>';
     list.appendChild(empty);
   } else {
     logHistory.forEach((item) => {
@@ -458,21 +553,6 @@ export function renderMarketLogBox() {
 
       list.appendChild(row);
     });
-  }
-
-  currentBoxEl.appendChild(list);
-
-  // Resize grip handle at bottom-right
-  const resizeGrip = document.createElement('div');
-  resizeGrip.className = 'fr-log-resize-handle';
-  resizeGrip.title = 'Sağ alttan tutarak genişlik ve boyutu ayarlayın';
-  resizeGrip.setAttribute('aria-label', 'Boyutu ayarla');
-  currentBoxEl.appendChild(resizeGrip);
-
-  if (!isInitializedDraggable) {
-    makeDraggable(currentBoxEl, head);
-    makeResizable(currentBoxEl, resizeGrip);
-    isInitializedDraggable = true;
   }
 
   list.scrollTop = list.scrollHeight;
