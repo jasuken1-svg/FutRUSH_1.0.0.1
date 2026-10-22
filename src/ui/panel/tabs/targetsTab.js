@@ -641,6 +641,19 @@ export function renderTargetContent(content) {
       leagueBadge.textContent = player.leagueName;
       metaLine.appendChild(leagueBadge);
     }
+
+    if (player.price) {
+      const priceBadge = document.createElement('span');
+      priceBadge.className = 'fr-target-price-badge';
+      let trendHtml = '';
+      if (player.priceTrend === 'up') {
+        trendHtml = '<span class="fr-target-trend-up" title="Fiyat arttı">▲</span>';
+      } else if (player.priceTrend === 'down') {
+        trendHtml = '<span class="fr-target-trend-down" title="Fiyat düştü">▼</span>';
+      }
+      priceBadge.innerHTML = `FutBIN: ${Number(player.price).toLocaleString('tr-TR')}${trendHtml ? ' ' + trendHtml : ''}`;
+      metaLine.appendChild(priceBadge);
+    }
     info.append(name, metaLine);
     head.appendChild(info);
     body.appendChild(head);
