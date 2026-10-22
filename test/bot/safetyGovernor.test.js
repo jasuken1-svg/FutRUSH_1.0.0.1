@@ -110,6 +110,35 @@ describe('SafetyGovernor', () => {
     expect(gov.canSearch().allowed).toBe(true);
   });
 
+  it('handles captcha halt properly, logs red error entry, and locks until resume', () => {
+    const gov = new SafetyGovernor({ storage: mockStorage });
+    gov.halt('captcha');
+    expect(gov.isHalted()).toBe(true);
+    expect(gov.isCaptchaHalted()).toBe(true);
+    expect(gov.getHaltReason()).toBe('captcha');
+    expect(state.botStatus).toContain('CAPTCHA');
+    expect(state.botLogs.some((l) => l.type === 'error' && l.message.includes('CAPTCHA'))).toBe(true);
+
+    // Persists across reload
+    const gov2 = new SafetyGovernor({ storage: mockStorage });
+    expect(gov2.isCaptchaHalted()).toBe(true);
+
+    // Resumes only via explicit user action
+    gov2.resume();
+    expect(gov2.isHalted()).toBe(false);
+    expect(gov2.isCaptchaHalted()).toBe(false);
+  });
+
+  it('supports static methods on SafetyGovernor class', () => {
+    SafetyGovernor.halt('captcha');
+    expect(SafetyGovernor.isHalted()).toBe(true);
+    expect(SafetyGovernor.isCaptchaHalted()).toBe(true);
+
+    SafetyGovernor.resume();
+    expect(SafetyGovernor.isHalted()).toBe(false);
+    expect(SafetyGovernor.isCaptchaHalted()).toBe(false);
+  });
+
   it('persists search timestamps across reload', () => {
     const gov1 = new SafetyGovernor({ storage: mockStorage });
     gov1.recordSearch();

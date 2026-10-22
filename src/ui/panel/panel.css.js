@@ -1014,12 +1014,30 @@ export const panelCss = `
       color: #ff6b6b; font-size: 11px; font-weight: 600; line-height: 1.3;
       flex: 0 0 auto; width: 100%; box-sizing: border-box;
     }
+    #${P.id} .fr-governor-banner.fr-governor-banner--captcha {
+      background: rgba(220, 38, 38, 0.95);
+      border: 2px solid #ff2222;
+      color: #ffffff;
+      padding: 9px 12px;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+    }
     #${P.id} .fr-governor-banner-msg { flex: 1 1 auto; min-width: 0; word-break: break-word; }
     #${P.id} .fr-governor-resume-btn {
       flex: 0 0 auto; background: #00e5ff; color: #001018; border: none; border-radius: 4px;
       padding: 4px 8px; font-weight: 700; font-size: 11px; cursor: pointer; white-space: nowrap;
     }
     #${P.id} .fr-governor-resume-btn:hover { background: #33ebff; }
+    #${P.id} .fr-governor-resume-btn.fr-governor-resume-btn--captcha {
+      background: #ffffff;
+      color: #b91c1c;
+      font-weight: 800;
+      font-size: 11px;
+      border: 1px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    #${P.id} .fr-governor-resume-btn.fr-governor-resume-btn--captcha:hover {
+      background: #fee2e2;
+    }
 
     @keyframes fr-status-spin { to { transform: rotate(360deg); } }
     @keyframes fr-status-enter { from { opacity: 0; transform: translateX(7px); } to { opacity: 1; transform: translateX(0); } }

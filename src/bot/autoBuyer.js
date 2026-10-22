@@ -182,6 +182,10 @@ export async function runAutoBuyer(token, deps = {}) {
               } else {
                 addBotLog(target.name + ': satın alma başarısız — ' + classified.text + codeText, 'error');
               }
+              if (classified.code === 458 || String(classified.code) === '458') {
+                governor.halt('captcha');
+                return;
+              }
               if (classified.kind === 'fatal' && CONFIG.bot.stopOnFatalPurchaseError) {
                 stopAutoBuyer('Kritik EA satın alma hatası nedeniyle tarama durduruldu.');
               }
@@ -228,12 +232,17 @@ export async function runAutoBuyer(token, deps = {}) {
     } while (state.botRunning && token === state.botToken);
   } catch (error) {
     if (token === state.botToken) {
-      governor.recordResult(error?.status || error?.code || 500);
-      incrementStat('errors');
-      state.botRunning = false;
-      state.botToken++;
-      setBotStatus(error.message || 'FutRUSH taraması hata nedeniyle durdu.');
-      addBotLog(state.botStatus, 'error');
+      const code = error?.status || error?.code;
+      if (code === 458 || String(code) === '458') {
+        governor.halt('captcha');
+      } else {
+        governor.recordResult(code || 500);
+        incrementStat('errors');
+        state.botRunning = false;
+        state.botToken++;
+        setBotStatus(error.message || 'FutRUSH taraması hata nedeniyle durdu.');
+        addBotLog(state.botStatus, 'error');
+      }
     }
   }
 }

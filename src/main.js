@@ -17,6 +17,7 @@ import navButtonModule from './ui/navButton.module.js';
 import { registerPanelEvents } from './ui/panel/panelEvents.js';
 import { registerModalEvents as registerSaveDialogEvents } from './ui/modals/saveDialog.js';
 import { registerModalEvents as registerFilterModalEvents } from './ui/modals/filterModal.js';
+import { initCaptchaDetector } from './ea/captchaDetector.js';
 
 registry.register(createHubSyncModule(schedule));
 registry.register(logoButtonModule);
@@ -29,6 +30,7 @@ registry.register(navButtonModule);
 registerPanelEvents();
 registerSaveDialogEvents();
 registerFilterModalEvents();
+initCaptchaDetector();
 loadCoreStorage();
 initAll();
 initDomEvents();

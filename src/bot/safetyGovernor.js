@@ -32,6 +32,7 @@ export class SafetyGovernor {
     this.consecutiveErrors = 0;
     this.halted = false;
     this.haltReason = null;
+    this.captchaHalted = false;
     this.load();
   }
 
@@ -51,12 +52,16 @@ export class SafetyGovernor {
           this.halted = data.halted;
           this.haltReason = data.haltReason || null;
         }
+        if (typeof data.captchaHalted === 'boolean') {
+          this.captchaHalted = data.captchaHalted;
+        }
       }
     } catch {
       this.searches = [];
       this.consecutiveErrors = 0;
       this.halted = false;
       this.haltReason = null;
+      this.captchaHalted = false;
     }
   }
 
@@ -67,7 +72,8 @@ export class SafetyGovernor {
         searches: this.searches,
         consecutiveErrors: this.consecutiveErrors,
         halted: this.halted,
-        haltReason: this.haltReason
+        haltReason: this.haltReason,
+        captchaHalted: this.captchaHalted
       };
       this.storage()?.setItem(GOVERNOR_STORAGE_KEY, JSON.stringify(payload));
     } catch {
@@ -168,21 +174,33 @@ export class SafetyGovernor {
   }
 
   halt(reason) {
+    const isCaptcha = reason === 'captcha' || (typeof reason === 'string' && reason.toLowerCase() === 'captcha');
     this.halted = true;
-    this.haltReason = reason || 'Güvenlik durdurucu devrede.';
+    this.captchaHalted = isCaptcha;
+    this.haltReason = isCaptcha ? 'captcha' : (reason || 'Güvenlik durdurucu devrede.');
     this.save();
 
     if (state.botRunning) {
       state.botRunning = false;
       state.botToken++;
     }
-    setBotStatus(this.haltReason);
-    addBotLog(state.botStatus, 'error');
-    emit('governor:halt', { reason: this.haltReason });
+    const statusText = isCaptcha
+      ? 'CAPTCHA tespit edildi! Güvenlik durdurucu devrede.'
+      : this.haltReason;
+    const logText = isCaptcha
+      ? '⛔ CAPTCHA tespit edildi! Tüm EA istekleri kilitlendi. Lütfen doğrulamayı çözün.'
+      : this.haltReason;
+    setBotStatus(statusText);
+    addBotLog(logText, 'error');
+    emit('governor:halt', { reason: this.haltReason, isCaptcha });
   }
 
   isHalted() {
     return this.halted === true;
+  }
+
+  isCaptchaHalted() {
+    return this.halted === true && (this.captchaHalted === true || this.haltReason === 'captcha');
   }
 
   getHaltReason() {
@@ -192,6 +210,7 @@ export class SafetyGovernor {
   resume() {
     this.halted = false;
     this.haltReason = null;
+    this.captchaHalted = false;
     this.consecutiveErrors = 0;
     this.save();
     setBotStatus('Güvenlik durdurucu sıfırlandı.');
@@ -212,8 +231,25 @@ export class SafetyGovernor {
       consecutiveErrors: this.consecutiveErrors,
       consecutiveErrorLimit: Number(state.snipeSettings?.consecutiveErrorLimit) || 3,
       halted: this.halted,
+      captchaHalted: this.captchaHalted,
       haltReason: this.haltReason
     };
+  }
+
+  static halt(reason) {
+    return safetyGovernor.halt(reason);
+  }
+
+  static resume() {
+    return safetyGovernor.resume();
+  }
+
+  static isHalted() {
+    return safetyGovernor.isHalted();
+  }
+
+  static isCaptchaHalted() {
+    return safetyGovernor.isCaptchaHalted();
   }
 }
 

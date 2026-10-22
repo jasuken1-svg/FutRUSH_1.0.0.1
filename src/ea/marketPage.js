@@ -5,6 +5,7 @@
 
 import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';
+import { safetyGovernor } from '../bot/safetyGovernor.js';
 
 const auctionOf = (item) => {
   try {
@@ -15,6 +16,9 @@ const auctionOf = (item) => {
 };
 
 export const fetchMarketPage = async (eaId, maxBuy = 0, { timeoutMs = 18000 } = {}) => {
+  if (safetyGovernor.isCaptchaHalted()) {
+    return { ok: false, count: 0, listings: [], error: { message: 'CAPTCHA kilitli' } };
+  }
   const service = pageWindow.services && pageWindow.services.Item;
   const Criteria = pageWindow.UTSearchCriteriaDTO;
   if (!service || typeof service.searchTransferMarket !== 'function') {

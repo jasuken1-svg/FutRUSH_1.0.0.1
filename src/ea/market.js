@@ -6,6 +6,7 @@ import { pageWindow } from '../utils/dom.js';
 import { observeEaRequest } from './observe.js';
 import { debug, warnOnce } from '../core/logger.js';
 import { MIN_BIN, roundDownToStep } from './priceSteps.js';
+import { safetyGovernor } from '../bot/safetyGovernor.js';
 
 export const HIGH_BID_STEPS = [
   14990000, 14991000, 14992000, 14993000, 14994000,
@@ -99,6 +100,7 @@ export function makeAutoBuyCriteria(targetOrId, maxBuyOrOptions, maybeOptions) {
 }
 
 export async function searchAutoBuyOffers(target, eaId, token, options = {}) {
+  if (safetyGovernor.isCaptchaHalted()) return { stopped: true, offers: [] };
   const services = pageWindow.services;
   const service = services && services.Item;
   if (!service || typeof service.searchTransferMarket !== 'function') throw new Error('EA Transfer Market arama servisi bulunamadı.');
@@ -140,6 +142,9 @@ export async function searchAutoBuyOffers(target, eaId, token, options = {}) {
 }
 
 export async function buyAutoOffer(offer) {
+  if (safetyGovernor.isCaptchaHalted()) {
+    return { success: false, blocked: true, error: 'CAPTCHA kilitli' };
+  }
   const service = pageWindow.services?.Item;
   if (!service || typeof service.bid !== 'function') throw new Error('EA satın alma servisi bulunamadı.');
   const observable = service.bid(offer.item, offer.price);

@@ -40,13 +40,30 @@ export function renderPanelTabs(panel) {
 
     const banner = panel.querySelector('.fr-governor-banner');
     const bannerMsg = panel.querySelector('.fr-governor-banner-msg');
+    const resumeBtn = panel.querySelector('.fr-governor-resume-btn');
     const syncBanner = () => {
       if (!banner) return;
       if (safetyGovernor.isHalted()) {
         banner.style.display = 'flex';
-        bannerMsg.textContent = '⛔ ' + safetyGovernor.getHaltReason();
+        const isCaptcha = safetyGovernor.isCaptchaHalted?.();
+        if (isCaptcha) {
+          banner.classList.add('fr-governor-banner--captcha');
+          bannerMsg.innerHTML = '🚨 <strong>CAPTCHA TESPİT EDİLDİ!</strong> EA doğrulaması gerekiyor.';
+          if (resumeBtn) {
+            resumeBtn.textContent = "Captcha'yı çözdüm, devam et";
+            resumeBtn.classList.add('fr-governor-resume-btn--captcha');
+          }
+        } else {
+          banner.classList.remove('fr-governor-banner--captcha');
+          bannerMsg.textContent = '⛔ ' + safetyGovernor.getHaltReason();
+          if (resumeBtn) {
+            resumeBtn.textContent = 'Devam Et ▶';
+            resumeBtn.classList.remove('fr-governor-resume-btn--captcha');
+          }
+        }
       } else {
         banner.style.display = 'none';
+        banner.classList.remove('fr-governor-banner--captcha');
       }
     };
     syncBanner();
