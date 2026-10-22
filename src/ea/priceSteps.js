@@ -4,6 +4,7 @@
 export const MIN_PRICE = 200;
 export const MAX_PRICE = 14999000;
 export const MIN_BIN = MIN_PRICE;
+export const MAX_BIN = MAX_PRICE;
 
 export const PRICE_TIERS = Object.freeze([
   { min: 200, max: 1000, step: 50 },
@@ -64,6 +65,10 @@ export const roundUpToStep = (price) => {
   return roundToPriceStep(value, 'up');
 };
 
+export const roundToNearestStep = (price) => roundToPriceStep(price, 'nearest');
+
+export const parsePriceInput = (raw) => Number(String(raw ?? '').replace(/[^\d]/g, '')) || 0;
+
 export const nextPriceUp = (price) => {
   const p = Number(price) || 0;
   if (p < MIN_PRICE) return MIN_PRICE;
@@ -89,11 +94,13 @@ export const priceBelow = (price) => (price > MIN_PRICE ? nextPriceDown(price) :
 
 export const bindPriceStepRounding = (inputElement, onCommit) => {
   if (!inputElement) return () => {};
+  let lastCommitted = null;
   const handler = () => {
-    const rawStr = String(inputElement.value || '').replace(/[.\s]/g, '').replace(/,/g, '.');
-    const val = Number(rawStr);
-    if (!Number.isFinite(val) || val <= 0) return;
-    const rounded = clampPrice(roundToPriceStep(val, 'nearest'));
+    const val = parsePriceInput(inputElement.value);
+    if (val <= 0) return;
+    const rounded = clampPrice(roundToNearestStep(val));
+    if (rounded === lastCommitted) return;
+    lastCommitted = rounded;
     if (typeof onCommit === 'function') {
       onCommit(rounded);
     } else {

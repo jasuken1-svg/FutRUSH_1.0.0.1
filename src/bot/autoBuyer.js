@@ -13,6 +13,7 @@ import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
 import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
+import { addMarketLog } from '../ui/marketLogBox.js';
 import { idleWait } from './idle.js';
 import { safetyGovernor } from './safetyGovernor.js';
 import { getEffectiveSpeedDelayMs, SPEED_TIERS } from './speedTiers.js';
@@ -100,7 +101,7 @@ export async function runAutoBuyer(token, deps = {}) {
 
   try {
     for (const target of state.targets) {
-      if (target.searchDisabled) continue;
+      if (target.searchDisabled || target.insufficientBalance) continue;
       if (token !== state.botToken || !state.botRunning) return;
       const needsResolution = !hasCurrentTargetEaId(target);
       await resolveId(target);
@@ -113,7 +114,7 @@ export async function runAutoBuyer(token, deps = {}) {
       cycles++;
       for (let targetIndex = 0; targetIndex < state.targets.length; targetIndex++) {
         const target = state.targets[targetIndex];
-        if (target.searchDisabled) continue;
+        if (target.searchDisabled || target.insufficientBalance) continue;
         const eaId = Number(target.eaId) || 0;
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -137,8 +138,12 @@ export async function runAutoBuyer(token, deps = {}) {
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             const balance = coinBalance();
-            if (balance && offer.price > balance) {
-              throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
+            if (balance != null && offer.price > balance) {
+              addMarketLog({
+                text: `${target.name}: Satın alma atlandı — Bakiye yetersiz (${balance.toLocaleString('tr-TR')} < ${offer.price.toLocaleString('tr-TR')}).`,
+                type: 'warn'
+              });
+              continue;
             }
 
             if (state.snipeSettings.dryRun) {
@@ -207,7 +212,7 @@ export async function runAutoBuyer(token, deps = {}) {
               }
             }
           }
-          const hasMoreSearches = attempt < attempts || state.targets.slice(targetIndex + 1).some((t) => !t.searchDisabled);
+          const hasMoreSearches = attempt < attempts || state.targets.slice(targetIndex + 1).some((t) => !t.searchDisabled && !t.insufficientBalance);
           if (checkLimitsReached()) return;
           if (hasMoreSearches && state.botRunning && token === state.botToken) {
             const baseDelay = getSpeedDelay();

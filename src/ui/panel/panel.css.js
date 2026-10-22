@@ -275,6 +275,30 @@ export const panelCss = `
     #${P.id} .speed-tier-badge-name { font-weight: 700; }
     #${P.id} .speed-tier-badge-sec { color: #e8f4f6; font-variant-numeric: tabular-nums; opacity: .9; }
 
+    #${P.id} .fr-balance-top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 6px;
+      align-self: center;
+      padding: 3px 8px;
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #00e5ff;
+      white-space: nowrap;
+      user-select: none;
+      background: rgba(0, 229, 255, 0.08);
+      font-variant-numeric: tabular-nums;
+      transition: all .2s ease;
+    }
+    #${P.id} .fr-balance-top-badge.is-unknown {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
     /* Arama Hızı 4 Kademeli Kart Grubu */
     #${P.id} .speed-tier-setting-row {
       display: flex;
@@ -1011,6 +1035,30 @@ export const panelCss = `
     #${P.id} .fr-target-card.is-search-inactive {
       opacity: 0.55;
       filter: grayscale(0.85);
+    }
+    #${P.id} .fr-target-card.is-insufficient-balance {
+      border-color: rgba(245, 158, 11, 0.45);
+      background: rgba(245, 158, 11, 0.05);
+    }
+    #${P.id} .fr-target-badge-insufficient {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 5px;
+      border: 1px solid rgba(245, 158, 11, 0.7);
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      user-select: none;
+      animation: fr-insufficient-glow 1.8s ease-in-out infinite alternate;
+    }
+    @keyframes fr-insufficient-glow {
+      from { box-shadow: 0 0 2px rgba(245, 158, 11, 0.25); }
+      to { box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
     }
     #${P.id} .fr-target-card-body {
       display: flex; flex-direction: column; justify-content: space-between; flex: 1; min-width: 0; gap: 6px;

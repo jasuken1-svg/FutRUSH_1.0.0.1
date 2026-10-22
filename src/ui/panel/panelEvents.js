@@ -26,6 +26,10 @@ export function registerPanelEvents() {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (content && state.activePanelTab === 'targets') renderTargetContent(content);
   });
+  on('balance:changed', () => {
+    const content = panel?.querySelector('.fc-snipe-tab-content');
+    if (content && state.activePanelTab === 'targets') renderTargetContent(content);
+  });
   on('targets:status', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (!content || state.activePanelTab !== 'targets') return;

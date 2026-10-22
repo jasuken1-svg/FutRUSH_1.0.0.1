@@ -15,6 +15,7 @@ import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, rou
 import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
 import { FUTBIN_ICON_DATA } from '../../icons.js';
+import { getBalance } from '../../../ea/balance.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
@@ -456,10 +457,13 @@ export function renderTargetContent(content) {
         totalEstProfit += (Math.round(fbPrice * 0.95) - buy) * searches;
       }
     });
+    const bal = state.currentBalance !== undefined ? state.currentBalance : getBalance();
+    const balText = bal === null ? '<span style="color: #f59e0b;">Okunamıyor</span>' : `${Number(bal).toLocaleString('tr-TR')}`;
     summaryBar.innerHTML = `
       <span class="fr-summary-item">Hedef: <strong class="fr-summary-val">${totalTargetCards}</strong></span>
       <span class="fr-summary-item">Gereken: <strong class="fr-summary-val">${totalCoinsNeeded.toLocaleString('tr-TR')}</strong></span>
       <span class="fr-summary-item">Tahmini Kâr: <strong class="fr-summary-val fr-summary-profit">${totalEstProfit > 0 ? '+' : ''}${totalEstProfit.toLocaleString('tr-TR')}</strong></span>
+      <span class="fr-summary-item fr-summary-balance">Bakiye: <strong class="fr-summary-balance-val">${balText}</strong></span>
     `;
   };
 
@@ -579,9 +583,11 @@ export function renderTargetContent(content) {
     if (!player.priceUpdatedAt) {
       player.priceUpdatedAt = Date.now();
     }
-    const isSearchActive = !player.searchDisabled;
+    const isSearchActive = !player.searchDisabled && !player.insufficientBalance;
     const card = document.createElement('div');
-    card.className = 'fr-target-card' + (isSearchActive ? '' : ' is-search-inactive');
+    card.className = 'fr-target-card' +
+      (isSearchActive ? '' : ' is-search-inactive') +
+      (player.insufficientBalance ? ' is-insufficient-balance' : '');
     card.setAttribute('role', 'listitem');
 
     if (player.playerImageUrl || player.promoImageUrl) {
@@ -598,8 +604,9 @@ export function renderTargetContent(content) {
 
     const searchToggle = document.createElement('button');
     searchToggle.type = 'button';
-    searchToggle.className = 'fr-target-search-toggle ' + (isSearchActive ? 'is-active' : 'is-inactive');
-    searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${isSearchActive ? 'Açık' : 'Kapalı'}</span>`;
+    const toggleActive = !player.searchDisabled;
+    searchToggle.className = 'fr-target-search-toggle ' + (toggleActive ? 'is-active' : 'is-inactive');
+    searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${toggleActive ? 'Açık' : 'Kapalı'}</span>`;
     searchToggle.setAttribute('title', 'Aramayı Aç/Kapat');
     searchToggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -608,11 +615,19 @@ export function renderTargetContent(content) {
       const active = !player.searchDisabled;
       searchToggle.className = 'fr-target-search-toggle ' + (active ? 'is-active' : 'is-inactive');
       searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
-      card.classList.toggle('is-search-inactive', !active);
+      card.classList.toggle('is-search-inactive', !active || !!player.insufficientBalance);
     });
 
     const topRight = document.createElement('div');
     topRight.className = 'fr-target-top-right';
+
+    if (player.insufficientBalance) {
+      const insufficientBadge = document.createElement('span');
+      insufficientBadge.className = 'fr-target-badge-insufficient';
+      insufficientBadge.textContent = 'Bakiye Yetersiz';
+      insufficientBadge.title = 'Maksimum alış fiyatı bakiyeden yüksek olduğu için arama atlanıyor';
+      topRight.appendChild(insufficientBadge);
+    }
 
     const lastUpdate = document.createElement('span');
     lastUpdate.className = 'fr-target-last-update';

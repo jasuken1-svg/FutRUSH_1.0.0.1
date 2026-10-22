@@ -8,6 +8,7 @@ import { renderPanelSettings } from './tabs/settingsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
 import { unmountWaitBar } from './waitBar.js';
 import { SPEED_TIERS, formatTierSeconds } from '../../bot/speedTiers.js';
+import { getBalance } from '../../ea/balance.js';
 
 export function renderPanelTabs(panel) {
     unmountWaitBar();
@@ -28,6 +29,7 @@ export function renderPanelTabs(panel) {
       tabs.map((tab) => '<button class="fc-snipe-tab" type="button" role="tab" data-tab="' + tab.id + '" aria-selected="' + (state.activePanelTab === tab.id) + '">' + tab.label + '</button>').join('') +
       '<div class="fr-dry-run-top-badge" role="status" aria-label="Kuru çalıştırma modu aktif" style="display: none;">KURU ÇALIŞTIRMA</div>' +
       '<div class="speed-tier-top-badge" role="status" aria-label="Aktif arama hızı"></div>' +
+      '<div class="fr-balance-top-badge" role="status" aria-label="Güncel bakiye">🪙 —</div>' +
       '</div><div class="fc-snipe-tab-content" role="tabpanel" aria-live="polite"></div>';
     const content = panel.querySelector('.fc-snipe-tab-content');
     renderPanelTabContent(content);
@@ -60,6 +62,23 @@ export function renderPanelTabs(panel) {
     };
     syncSpeedBadge();
     on('bot:speed-changed', syncSpeedBadge);
+
+    const balanceBadge = panel.querySelector('.fr-balance-top-badge');
+    const syncBalanceBadge = (bal) => {
+      if (!balanceBadge) return;
+      const val = bal !== undefined ? bal : (state.currentBalance !== undefined ? state.currentBalance : getBalance());
+      if (val === null) {
+        balanceBadge.textContent = '🪙 Bakiye okunamıyor';
+        balanceBadge.className = 'fr-balance-top-badge is-unknown';
+        balanceBadge.title = 'Bakiye okunamıyor';
+      } else {
+        balanceBadge.textContent = '🪙 ' + Number(val).toLocaleString('tr-TR');
+        balanceBadge.className = 'fr-balance-top-badge';
+        balanceBadge.title = 'Mevcut Coin Bakiyesi: ' + Number(val).toLocaleString('tr-TR');
+      }
+    };
+    syncBalanceBadge();
+    on('balance:changed', syncBalanceBadge);
 
     const banner = panel.querySelector('.fr-governor-banner');
     const bannerMsg = panel.querySelector('.fr-governor-banner-msg');

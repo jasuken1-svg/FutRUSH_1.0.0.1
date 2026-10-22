@@ -18,6 +18,7 @@ import { registerPanelEvents } from './ui/panel/panelEvents.js';
 import { registerModalEvents as registerSaveDialogEvents } from './ui/modals/saveDialog.js';
 import { registerModalEvents as registerFilterModalEvents } from './ui/modals/filterModal.js';
 import { initCaptchaDetector } from './ea/captchaDetector.js';
+import { ensureBalanceObserver, syncBalance } from './ea/balance.js';
 
 registry.register(createHubSyncModule(schedule));
 registry.register(logoButtonModule);
@@ -31,6 +32,8 @@ registerPanelEvents();
 registerSaveDialogEvents();
 registerFilterModalEvents();
 initCaptchaDetector();
+ensureBalanceObserver();
+syncBalance();
 loadCoreStorage();
 initAll();
 initDomEvents();

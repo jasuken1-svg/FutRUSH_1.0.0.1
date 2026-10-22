@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   MIN_BIN,
+  MAX_BIN,
   MIN_PRICE,
   MAX_PRICE,
   PRICE_TIERS,
@@ -11,6 +12,8 @@ import {
   roundDownToStep,
   roundUpToStep,
   roundToPriceStep,
+  roundToNearestStep,
+  parsePriceInput,
   nextPriceUp,
   nextPriceDown,
   runPriceStepSelfTests
@@ -73,6 +76,18 @@ describe('priceSteps', () => {
     expect(roundToPriceStep(980, 'down')).toBe(950);
     expect(roundToPriceStep(1040, 'nearest')).toBe(1000);
     expect(roundToPriceStep(1060, 'nearest')).toBe(1100);
+  });
+
+  it('parsePriceInput, roundToNearestStep ve MAX_BIN dogru calisir', () => {
+    expect(MAX_BIN).toBe(14999000);
+    expect(roundToNearestStep(1040)).toBe(1000);
+    expect(roundToNearestStep(1060)).toBe(1100);
+    expect(parsePriceInput('19,000')).toBe(19000);
+    expect(parsePriceInput('19.000')).toBe(19000);
+    expect(parsePriceInput(' 19 000 ')).toBe(19000);
+    expect(parsePriceInput('abc')).toBe(0);
+    expect(parsePriceInput(null)).toBe(0);
+    expect(parsePriceInput(undefined)).toBe(0);
   });
 
   it('runPriceStepSelfTests tum test vakalarini basariyla tamamlar (25+ vaka)', () => {
