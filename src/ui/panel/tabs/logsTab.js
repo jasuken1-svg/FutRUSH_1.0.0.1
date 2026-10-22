@@ -31,13 +31,13 @@ function createLogRow(entry, animate) {
     row.classList.add('log-fx-success');
     if (animate) {
       row.classList.add('log-fx-new');
-      setTimeout(() => row.classList.remove('log-fx-new'), 8000);
+      setTimeout(() => row.classList.remove('log-fx-new'), 9200);
     }
   } else if (entry.kind === 'missed') {
     row.classList.add('log-fx-lost');
     if (animate) {
-      row.classList.add('log-fx-new', 'fr-log-missed-pulse');
-      setTimeout(() => row.classList.remove('log-fx-new'), 8000);
+      row.classList.add('log-fx-new');
+      setTimeout(() => row.classList.remove('log-fx-new'), 9200);
     }
   }
 
@@ -88,7 +88,7 @@ function createLogRow(entry, animate) {
   if (entry.baseMs != null && entry.jitterMs != null && entry.totalMs != null) {
     const tag = document.createElement('span');
     tag.className = 'log-wait-tag';
-    tag.textContent = `${entry.baseMs} ms + ${entry.jitterMs} ms jitter = ${entry.totalMs} ms`;
+    tag.textContent = `${entry.totalMs}ms`;
     row.appendChild(tag);
   }
 
@@ -192,7 +192,7 @@ function handleLiveWaitUpdate() {
       tag.className = 'log-wait-tag';
       row.appendChild(tag);
     }
-    tag.textContent = `${wait.baseMs} ms + ${wait.jitterMs} ms jitter = ${latestEntry.totalMs} ms`;
+    tag.textContent = `${latestEntry.totalMs}ms`;
 
     clearActiveWaitAnimation();
 

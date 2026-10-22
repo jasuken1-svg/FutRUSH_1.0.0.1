@@ -52,7 +52,7 @@ describe('logsTab wait overlay and jitter breakdown', () => {
     // Wait tag should be created
     const tag = row.querySelector('.log-wait-tag');
     expect(tag).toBeTruthy();
-    expect(tag.textContent).toBe('2500 ms + 213 ms jitter = 2713 ms');
+    expect(tag.textContent).toBe('2713ms');
 
     // Sliding animation class and CSS vars should be applied
     expect(row.classList.contains('log-wait-active')).toBe(true);

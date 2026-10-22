@@ -1199,42 +1199,59 @@ export const panelCss = `
       box-shadow: 0 0 4px rgba(0, 229, 255, 0.8) !important;
     }
     #${P.id} .fr-log-row, .fr-bot-logs-panel .fr-log-row {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-      padding: 5px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;
+      display: grid; grid-template-columns: 52px minmax(0,1fr); align-items: start; gap: 6px;
+      padding: 6px 7px; border-left: 2px solid #3ea8ff; border-radius: 0 4px 4px 0;
       color: #bfe4ff; background: rgba(62,168,255,.12); flex: 0 0 auto;
+      position: relative;
     }
-    #${P.id} .fr-log-time, .fr-bot-logs-panel .fr-log-time { flex: 0 0 auto; color: inherit; opacity: .86; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    #${P.id} .fr-log-message, .fr-bot-logs-panel .fr-log-message { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+    #${P.id} .fr-log-time, .fr-bot-logs-panel .fr-log-time { color: inherit; opacity: .86; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #${P.id} .fr-log-message, .fr-bot-logs-panel .fr-log-message { min-width: 0; overflow-wrap: anywhere; }
     #${P.id} .fr-log-row[data-tone="success"], .fr-bot-logs-panel .fr-log-row[data-tone="success"] { border-left-color: #51d88a; color: #b7f5cf; background: rgba(81,216,138,.12); }
     #${P.id} .fr-log-row[data-tone="info"], .fr-bot-logs-panel .fr-log-row[data-tone="info"] { border-left-color: #3ea8ff; color: #bfe4ff; background: rgba(62,168,255,.12); }
     #${P.id} .fr-log-row[data-tone="error"], .fr-bot-logs-panel .fr-log-row[data-tone="error"] { border-left-color: #ff5261; color: #ffb3ba; background: rgba(255,82,97,.14); }
     #${P.id} .fr-log-enter, .fr-bot-logs-panel .fr-log-enter { animation: fr-log-enter .2s ease both; }
-    #${P.id} .fr-log-missed-pulse, .fr-bot-logs-panel .fr-log-missed-pulse { animation: fr-log-enter .2s ease both, fr-log-missed-pulse .55s ease-out; }
+    #${P.id} .fr-log-missed-pulse, .fr-bot-logs-panel .fr-log-missed-pulse { animation: fr-log-enter .2s ease both; }
 
-    /* Parlama (Glow) Animasyonu */
-    #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success { --fx: 34,197,94; }
-    #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost { --fx: 239,68,68; }
+    /* Parlama (Glow) Animasyonu — Alındı ve BAŞKASI ALDI */
+    #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success { --fx: 34,197,94; color: #bbf7d0 !important; }
+    #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost { --fx: 239,68,68; color: #fecaca !important; }
     #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success,
     #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost {
       position: relative; overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25);
+      font-weight: 700;
+      letter-spacing: .2px;
+      text-shadow: 0 0 8px rgba(var(--fx),.8);
+      border-left-color: transparent !important;
+      background: linear-gradient(90deg, rgba(var(--fx),.28), rgba(var(--fx),.12)), rgba(62,168,255,.12);
+      box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 1px rgba(var(--fx),.6), 0 0 20px rgba(var(--fx),.45);
     }
-    #${P.id} .log-fx-new, .fr-bot-logs-panel .log-fx-new {
-      animation: logFxBurst 1.4s ease-out, logFxPulse 2.2s ease-in-out 1.4s 3;
+    #${P.id} .log-fx-success.log-fx-new, .fr-bot-logs-panel .log-fx-success.log-fx-new {
+      animation: logFxBurst 1.8s ease-out, logFxPulse 1.8s ease-in-out 1.8s 4;
+    }
+    #${P.id} .log-fx-lost.log-fx-new, .fr-bot-logs-panel .log-fx-lost.log-fx-new {
+      animation: logFxBurst 1.8s ease-out, logFxShake .5s ease-in-out, logFxPulse 1.8s ease-in-out 1.8s 4;
     }
     #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after {
       content: ""; position: absolute; inset: 0; pointer-events: none;
-      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%);
-      transform: translateX(-120%); animation: logFxShine 1.1s ease-out .15s forwards;
+      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);
+      transform: translateX(-120%);
+      animation: logFxShine 1.1s ease-out .2s 2;
     }
     @keyframes logFxBurst {
-      0%   { background-color: rgba(var(--fx),.45); box-shadow: 0 0 0 0 rgba(var(--fx),.9), 0 0 0 0 rgba(var(--fx),0); transform: scale(1.015); }
-      40%  { box-shadow: 0 0 0 3px rgba(var(--fx),.6), 0 0 30px rgba(var(--fx),.75); }
-      100% { box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25); transform: scale(1); }
+      0%   { background-color: rgba(var(--fx),.65); box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 0 rgba(var(--fx),1), 0 0 0 rgba(var(--fx),0); }
+      35%  { box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 4px rgba(var(--fx),.85), 0 0 42px rgba(var(--fx),.95); }
+      100% { box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 1px rgba(var(--fx),.6), 0 0 20px rgba(var(--fx),.45); }
     }
     @keyframes logFxPulse {
-      0%,100% { box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25); }
-      50%     { box-shadow: 0 0 0 1px rgba(var(--fx),.6),  0 0 24px rgba(var(--fx),.5); }
+      0%,100% { box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 1px rgba(var(--fx),.6), 0 0 20px rgba(var(--fx),.45); text-shadow: 0 0 6px rgba(var(--fx),.6); }
+      50%     { box-shadow: inset 5px 0 0 rgb(var(--fx)), 0 0 0 2px rgba(var(--fx),.9), 0 0 34px rgba(var(--fx),.8); text-shadow: 0 0 12px rgba(var(--fx),1); }
+    }
+    @keyframes logFxShake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-4px); }
+      40% { transform: translateX(4px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
     }
     @keyframes logFxShine { to { transform: translateX(120%); } }
 
@@ -1245,14 +1262,14 @@ export const panelCss = `
     }
     #${P.id} .fr-log-row.log-wait-active > *, .fr-bot-logs-panel .fr-log-row.log-wait-active > *,
     #${P.id} .log-row.log-wait-active > *, .fr-bot-logs-panel .log-row.log-wait-active > * {
-      position: relative; z-index: 1;
+      position: relative; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,.7);
     }
     #${P.id} .fr-log-row.log-wait-active::before, .fr-bot-logs-panel .fr-log-row.log-wait-active::before,
     #${P.id} .log-row.log-wait-active::before, .fr-bot-logs-panel .log-row.log-wait-active::before {
       content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-      background: linear-gradient(90deg, rgba(var(--tier-rgb,56,189,248),.08), rgba(var(--tier-rgb,56,189,248),.30));
-      border-right: 2px solid rgba(var(--tier-rgb,56,189,248),.9);
-      box-shadow: 4px 0 14px rgba(var(--tier-rgb,56,189,248),.55);
+      background: linear-gradient(90deg, rgba(var(--tier-rgb,56,189,248),.20) 0%, rgba(var(--tier-rgb,56,189,248),.45) 75%, rgba(var(--tier-rgb,56,189,248),.70) 100%);
+      border-right: 3px solid rgba(var(--tier-rgb,56,189,248),1);
+      box-shadow: 6px 0 20px rgba(var(--tier-rgb,56,189,248),.85), 0 0 10px rgba(var(--tier-rgb,56,189,248),.5);
       transform: translateX(-100%);
       animation: logWaitSlide var(--wait-ms, 2500ms) linear forwards;
     }
@@ -1266,17 +1283,14 @@ export const panelCss = `
       to { transform: translateX(0); }
     }
     #${P.id} .log-wait-tag, .fr-bot-logs-panel .log-wait-tag {
-      margin-left: auto;
-      opacity: .7;
-      font-size: 11px;
-      white-space: nowrap;
-      pointer-events: none;
-      font-variant-numeric: tabular-nums;
-      color: #94a3b8;
+      position: absolute; right: 6px; bottom: 1px; z-index: 2;
+      font-size: 10px; transform: scale(.5); transform-origin: right bottom;
+      line-height: 1; opacity: .75; color: #94a3b8; pointer-events: none; white-space: nowrap;
     }
     @media (prefers-reduced-motion: reduce) {
       #${P.id} .log-fx-new, .fr-bot-logs-panel .log-fx-new,
-      #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after {
+      #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after,
+      #${P.id} .log-fx-lost.log-fx-new, .fr-bot-logs-panel .log-fx-lost.log-fx-new {
         animation: none !important;
       }
       #${P.id} .fr-log-row.log-wait-active::before, .fr-bot-logs-panel .fr-log-row.log-wait-active::before,
