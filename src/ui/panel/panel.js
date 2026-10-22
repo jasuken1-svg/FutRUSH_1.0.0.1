@@ -36,6 +36,22 @@ export function panelShown() {
   }
 
 export function applyGeom() {
+    if (panel && panel.closest && panel.closest('#fr-hub-view')) {
+      const geom = state.geom;
+      const w0 = geom ? geom.w * vw() : 480;
+      const h0 = geom ? geom.h * vh() : 620;
+      panel.style.position = 'relative';
+      panel.style.left = '';
+      panel.style.top = '';
+      panel.style.width = Math.round(w0) + 'px';
+      panel.style.height = Math.round(h0) + 'px';
+      panel.style.display = 'flex';
+      if (!state.panelExpanded) {
+        state.panelExpanded = true;
+        renderPanelTabs(panel);
+      }
+      return;
+    }
     const geom = state.geom;
     if (!geom) { panel.style.display = 'none'; return; }
     const left = geom.l * vw();

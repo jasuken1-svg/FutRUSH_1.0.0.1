@@ -146,6 +146,10 @@ function isPinnedListOpen() {
 
 export function syncMarketLogVisibility() {
   if (!currentBoxEl) return;
+  if (currentBoxEl.closest && currentBoxEl.closest('#fr-hub-view')) {
+    currentBoxEl.style.display = 'flex';
+    return;
+  }
   const open = isPinnedListOpen();
   currentBoxEl.style.display = open ? 'flex' : 'none';
 }
@@ -174,9 +178,34 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
   renderMarketLogBox();
 }
 
-export function mountMarketLogBox() {
+export function mountMarketLogBox(targetContainer) {
   ensureStyles();
   const searchPrices = document.querySelector('.ut-market-search-filters-view .search-prices');
+  if (searchPrices) {
+    searchPrices.querySelectorAll('input').forEach((input) => {
+      if (input.dataset.frBoundPrice) return;
+      input.dataset.frBoundPrice = 'true';
+      bindPriceStepRounding(input);
+    });
+  }
+
+  const hubView = targetContainer || document.getElementById('fr-hub-view');
+  if (hubView) {
+    let box = hubView.querySelector('.fr-market-log-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'fr-market-log-box';
+      hubView.appendChild(box);
+    }
+    currentBoxEl = box;
+    renderMarketLogBox();
+    return;
+  }
+
+  if (currentBoxEl && currentBoxEl.isConnected && currentBoxEl.closest && currentBoxEl.closest('#fr-hub-view')) {
+    return;
+  }
+
   if (!searchPrices) {
     currentBoxEl = null;
     return;
