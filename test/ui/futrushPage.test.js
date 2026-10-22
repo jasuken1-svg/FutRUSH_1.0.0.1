@@ -86,7 +86,7 @@ describe('futrushPage', () => {
     expect(logBtn.title).toBe('Genel Logları göster');
     expect(logBtn.textContent).toContain('Genel Logları göster');
 
-    // Hub container contains fc-snipe-panel as first child on the left
+    // Hub container contains fc-snipe-panel as first child on the left and logBox as second child
     const hub = futrushPage.getHubContainer();
     expect(hub).toBeTruthy();
     expect(hub.style.display).toBe('flex');
@@ -94,12 +94,21 @@ describe('futrushPage', () => {
     expect(panelEl).toBeTruthy();
     expect(hub.children[0]).toBe(panelEl);
 
-    // Genel Log floating box exists, head is removed, 4 invisible corner handles and close button exist
-    const logBox = document.querySelector('.fr-market-log-box');
+    // Genel Log box is placed 15px to the right of fc-snipe-panel at same top height
+    const logBox = hub.querySelector('.fr-market-log-box');
     expect(logBox).toBeTruthy();
+    expect(hub.children[1]).toBe(logBox);
+    expect(panelEl.nextElementSibling).toBe(logBox);
+
+    const styleEl = document.getElementById('fr-futrush-page-style');
+    expect(styleEl.textContent).toContain('gap: 15px');
+    expect(styleEl.textContent).toContain('width: 400px !important');
+    expect(styleEl.textContent).toContain('height: 400px !important');
+
     expect(logBox.querySelector('.fr-market-log-head')).toBeNull();
     expect(logBox.querySelector('.fr-market-log-close-btn')).toBeTruthy();
     expect(logBox.querySelectorAll('.fr-log-resize-corner').length).toBe(4);
+    expect(logBox.querySelector('.fr-log-list')).toBeTruthy();
     expect(logBox.textContent).toContain('Genel Log Listesi');
     expect(logBox.textContent).toContain('Hedef ve işlem bildirimleri burada anlık olarak gösterilir.');
   });

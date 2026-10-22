@@ -5,7 +5,7 @@ import { LOGO_SVG } from './icons.js';
 import { state } from '../core/state.js';
 import { panel, applyGeom } from './panel/panel.js';
 import { renderPanelTabs } from './panel/panelTabs.js';
-import { toggleMarketLogBox, renderMarketLogBox } from './marketLogBox.js';
+import { toggleMarketLogBox, renderMarketLogBox, openMarketLogBox, mountMarketLogBox } from './marketLogBox.js';
 
 let tabEl = null;
 let hubContainer = null;
@@ -144,7 +144,7 @@ function ensureStyles() {
       flex-direction: row;
       align-items: flex-start;
       justify-content: flex-start;
-      gap: 16px;
+      gap: 15px;
       padding: 16px;
       overflow-x: auto;
       overflow-y: auto;
@@ -160,6 +160,28 @@ function ensureStyles() {
       flex: 0 0 auto !important;
       display: flex !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+    }
+    #fr-hub-view .fr-market-log-box:not(.fr-dragged) {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 400px !important;
+      min-width: 400px !important;
+      height: 400px !important;
+      min-height: 400px !important;
+      flex: 0 0 400px !important;
+      border-radius: 0 !important;
+      display: flex !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+    }
+    #fr-hub-view .fr-market-log-box.fr-dragged {
+      position: fixed !important;
+      border-radius: 0 !important;
+      display: flex !important;
+      z-index: 99999 !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
     }
   `;
   document.head.appendChild(style);
@@ -278,6 +300,13 @@ export function ensureHubContainer() {
     }
   }
 
+  // Genel Log kutusu (#fc-snipe-panel'in 15px saginda ayni yukseklikte yer alir)
+  mountMarketLogBox(hubContainer);
+  const logBox = hubContainer.querySelector('.fr-market-log-box');
+  if (panel && logBox && logBox.previousElementSibling !== panel) {
+    hubContainer.insertBefore(logBox, panel.nextSibling);
+  }
+
   return hubContainer;
 }
 
@@ -295,6 +324,7 @@ export function openFutrushPage() {
   }
 
   ensureHubContainer();
+  openMarketLogBox();
   placeHeaderLogButton();
 
   const contentArea = document.querySelector('.ut-navigation-container-view--content');

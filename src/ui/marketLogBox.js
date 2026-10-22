@@ -27,10 +27,10 @@ function ensureStyles() {
       position: fixed;
       top: 65px;
       right: 24px;
-      width: 420px;
+      width: 400px;
       min-width: 260px;
       max-width: 90vw;
-      height: 180px;
+      height: 400px;
       min-height: 80px;
       max-height: 85vh;
       background: rgba(10, 16, 26, 0.95);
@@ -275,6 +275,7 @@ function makeDraggable(box) {
     const r = box.getBoundingClientRect();
     initLeft = r.left;
     initTop = r.top;
+    box.classList.add('fr-dragged');
 
     box.style.left = initLeft + 'px';
     box.style.top = initTop + 'px';
@@ -322,6 +323,7 @@ function makeCornerResizable(box, cornerEl, direction) {
     const r = box.getBoundingClientRect();
     initLeft = r.left;
     initTop = r.top;
+    box.classList.add('fr-dragged');
 
     box.style.left = initLeft + 'px';
     box.style.top = initTop + 'px';
@@ -418,10 +420,12 @@ export function mountMarketLogBox(targetContainer) {
   }
 
   if (targetContainer) {
-    let box = targetContainer.querySelector('.fr-market-log-box');
+    let box = targetContainer.querySelector('.fr-market-log-box') || currentBoxEl || document.querySelector('.fr-market-log-box');
     if (!box) {
       box = document.createElement('div');
       box.className = 'fr-market-log-box';
+    }
+    if (box.parentElement !== targetContainer) {
       targetContainer.appendChild(box);
     }
     currentBoxEl = box;
@@ -480,7 +484,7 @@ function setupBoxElements(box) {
   let list = box.querySelector('.fr-market-log-list');
   if (!list) {
     list = document.createElement('div');
-    list.className = 'fr-market-log-list';
+    list.className = 'fr-market-log-list fr-log-list';
     list.addEventListener('wheel', (e) => {
       e.stopPropagation();
       list.scrollTop += e.deltaY;
