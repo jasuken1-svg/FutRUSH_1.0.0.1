@@ -154,7 +154,7 @@ function ensureStyles() {
     .fr-market-log-text.is-sliding {
       text-overflow: clip !important;
       overflow: visible !important;
-      animation: fr-marquee-slide var(--marquee-duration, 6s) linear infinite alternate !important;
+      animation: fr-marquee-slide var(--marquee-duration, 3s) ease-in-out infinite alternate !important;
     }
     @keyframes fr-marquee-slide {
       0%, 15% { transform: translateX(0); }
@@ -268,7 +268,8 @@ export function addMarketLog({ text, type = 'info', undoAction = null }) {
         textSpan.classList.add('is-sliding');
         const overflow = textSpan.scrollWidth - textSpan.clientWidth;
         textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
-        textSpan.style.setProperty('--marquee-duration', '6s');
+        const duration = Math.max(2.5, Math.min(5, overflow / 40));
+        textSpan.style.setProperty('--marquee-duration', `${duration}s`);
         if (slideTimer) clearTimeout(slideTimer);
         slideTimer = setTimeout(() => {
           textSpan.classList.remove('is-sliding');
@@ -402,7 +403,8 @@ export function renderMarketLogBox(forceTop = false) {
           textSpan.classList.add('is-sliding');
           const overflow = textSpan.scrollWidth - textSpan.clientWidth;
           textSpan.style.setProperty('--marquee-overflow', `${overflow + 8}px`);
-          textSpan.style.setProperty('--marquee-duration', '6s');
+          const duration = Math.max(2.5, Math.min(5, overflow / 40));
+          textSpan.style.setProperty('--marquee-duration', `${duration}s`);
           if (slideTimer) clearTimeout(slideTimer);
           slideTimer = setTimeout(() => {
             textSpan.classList.remove('is-sliding');

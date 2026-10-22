@@ -836,19 +836,30 @@ export function renderTargetContent(content) {
           return;
         }
         if (control.key === 'buyNow') {
-          const capCheck = validatePriceCap(completedValue, player.price);
-          if (!capCheck.allowed) {
-            value.value = formatVal(control.key, player[control.key]);
+          const futbinPrice = Number(player.price) || 0;
+          if (futbinPrice > 0 && completedValue > futbinPrice) {
             setTargetStatus({
               type: 'error',
-              message: `Maksimum Fiyat Koruması: ${capCheck.reason}`,
+              message: `Maksimum Fiyat Koruması: ${player.name} SATIN AL (${completedValue.toLocaleString('tr-TR')}) FutBIN piyasa fiyatını (${futbinPrice.toLocaleString('tr-TR')}) aşıyor! Tarama durdurulacaktır.`,
               holdMs: 25000
             });
             addMarketLog({
-              text: `🛡️ [Fiyat Koruması] ${player.name}: ${capCheck.reason}`,
+              text: `🛡️ [Fiyat Koruması] ${player.name}: SATIN AL (${completedValue.toLocaleString('tr-TR')}) FutBIN piyasa değerini (${futbinPrice.toLocaleString('tr-TR')}) aşıyor.`,
               type: 'warn'
             });
-            return;
+          } else {
+            const capCheck = validatePriceCap(completedValue, player.price);
+            if (!capCheck.allowed) {
+              setTargetStatus({
+                type: 'error',
+                message: `Maksimum Fiyat Koruması: ${capCheck.reason}`,
+                holdMs: 25000
+              });
+              addMarketLog({
+                text: `🛡️ [Fiyat Koruması] ${player.name}: ${capCheck.reason}`,
+                type: 'warn'
+              });
+            }
           }
         }
         player[control.key] = completedValue;
