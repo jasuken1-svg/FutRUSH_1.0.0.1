@@ -25,6 +25,7 @@ const defaults = {
   repeat: 0,
   waitSeconds: [15, 35],
   autoSell: false,
+  dryRun: false,
   maxPlayers: 1,
   speed: 0,
   speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -75,13 +76,16 @@ describe('snipe settings storage', () => {
 
   it('loads a valid record into the existing settings object', () => {
     const settings = state.snipeSettings;
-    loadRecord({ repeat: 4, waitSeconds: [10, 25], autoSell: true, maxPlayers: 8, speed: 2 });
+    loadRecord({ repeat: 4, waitSeconds: [10, 25], autoSell: true,
+      dryRun: false,
+      dryRun: false, maxPlayers: 8, speed: 2 });
 
     expect(state.snipeSettings).toBe(settings);
     expect(state.snipeSettings).toEqual({
       repeat: 4,
       waitSeconds: [10, 25],
       autoSell: true,
+      dryRun: false,
       maxPlayers: 8,
       speed: 2,
       speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -152,6 +156,7 @@ describe('snipe settings storage', () => {
       repeat: 12,
       waitSeconds: [15, 45],
       autoSell: true,
+      dryRun: false,
       maxPlayers: 6,
       speed: 3,
       maxSpendCoins: 250000
@@ -165,6 +170,7 @@ describe('snipe settings storage', () => {
       repeat: 12,
       waitSeconds: [15, 45],
       autoSell: true,
+      dryRun: false,
       maxPlayers: 6,
       speed: 3,
       speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },

@@ -138,57 +138,70 @@ export async function runAutoBuyer(token, deps = {}) {
             if (balance && offer.price > balance) {
               throw new Error('Mevcut coin bakiyesi ilan fiyatından düşük (' + offer.price.toLocaleString('tr-TR') + ').');
             }
-            setBotStatus(target.name + ' · ' + offer.price.toLocaleString('tr-TR') + ' coin için satın alma deneniyor...');
-            let purchase;
-            try {
-              purchase = await buy(offer);
-            } catch (error) {
-              purchase = { success: false, error };
-            }
-            if (token !== state.botToken || !state.botRunning) return;
-            if (purchase.success) {
-              bought++;
-              totalSpent += offer.price;
-              incrementStat('bought');
+
+            if (state.snipeSettings.dryRun) {
               governor.recordPurchase(offer.price);
-              const futbinPrice = Number(target.price) || 0;
-              const cardProfit = futbinPrice > 0 ? Math.round(futbinPrice * 0.95) - offer.price : 0;
-              totalProfit += cardProfit;
+              incrementStat('simulatedBought');
               addBotLog({
                 name: target.name,
                 rating: offer.rating,
                 price: offer.price,
-                profit: cardProfit,
-                totalProfit,
-                kind: 'success'
+                kind: 'dryRun'
               });
+              setBotStatus('KURU ÇALIŞTIRMA: ' + target.name + ' ' + offer.price.toLocaleString('tr-TR') + ' fiyatından alınırdı');
             } else {
-              const error = purchase.error;
-              const classified = classifyPurchaseError(error, purchase);
-              governor.recordResult(classified.code || (classified.kind === 'fatal' ? 500 : 0));
-              let rawError;
+              setBotStatus(target.name + ' · ' + offer.price.toLocaleString('tr-TR') + ' coin için satın alma deneniyor...');
+              let purchase;
               try {
-                rawError = JSON.stringify(error ?? purchase);
-              } catch (serializationError) {
-                rawError = String(error?.message || error?.code || 'JSON biçimine dönüştürülemeyen EA hata nesnesi');
+                purchase = await buy(offer);
+              } catch (error) {
+                purchase = { success: false, error };
               }
-              debug('[FutRUSH:bot]', 'Satın alma başarısız; ham EA hatası:', (rawError || String(error || purchase)).slice(0, 300));
-              incrementStat(classified.kind === 'missed' ? 'missed' : 'errors');
-              if (classified.kind === 'other') {
-                warnOnce('purchase-error-other', '[FutRUSH:bot]', 'Sınıflandırılmamış EA satın alma hatası:', (rawError || classified.text).slice(0, 300));
-              }
-              const codeText = classified.code === null ? '' : ' (kod ' + classified.code + ')';
-              if (classified.kind === 'missed') {
-                addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'missed' });
+              if (token !== state.botToken || !state.botRunning) return;
+              if (purchase.success) {
+                bought++;
+                totalSpent += offer.price;
+                incrementStat('bought');
+                governor.recordPurchase(offer.price);
+                const futbinPrice = Number(target.price) || 0;
+                const cardProfit = futbinPrice > 0 ? Math.round(futbinPrice * 0.95) - offer.price : 0;
+                totalProfit += cardProfit;
+                addBotLog({
+                  name: target.name,
+                  rating: offer.rating,
+                  price: offer.price,
+                  profit: cardProfit,
+                  totalProfit,
+                  kind: 'success'
+                });
               } else {
-                addBotLog(target.name + ': satın alma başarısız — ' + classified.text + codeText, 'error');
-              }
-              if (classified.code === 458 || String(classified.code) === '458') {
-                governor.halt('captcha');
-                return;
-              }
-              if (classified.kind === 'fatal' && CONFIG.bot.stopOnFatalPurchaseError) {
-                stopAutoBuyer('Kritik EA satın alma hatası nedeniyle tarama durduruldu.');
+                const error = purchase.error;
+                const classified = classifyPurchaseError(error, purchase);
+                governor.recordResult(classified.code || (classified.kind === 'fatal' ? 500 : 0));
+                let rawError;
+                try {
+                  rawError = JSON.stringify(error ?? purchase);
+                } catch (serializationError) {
+                  rawError = String(error?.message || error?.code || 'JSON biçimine dönüştürülemeyen EA hata nesnesi');
+                }
+                debug('[FutRUSH:bot]', 'Satın alma başarısız; ham EA hatası:', (rawError || String(error || purchase)).slice(0, 300));
+                incrementStat(classified.kind === 'missed' ? 'missed' : 'errors');
+                if (classified.kind === 'other') {
+                  warnOnce('purchase-error-other', '[FutRUSH:bot]', 'Sınıflandırılmamış EA satın alma hatası:', (rawError || classified.text).slice(0, 300));
+                }
+                const codeText = classified.code === null ? '' : ' (kod ' + classified.code + ')';
+                if (classified.kind === 'missed') {
+                  addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'missed' });
+                } else {
+                  addBotLog(target.name + ': satın alma başarısız — ' + classified.text + codeText, 'error');
+                }
+                if (classified.code === 458 || String(classified.code) === '458') {
+                  governor.halt('captcha');
+                  return;
+                }
+                if (classified.kind === 'fatal' && CONFIG.bot.stopOnFatalPurchaseError) {
+                  stopAutoBuyer('Kritik EA satın alma hatası nedeniyle tarama durduruldu.');
+                }
               }
             }
           }

@@ -24,7 +24,7 @@ function prepareBot(targets, settings = {}) {
   state.botToken = 1;
   state.botLogs = [];
   state.botLogId = 0;
-  state.botStats = { bought: 0, missed: 0, searches: 0, errors: 0 };
+  state.botStats = { bought: 0, simulatedBought: 0, missed: 0, searches: 0, errors: 0 };
 }
 
 function deps(idleWait, searchAutoBuyOffers = vi.fn(async () => ({ stopped: false, offers: [] })), extra = {}) {
@@ -344,5 +344,26 @@ describe('runAutoBuyer', () => {
     expect(state.botRunning).toBe(false);
     expect(safetyGovernor.isHalted()).toBe(true);
     expect(state.botStatus).toContain('Ardışık 2 EA sunucu hatası (500) alındı');
+  });
+
+  it('performs searches and counts in governor without calling buyAutoOffer when dryRun is true', async () => {
+    prepareBot([target('A', 2)], { dryRun: true });
+    const idleWait = vi.fn(async () => true);
+    let nextTradeId = 50;
+    const searchAutoBuyOffers = vi.fn(async () => ({
+      stopped: false,
+      offers: [{ tradeId: nextTradeId++, price: 800, rating: 88 }]
+    }));
+    const buyAutoOffer = vi.fn(async () => ({ success: true }));
+
+    await runAutoBuyer(1, deps(idleWait, searchAutoBuyOffers, { buyAutoOffer }));
+
+    expect(buyAutoOffer).not.toHaveBeenCalled();
+    expect(state.botStats.bought).toBe(0);
+    expect(state.botStats.simulatedBought).toBe(2);
+    expect(state.botStats.searches).toBe(2);
+    expect(safetyGovernor.searches).toHaveLength(2);
+    expect(state.botLogs.find((l) => l.kind === 'dryRun')).toBeDefined();
+    expect(state.botStatus).toContain('Tarama tamamlandı');
   });
 });

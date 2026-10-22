@@ -14,6 +14,7 @@ const SNIPE_SETTINGS_DEFAULTS = {
   repeat: 0,
   waitSeconds: [15, 35],
   autoSell: false,
+  dryRun: false,
   maxPlayers: 1,
   speed: 0,
   speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -35,6 +36,7 @@ export function saveSnipeSettings() {
         ? state.snipeSettings.waitSeconds.slice(0, 2)
         : [15, 35],
       autoSell: state.snipeSettings.autoSell,
+      dryRun: Boolean(state.snipeSettings.dryRun),
       maxPlayers: state.snipeSettings.maxPlayers,
       speed: state.snipeSettings.speed,
       speedDelays: state.snipeSettings.speedDelays || { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -84,6 +86,9 @@ export function loadSnipeSettings() {
     }
     if (typeof savedSettings.autoSell === 'boolean') {
       loadedSettings.autoSell = savedSettings.autoSell;
+    }
+    if (typeof savedSettings.dryRun === 'boolean') {
+      loadedSettings.dryRun = savedSettings.dryRun;
     }
     if (Number.isSafeInteger(savedSettings.maxPlayers)
       && savedSettings.maxPlayers >= 1

@@ -1,5 +1,6 @@
 export function logTone(type) {
   if (type === 'success') return 'success';
+  if (type === 'dryRun') return 'warn';
   if (type === 'error' || type === 'missed' || type === 'warn') return 'error';
   return 'info';
 }
@@ -19,6 +20,7 @@ export function shouldAutoScrollLogList({ scrollHeight = 0, scrollTop = 0, clien
 export function summarizeBotStats(stats = {}) {
   return {
     bought: Number(stats.bought) || 0,
+    simulatedBought: Number(stats.simulatedBought) || 0,
     missed: Number(stats.missed) || 0,
     searches: Number(stats.searches) || 0
   };

@@ -26,6 +26,7 @@ export function renderPanelTabs(panel) {
       '</div>' +
       '<div class="fc-snipe-tabs" role="tablist" aria-label="SNIPE sekmeleri">' +
       tabs.map((tab) => '<button class="fc-snipe-tab" type="button" role="tab" data-tab="' + tab.id + '" aria-selected="' + (state.activePanelTab === tab.id) + '">' + tab.label + '</button>').join('') +
+      '<div class="fr-dry-run-top-badge" role="status" aria-label="Kuru çalıştırma modu aktif" style="display: none;">KURU ÇALIŞTIRMA</div>' +
       '<div class="speed-tier-top-badge" role="status" aria-label="Aktif arama hızı"></div>' +
       '</div><div class="fc-snipe-tab-content" role="tabpanel" aria-live="polite"></div>';
     const content = panel.querySelector('.fc-snipe-tab-content');
@@ -37,6 +38,14 @@ export function renderPanelTabs(panel) {
         renderPanelTabContent(content);
       });
     });
+
+    const dryRunBadge = panel.querySelector('.fr-dry-run-top-badge');
+    const syncDryRunBadge = () => {
+      if (!dryRunBadge) return;
+      dryRunBadge.style.display = state.snipeSettings?.dryRun ? 'inline-flex' : 'none';
+    };
+    syncDryRunBadge();
+    on('bot:dryrun-changed', syncDryRunBadge);
 
     const speedBadge = panel.querySelector('.speed-tier-top-badge');
     const syncSpeedBadge = () => {

@@ -41,7 +41,8 @@ describe('panel logic', () => {
     expect(summarizeBotStats({ bought: 4, missed: 2, searches: 9, errors: 1 })).toEqual({
       bought: 4,
       missed: 2,
-      searches: 9
+      searches: 9,
+      simulatedBought: 0
     });
   });
 

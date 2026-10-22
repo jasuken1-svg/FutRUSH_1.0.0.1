@@ -217,6 +217,29 @@ export const panelCss = `
 
     #${P.id} .fr-toggle[aria-checked="true"] { background: #00aabb; border-color: #00e5ff; }
     #${P.id} .fr-toggle[aria-checked="true"]::after { transform: translateX(16px); background: #fff; }
+    #${P.id} .fr-toggle.fr-toggle--dryrun[aria-checked="true"] { background: #eab308; border-color: #facc15; }
+
+    #${P.id} .fr-dry-run-top-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-left: auto;
+      align-self: center;
+      padding: 3px 8px;
+      border: 1px solid rgba(250, 204, 21, 0.6);
+      border-radius: 999px;
+      background: rgba(234, 179, 8, 0.2);
+      color: #facc15;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      white-space: nowrap;
+      user-select: none;
+      animation: fr-dryrun-glow 2s ease-in-out infinite alternate;
+    }
+    @keyframes fr-dryrun-glow {
+      from { box-shadow: 0 0 4px rgba(250, 204, 21, 0.3); }
+      to { box-shadow: 0 0 10px rgba(250, 204, 21, 0.65); }
+    }
 
     #${P.id} .fr-counter { display: flex; align-items: center; gap: 12px; }
     #${P.id} .fr-counter button {
@@ -237,7 +260,7 @@ export const panelCss = `
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      margin-left: auto;
+      margin-left: 6px;
       align-self: center;
       padding: 3px 8px;
       border: 1px solid rgba(255,255,255,.15);

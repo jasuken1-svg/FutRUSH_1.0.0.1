@@ -77,7 +77,8 @@ export function renderPanelSettings(content) {
           '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
+      '<div class="fr-setting-row"><div class="fr-setting-head"><span>Otomatik satış (aldıktan sonra)</span><button class="fr-toggle" data-toggle="autoSell" type="button" role="switch" aria-checked="' + s.autoSell + '" aria-label="Otomatik satış"></button></div></div>' +
+      '<div class="fr-setting-row"><div class="fr-setting-head"><span>Kuru çalıştırma (satın alma yapma)</span><button class="fr-toggle fr-toggle--dryrun" data-toggle="dryRun" type="button" role="switch" aria-checked="' + Boolean(s.dryRun) + '" aria-label="Kuru çalıştırma"></button></div></div>' +
       '<div class="fr-setting-row"><div class="fr-setting-head"><span>En fazla alınacak oyuncu</span></div><div class="fr-counter"><button type="button" data-count="-1" aria-label="Oyuncu sayısını azalt">−</button><span class="fr-counter-value" data-value="maxPlayers">' + s.maxPlayers + '</span><button type="button" data-count="1" aria-label="Oyuncu sayısını artır">+</button></div></div>' +
       '<div class="fr-setting-row speed-tier-setting-row">' +
         '<div class="fr-setting-head"><span>Arama hızı</span><span class="speed-tier-active-summary" data-value="speed-summary"></span></div>' +
@@ -262,10 +263,20 @@ export function renderPanelSettings(content) {
     });
   }
 
-  content.querySelector('.fr-toggle').addEventListener('click', (event) => {
-    s.autoSell = !s.autoSell;
-    event.currentTarget.setAttribute('aria-checked', String(s.autoSell));
-    saveSnipeSettings();
+  content.querySelectorAll('.fr-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', (event) => {
+      const key = toggle.dataset.toggle;
+      if (key === 'dryRun') {
+        s.dryRun = !s.dryRun;
+        event.currentTarget.setAttribute('aria-checked', String(s.dryRun));
+        saveSnipeSettings();
+        emit('bot:dryrun-changed');
+      } else {
+        s.autoSell = !s.autoSell;
+        event.currentTarget.setAttribute('aria-checked', String(s.autoSell));
+        saveSnipeSettings();
+      }
+    });
   });
 
   content.querySelectorAll('[data-count]').forEach((button) => {

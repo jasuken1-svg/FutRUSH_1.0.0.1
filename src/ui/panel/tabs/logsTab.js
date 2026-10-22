@@ -28,20 +28,31 @@ function createLogRow(entry, animate) {
   });
   const message = document.createElement('span');
   message.className = 'fr-log-message';
-  if (entry.kind === 'success' || entry.kind === 'missed') {
-    message.appendChild(document.createTextNode(
-      String(entry.name) + ' (' + entry.rating + ') ' + Number(entry.price).toLocaleString('tr-TR') + ' '
-    ));
-    const coin = document.createElement('span');
-    coin.className = 'fr-log-coin';
-    coin.textContent = entry.kind === 'success' ? '😍' : '😡';
-    coin.setAttribute('aria-label', entry.kind === 'success' ? 'alındı' : 'başkası aldı');
-    if (entry.kind === 'success') {
-      const profitVal = Number(entry.totalProfit ?? entry.profit ?? 0);
-      const profitFormatted = profitVal !== 0 ? (profitVal > 0 ? '+' : '') + profitVal.toLocaleString('tr-TR') : '0';
-      message.append(coin, document.createTextNode(' ALINDI. Toplam kâr ' + profitFormatted));
+  if (entry.kind === 'success' || entry.kind === 'missed' || entry.kind === 'dryRun') {
+    if (entry.kind === 'dryRun') {
+      message.appendChild(document.createTextNode(
+        'KURU ÇALIŞTIRMA: ' + String(entry.name) + ' (' + entry.rating + ') ' + Number(entry.price).toLocaleString('tr-TR') + ' fiyatından alınırdı'
+      ));
+      const coin = document.createElement('span');
+      coin.className = 'fr-log-coin';
+      coin.textContent = ' 🧪';
+      coin.setAttribute('aria-label', 'kuru çalıştırma simülasyonu');
+      message.appendChild(coin);
     } else {
-      message.append(coin, document.createTextNode(' BAŞKASI ALDI.'));
+      message.appendChild(document.createTextNode(
+        String(entry.name) + ' (' + entry.rating + ') ' + Number(entry.price).toLocaleString('tr-TR') + ' '
+      ));
+      const coin = document.createElement('span');
+      coin.className = 'fr-log-coin';
+      coin.textContent = entry.kind === 'success' ? '😍' : '😡';
+      coin.setAttribute('aria-label', entry.kind === 'success' ? 'alındı' : 'başkası aldı');
+      if (entry.kind === 'success') {
+        const profitVal = Number(entry.totalProfit ?? entry.profit ?? 0);
+        const profitFormatted = profitVal !== 0 ? (profitVal > 0 ? '+' : '') + profitVal.toLocaleString('tr-TR') : '0';
+        message.append(coin, document.createTextNode(' ALINDI. Toplam kâr ' + profitFormatted));
+      } else {
+        message.append(coin, document.createTextNode(' BAŞKASI ALDI.'));
+      }
     }
   } else {
     message.textContent = entry.message;
@@ -54,7 +65,8 @@ export function updateBotLogStats(content) {
   const summary = content.querySelector('.fr-log-summary');
   if (!summary) return;
   const stats = summarizeBotStats(state.botStats);
-  summary.textContent = 'Alınan ' + stats.bought + ' · Kaçırılan ' + stats.missed + ' · Arama ' + stats.searches;
+  const simText = stats.simulatedBought > 0 ? ` · Simüle ${stats.simulatedBought}` : '';
+  summary.textContent = 'Alınan ' + stats.bought + simText + ' · Kaçırılan ' + stats.missed + ' · Arama ' + stats.searches;
 }
 
 function getFilteredLogs() {
