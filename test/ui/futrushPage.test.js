@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { JSDOM } from 'jsdom';
 
 describe('futrushPage', () => {
@@ -10,7 +10,9 @@ describe('futrushPage', () => {
     dom = new JSDOM(
       '<!doctype html><html><head></head><body>' +
         '<div class="ut-navigation-container-view">' +
-          '<div class="ut-navigation-bar-view"></div>' +
+          '<div class="ut-navigation-bar-view navbar-style-landscape currency-purchase">' +
+            '<h1 class="title">Home</h1>' +
+          '</div>' +
           '<div class="ut-navigation-container-view--content"><div>EA View Content</div></div>' +
         '</div>' +
         '<div class="ut-tab-bar-view game-navigation">' +
@@ -58,7 +60,7 @@ describe('futrushPage', () => {
     expect(tab.querySelector('.fr-tab-icon')).toBeTruthy();
   });
 
-  it('opens FutRUSH page, hides EA content, and shows #fr-hub-view with panel and log box', () => {
+  it('opens FutRUSH page, updates navbar title to FutRUSH Panel, shows header view with Genel Log, and panel on the left in hub view', () => {
     futrushPage.placeFutrushTab();
     futrushPage.openFutrushPage();
 
@@ -70,26 +72,36 @@ describe('futrushPage', () => {
     const transferTab = document.querySelector('.icon-transfer');
     expect(transferTab.classList.contains('selected')).toBe(false);
 
+    // Navbar title updated to FutRUSH Panel
+    const navTitle = document.querySelector('.ut-navigation-bar-view .title');
+    expect(navTitle.textContent).toBe('FutRUSH Panel');
+
     const eaContent = document.querySelector('.ut-navigation-container-view--content');
     expect(eaContent.style.display).toBe('none');
 
+    // Header container contains Genel Log box
+    const header = futrushPage.getHeaderContainer();
+    expect(header).toBeTruthy();
+    expect(header.style.display).toBe('flex');
+    const logBox = header.querySelector('.fr-market-log-box');
+    expect(logBox).toBeTruthy();
+    expect(logBox.textContent).toContain('Genel Log');
+
+    // Hub container contains fc-snipe-panel as first child on the left
     const hub = futrushPage.getHubContainer();
     expect(hub).toBeTruthy();
     expect(hub.style.display).toBe('flex');
-
     const panelEl = hub.querySelector('#fc-snipe-panel');
-    const logBox = hub.querySelector('.fr-market-log-box');
     expect(panelEl).toBeTruthy();
-    expect(logBox).toBeTruthy();
-
-    // Verify ordering: panel is first child, logBox is second child (left-aligned)
     expect(hub.children[0]).toBe(panelEl);
-    expect(hub.children[1]).toBe(logBox);
   });
 
-  it('closes FutRUSH page and restores EA content when an EA tab is clicked', () => {
+  it('closes FutRUSH page, hides header view and hub view, and restores navbar title and EA content when an EA tab is clicked', () => {
     futrushPage.placeFutrushTab();
     futrushPage.openFutrushPage();
+
+    const navTitle = document.querySelector('.ut-navigation-bar-view .title');
+    expect(navTitle.textContent).toBe('FutRUSH Panel');
 
     const eaContent = document.querySelector('.ut-navigation-container-view--content');
     expect(eaContent.style.display).toBe('none');
@@ -101,8 +113,14 @@ describe('futrushPage', () => {
     const tab = futrushPage.getTabElement();
     expect(tab.classList.contains('selected')).toBe(false);
 
+    const header = futrushPage.getHeaderContainer();
+    expect(header.style.display).toBe('none');
+
     const hub = futrushPage.getHubContainer();
     expect(hub.style.display).toBe('none');
     expect(eaContent.style.display).toBe('');
+
+    // Navbar title restored
+    expect(navTitle.textContent).toBe('Home');
   });
 });

@@ -9,6 +9,7 @@ import { mountMarketLogBox, renderMarketLogBox } from './marketLogBox.js';
 
 let tabEl = null;
 let hubContainer = null;
+let headerContainer = null;
 let eaContentHidden = false;
 let stylesInjected = false;
 
@@ -71,18 +72,47 @@ function ensureStyles() {
       line-height: 1.2;
     }
 
+    .fc-header-view {
+      position: relative;
+      width: 100%;
+      box-sizing: border-box;
+      display: none;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 8px 16px;
+      background: rgba(10, 17, 28, 0.95);
+      border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+      flex: 0 0 auto;
+      gap: 12px;
+      z-index: 10;
+    }
+    .fc-header-view .fr-market-log-box {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 440px !important;
+      max-width: 100% !important;
+      height: 84px !important;
+      flex: 0 0 auto !important;
+      display: flex !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+    }
+
     #fr-hub-view {
       position: relative;
       width: 100%;
       height: 100%;
-      min-height: calc(100vh - 70px);
+      min-height: calc(100vh - 150px);
       box-sizing: border-box;
       display: none;
       flex-direction: row;
       align-items: flex-start;
       justify-content: flex-start;
       gap: 16px;
-      padding: 20px;
+      padding: 16px;
       overflow-x: auto;
       overflow-y: auto;
       background: rgba(10, 17, 28, 0.98);
@@ -98,21 +128,29 @@ function ensureStyles() {
       display: flex !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
     }
-    #fr-hub-view .fr-market-log-box {
-      position: relative !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      width: 380px !important;
-      height: 450px !important;
-      flex: 0 0 380px !important;
-      display: flex !important;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-    }
   `;
   document.head.appendChild(style);
   stylesInjected = true;
+}
+
+export function updateNavigationTitle(isFutrushActive) {
+  const navBar = document.querySelector('.ut-navigation-bar-view');
+  if (!navBar) return;
+
+  const titleEl = navBar.querySelector('.title, h1, [class*="title"]');
+  if (!titleEl) return;
+
+  if (isFutrushActive) {
+    if (titleEl.textContent !== 'FutRUSH Panel') {
+      if (!titleEl.dataset.frOrigTitle && titleEl.textContent) {
+        titleEl.dataset.frOrigTitle = titleEl.textContent;
+      }
+      titleEl.textContent = 'FutRUSH Panel';
+    }
+  } else if (titleEl.dataset.frOrigTitle && titleEl.textContent === 'FutRUSH Panel') {
+    titleEl.textContent = titleEl.dataset.frOrigTitle;
+    delete titleEl.dataset.frOrigTitle;
+  }
 }
 
 function setupGlobalTabListeners() {
@@ -130,6 +168,42 @@ function setupGlobalTabListeners() {
 export function initFutrushPage() {
   ensureStyles();
   setupGlobalTabListeners();
+}
+
+export function ensureHeaderContainer() {
+  if (!headerContainer || !headerContainer.isConnected) {
+    let existing = document.querySelector('.fc-header-view, fc-header-view, #fc-header-view');
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.className = 'fc-header-view';
+      existing.id = 'fc-header-view';
+    }
+    headerContainer = existing;
+
+    const navContainer = document.querySelector('.ut-navigation-container-view');
+    const contentArea = document.querySelector('.ut-navigation-container-view--content');
+    const hub = document.getElementById('fr-hub-view');
+
+    if (navContainer) {
+      if (existing.parentElement !== navContainer) {
+        if (hub && hub.parentElement === navContainer) {
+          navContainer.insertBefore(existing, hub);
+        } else {
+          navContainer.appendChild(existing);
+        }
+      }
+    } else if (contentArea && contentArea.parentElement) {
+      if (existing.parentElement !== contentArea.parentElement) {
+        contentArea.parentElement.appendChild(existing);
+      }
+    } else if (document.body && existing.parentElement !== document.body) {
+      document.body.appendChild(existing);
+    }
+  }
+
+  // Genel Log kutusu fc-header-view icine baglanir
+  mountMarketLogBox(headerContainer);
+  return headerContainer;
 }
 
 export function ensureHubContainer() {
@@ -156,13 +230,15 @@ export function ensureHubContainer() {
     }
   }
 
-  // fc-snipe-panel hub container icine ilk eleman olarak tasinir
+  // fc-snipe-panel hub container icinde en sola baglanir
   if (panel && panel.parentElement !== hubContainer) {
-    hubContainer.appendChild(panel);
+    if (hubContainer.firstChild) {
+      hubContainer.insertBefore(panel, hubContainer.firstChild);
+    } else {
+      hubContainer.appendChild(panel);
+    }
   }
 
-  // FutRUSH Log hub container icine baglanir
-  mountMarketLogBox(hubContainer);
   return hubContainer;
 }
 
@@ -179,6 +255,7 @@ export function openFutrushPage() {
     });
   }
 
+  ensureHeaderContainer();
   ensureHubContainer();
 
   const contentArea = document.querySelector('.ut-navigation-container-view--content');
@@ -187,9 +264,15 @@ export function openFutrushPage() {
     eaContentHidden = true;
   }
 
+  if (headerContainer) {
+    headerContainer.style.setProperty('display', 'flex', 'important');
+  }
+
   if (hubContainer) {
     hubContainer.style.setProperty('display', 'flex', 'important');
   }
+
+  updateNavigationTitle(true);
 
   if (panel) {
     if (!state.panelExpanded) {
@@ -208,6 +291,10 @@ export function closeFutrushPage() {
     tabEl.classList.remove('selected');
   }
 
+  if (headerContainer) {
+    headerContainer.style.setProperty('display', 'none', 'important');
+  }
+
   if (hubContainer) {
     hubContainer.style.setProperty('display', 'none', 'important');
   }
@@ -217,6 +304,8 @@ export function closeFutrushPage() {
     contentArea.style.display = '';
     eaContentHidden = false;
   }
+
+  updateNavigationTitle(false);
 }
 
 export function syncPageVisibility() {
@@ -291,6 +380,7 @@ export function placeFutrushTab() {
     }
   }
 
+  ensureHeaderContainer();
   ensureHubContainer();
   syncPageVisibility();
 }
@@ -301,4 +391,8 @@ export function getTabElement() {
 
 export function getHubContainer() {
   return hubContainer;
+}
+
+export function getHeaderContainer() {
+  return headerContainer;
 }

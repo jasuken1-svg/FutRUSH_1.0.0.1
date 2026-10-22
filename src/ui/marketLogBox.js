@@ -21,23 +21,24 @@ function ensureStyles() {
       overflow: visible !important;
     }
     .fr-market-log-box {
-      position: absolute;
-      top: 30px;
-      left: 0;
-      width: calc(50% - 6px);
-      height: 450px;
-      background: rgba(10, 16, 26, 0.85);
+      position: relative;
+      top: auto;
+      left: auto;
+      width: 440px;
+      max-width: 100%;
+      height: 84px;
+      background: rgba(10, 16, 26, 0.9);
       backdrop-filter: blur(4px);
       border: 1px solid rgba(0, 229, 255, 0.25);
       border-radius: 6px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      z-index: 9999 !important;
+      z-index: 10;
       overflow: hidden;
       font-family: inherit;
       color: #fff;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
       transition: opacity 0.15s ease;
       pointer-events: auto !important;
     }
@@ -45,14 +46,15 @@ function ensureStyles() {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 10px;
+      padding: 3px 8px;
       background: rgba(0, 229, 255, 0.12);
       border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: #00e5ff;
       letter-spacing: 0.5px;
       flex: 0 0 auto;
+      line-height: 1.2;
     }
     .fr-market-log-list {
       flex: 1 1 auto;
@@ -60,10 +62,10 @@ function ensureStyles() {
       max-height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 6px 8px;
+      padding: 3px 6px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 3px;
       scrollbar-width: none;
       -ms-overflow-style: none;
       overscroll-behavior: contain;
@@ -75,25 +77,25 @@ function ensureStyles() {
       height: 0;
     }
     .fr-market-log-empty {
-      font-size: 12px;
+      font-size: 11px;
       color: #8fa0b5;
       text-align: center;
-      margin-top: 24px;
-      padding: 0 10px;
-      line-height: 1.45;
+      margin-top: 8px;
+      padding: 0 6px;
+      line-height: 1.3;
     }
     .fr-market-log-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 6px 8px;
-      min-height: 28px;
+      gap: 6px;
+      padding: 2px 6px;
+      min-height: 20px;
       box-sizing: border-box;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
-      font-size: 12px;
-      line-height: 1.35;
+      border-radius: 3px;
+      font-size: 11px;
+      line-height: 1.25;
       color: #e2e8f0;
       flex: 0 0 auto;
     }
@@ -116,9 +118,9 @@ function ensureStyles() {
       background: rgba(255, 77, 79, 0.15);
       color: #ff4d4f;
       border: 1px solid rgba(255, 77, 79, 0.6);
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 13px;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-size: 11px;
       line-height: 1;
       cursor: pointer;
       white-space: nowrap;
@@ -127,7 +129,7 @@ function ensureStyles() {
     }
     .fr-market-log-undo-btn:hover {
       background: rgba(255, 77, 79, 0.3);
-      transform: scale(1.1);
+      transform: scale(1.08);
     }
   `;
   document.head.appendChild(st);
@@ -146,7 +148,7 @@ function isPinnedListOpen() {
 
 export function syncMarketLogVisibility() {
   if (!currentBoxEl) return;
-  if (currentBoxEl.closest && currentBoxEl.closest('#fr-hub-view')) {
+  if (currentBoxEl.closest && (currentBoxEl.closest('.fc-header-view, fc-header-view, #fc-header-view') || currentBoxEl.closest('#fr-hub-view'))) {
     currentBoxEl.style.display = 'flex';
     return;
   }
@@ -189,20 +191,20 @@ export function mountMarketLogBox(targetContainer) {
     });
   }
 
-  const hubView = targetContainer || document.getElementById('fr-hub-view');
-  if (hubView) {
-    let box = hubView.querySelector('.fr-market-log-box');
+  const headerView = targetContainer || document.querySelector('.fc-header-view, fc-header-view, #fc-header-view');
+  if (headerView) {
+    let box = headerView.querySelector('.fr-market-log-box');
     if (!box) {
       box = document.createElement('div');
       box.className = 'fr-market-log-box';
-      hubView.appendChild(box);
+      headerView.appendChild(box);
     }
     currentBoxEl = box;
     renderMarketLogBox();
     return;
   }
 
-  if (currentBoxEl && currentBoxEl.isConnected && currentBoxEl.closest && currentBoxEl.closest('#fr-hub-view')) {
+  if (currentBoxEl && currentBoxEl.isConnected && (currentBoxEl.closest('.fc-header-view, fc-header-view, #fc-header-view') || currentBoxEl.closest('#fr-hub-view'))) {
     return;
   }
 
@@ -238,7 +240,7 @@ export function renderMarketLogBox() {
 
   const head = document.createElement('div');
   head.className = 'fr-market-log-head';
-  head.innerHTML = '<span>⚡ FutRUSH Log</span><span>Canlı</span>';
+  head.innerHTML = '<span>⚡ Genel Log</span><span>Canlı</span>';
   currentBoxEl.appendChild(head);
 
   const list = document.createElement('div');
