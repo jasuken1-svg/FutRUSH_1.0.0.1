@@ -5,7 +5,6 @@ import { state } from '../../core/state.js';
 import { on } from '../../core/events.js';
 import { safetyGovernor } from '../../bot/safetyGovernor.js';
 import { renderPanelSettings } from './tabs/settingsTab.js';
-import { renderBotLogs } from './tabs/logsTab.js';
 import { renderTargetContent } from './tabs/targetsTab.js';
 import { unmountWaitBar } from './waitBar.js';
 
@@ -13,9 +12,11 @@ export function renderPanelTabs(panel) {
     unmountWaitBar();
     const tabs = [
       { id: 'targets', label: 'Oyuncu Hedefleri' },
-      { id: 'settings', label: 'Ayarlar' },
-      { id: 'logs', label: 'Loglar' }
+      { id: 'settings', label: 'Ayarlar' }
     ];
+    if (state.activePanelTab === 'logs') {
+      state.activePanelTab = 'targets';
+    }
     panel.classList.add('fc-snipe-expanded');
     panel.innerHTML =
       '<div class="fr-governor-banner" style="display: none;" role="alert">' +
@@ -58,13 +59,9 @@ export function renderPanelTabs(panel) {
 export function renderPanelTabContent(content) {
   unmountWaitBar();
   content.dataset.activeTab = state.activePanelTab;
-  if (state.activePanelTab === 'targets') {
-    renderTargetContent(content);
-    return;
-  }
   if (state.activePanelTab === 'settings') {
     renderPanelSettings(content);
     return;
   }
-  renderBotLogs(content);
+  renderTargetContent(content);
 }

@@ -13,7 +13,7 @@ export const CONFIG = {
     fitContent: true,       // alt sayfalarda içeriği panelin soluna sığdır
     settingsButton: true,   // sol menüdeki FutRUSH (Ayarlar) butonu
     searchButton: true,     // Reset / Search yanındaki FutRUSH butonu
-    logoButton: true        // Consumables yanındaki logo (SNIPE panelini açan tek buton)
+    logoButton: false       // Consumables yanındaki logo kaldırıldı
   },
 
   // SNIPE paneli

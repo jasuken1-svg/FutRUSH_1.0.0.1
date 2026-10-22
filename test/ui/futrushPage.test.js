@@ -60,7 +60,7 @@ describe('futrushPage', () => {
     expect(tab.querySelector('.fr-tab-icon')).toBeTruthy();
   });
 
-  it('opens FutRUSH page, updates navbar title to FutRUSH Panel, places header log icon, and sets panel on the left in hub view', () => {
+  it('opens FutRUSH page, updates navbar title to FutRUSH Panel, separates Loglar and Genel Log into side col with 6px radius, and removes header log and transfer logo buttons', () => {
     futrushPage.placeFutrushTab();
     futrushPage.openFutrushPage();
 
@@ -79,14 +79,15 @@ describe('futrushPage', () => {
     const eaContent = document.querySelector('.ut-navigation-container-view--content');
     expect(eaContent.style.display).toBe('none');
 
-    // Header log icon button exists and has tooltip
+    // Header log button ("Genel Logları göster") is completely removed
     const logBtn = futrushPage.getHeaderLogButton();
-    expect(logBtn).toBeTruthy();
-    expect(logBtn.style.display).toBe('inline-flex');
-    expect(logBtn.title).toBe('Genel Logları göster');
-    expect(logBtn.textContent).toContain('Genel Logları göster');
+    expect(logBtn).toBeNull();
+    expect(document.querySelector('.fr-header-log-btn')).toBeNull();
 
-    // Hub container contains fc-snipe-panel as first child on the left and logBox as second child
+    // Transfer market logo button is completely removed
+    expect(document.querySelector('.fc-snipe-logo-btn')).toBeNull();
+
+    // Hub container contains fc-snipe-panel as first child on the left and sideCol as second child
     const hub = futrushPage.getHubContainer();
     expect(hub).toBeTruthy();
     expect(hub.style.display).toBe('flex');
@@ -94,21 +95,42 @@ describe('futrushPage', () => {
     expect(panelEl).toBeTruthy();
     expect(hub.children[0]).toBe(panelEl);
 
-    // Genel Log box is placed 15px to the right of fc-snipe-panel at same top height
-    const logBox = hub.querySelector('.fr-market-log-box');
-    expect(logBox).toBeTruthy();
-    expect(hub.children[1]).toBe(logBox);
-    expect(panelEl.nextElementSibling).toBe(logBox);
+    // fc-snipe-panel has only 2 tabs: Oyuncu Hedefleri and Ayarlar (Loglar tab separated)
+    const panelTabs = Array.from(panelEl.querySelectorAll('.fc-snipe-tab')).map((t) => t.textContent);
+    expect(panelTabs).toEqual(['Oyuncu Hedefleri', 'Ayarlar']);
+    expect(panelTabs).not.toContain('Loglar');
 
+    // Side column is placed 15px to the right of fc-snipe-panel
+    const sideCol = hub.querySelector('.fr-hub-side-col');
+    expect(sideCol).toBeTruthy();
+    expect(hub.children[1]).toBe(sideCol);
+    expect(panelEl.nextElementSibling).toBe(sideCol);
+
+    // Side column item 1: "Loglar" panel (380px x 420px)
+    const botLogsPanel = sideCol.querySelector('.fr-bot-logs-panel');
+    expect(botLogsPanel).toBeTruthy();
+    expect(sideCol.children[0]).toBe(botLogsPanel);
+    expect(botLogsPanel.querySelector('.fr-logs-header-title').textContent).toBe('Loglar');
+    expect(botLogsPanel.querySelector('.fr-log-list')).toBeTruthy();
+
+    // Side column item 2: fr-log-list / Genel Log (218px x 420px, 5px below)
+    const logBox = sideCol.querySelector('.fr-market-log-box');
+    expect(logBox).toBeTruthy();
+    expect(sideCol.children[1]).toBe(logBox);
+    expect(botLogsPanel.nextElementSibling).toBe(logBox);
+
+    // Style checks for layout, dimensions and window radius
     const styleEl = document.getElementById('fr-futrush-page-style');
     expect(styleEl.textContent).toContain('gap: 15px');
-    expect(styleEl.textContent).toContain('width: 400px !important');
-    expect(styleEl.textContent).toContain('height: 400px !important');
+    expect(styleEl.textContent).toContain('gap: 5px');
+    expect(styleEl.textContent).toContain('height: 380px !important');
+    expect(styleEl.textContent).toContain('width: 420px !important');
+    expect(styleEl.textContent).toContain('height: 218px !important');
+    expect(styleEl.textContent).toContain('border-radius: 6px !important');
 
     expect(logBox.querySelector('.fr-market-log-head')).toBeNull();
-    expect(logBox.querySelector('.fr-market-log-close-btn')).toBeTruthy();
-    expect(logBox.querySelectorAll('.fr-log-resize-corner').length).toBe(4);
-    expect(logBox.querySelector('.fr-log-list')).toBeTruthy();
+    // Geri Al button is completely removed
+    expect(logBox.querySelector('.fr-market-log-undo-btn')).toBeNull();
     expect(logBox.textContent).toContain('Genel Log Listesi');
     expect(logBox.textContent).toContain('Hedef ve işlem bildirimleri burada anlık olarak gösterilir.');
   });
@@ -138,7 +160,7 @@ describe('futrushPage', () => {
     expect(navTitle.textContent).toBe('Home');
   });
 
-  it('closes log bar when close button is clicked and toggles back via header icon button', async () => {
+  it('manages market log box visibility via openMarketLogBox and closeMarketLogBox', async () => {
     const { openMarketLogBox, closeMarketLogBox } = await import('../../src/ui/marketLogBox.js');
     futrushPage.openFutrushPage();
 
@@ -146,15 +168,10 @@ describe('futrushPage', () => {
     const logBox = document.querySelector('.fr-market-log-box');
     expect(logBox.style.display).toBe('flex');
 
-    const closeBtn = logBox.querySelector('.fr-market-log-close-btn');
-    closeBtn.click();
-    expect(logBox.style.display).toBe('none');
-
-    const logBtn = futrushPage.getHeaderLogButton();
-    logBtn.click();
-    expect(logBox.style.display).toBe('flex');
-
     closeMarketLogBox();
     expect(logBox.style.display).toBe('none');
+
+    openMarketLogBox();
+    expect(logBox.style.display).toBe('flex');
   });
 });

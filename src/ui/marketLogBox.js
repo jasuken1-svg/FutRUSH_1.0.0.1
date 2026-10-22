@@ -27,16 +27,16 @@ function ensureStyles() {
       position: fixed;
       top: 65px;
       right: 24px;
-      width: 400px;
+      width: 420px;
       min-width: 260px;
       max-width: 90vw;
-      height: 400px;
+      height: 218px;
       min-height: 80px;
       max-height: 85vh;
       background: rgba(10, 16, 26, 0.95);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(0, 229, 255, 0.35);
-      border-radius: 0 !important;
+      border-radius: 6px !important;
       box-sizing: border-box;
       display: none;
       flex-direction: column;
@@ -134,9 +134,6 @@ function ensureStyles() {
       user-select: text;
       cursor: default;
     }
-    .fr-market-log-item.is-undo {
-      border-left: 2px solid #ff4d4f;
-    }
     .fr-market-log-item.is-success {
       border-left: 2px solid #52c41a;
     }
@@ -148,23 +145,6 @@ function ensureStyles() {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    .fr-market-log-undo-btn {
-      background: rgba(255, 77, 79, 0.15);
-      color: #ff4d4f;
-      border: 1px solid rgba(255, 77, 79, 0.6);
-      border-radius: 0 !important;
-      padding: 1px 4px;
-      font-size: 11px;
-      line-height: 1;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s, transform 0.15s;
-      pointer-events: auto !important;
-    }
-    .fr-market-log-undo-btn:hover {
-      background: rgba(255, 77, 79, 0.3);
-      transform: scale(1.08);
     }
 
     /* 4 Köşe Görünmez Boyutlandırma Tutamaçları */
@@ -524,36 +504,12 @@ export function renderMarketLogBox() {
     logHistory.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'fr-market-log-item' +
-        (item.undoAction ? ' is-undo' : (item.type === 'success' ? ' is-success' : (item.type === 'error' ? ' is-error' : '')));
+        (item.type === 'success' ? ' is-success' : (item.type === 'error' ? ' is-error' : ''));
 
       const textSpan = document.createElement('span');
       textSpan.className = 'fr-market-log-text';
       textSpan.textContent = `[${item.time.slice(0, 5)}] ${item.text}`;
       row.appendChild(textSpan);
-
-      if (item.undoAction) {
-        const undoBtn = document.createElement('button');
-        undoBtn.type = 'button';
-        undoBtn.className = 'fr-market-log-undo-btn';
-        undoBtn.textContent = '↩️';
-        undoBtn.title = 'Geri Al';
-        undoBtn.setAttribute('aria-label', 'Geri Al');
-        const triggerUndo = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof item.undoAction === 'function') {
-            const action = item.undoAction;
-            item.undoAction = null;
-            const idx = logHistory.indexOf(item);
-            if (idx !== -1) logHistory.splice(idx, 1);
-            action();
-            addMarketLog({ text: `${item.text.replace(' hedeflerden silindi.', '').replace(' silindi.', '')} geri yüklendi.`, type: 'success' });
-          }
-        };
-        undoBtn.addEventListener('click', triggerUndo);
-        undoBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-        row.appendChild(undoBtn);
-      }
 
       list.appendChild(row);
     });

@@ -80,8 +80,11 @@ function renderLogRows(content) {
 export function renderBotLogs(content) {
   content.innerHTML =
     '<div class="fr-logs-view">' +
+      '<div class="fr-logs-header">' +
+        '<span class="fr-logs-header-title">Loglar</span>' +
+        '<div class="fr-log-summary"></div>' +
+      '</div>' +
       '<div class="fr-waitbar" hidden></div>' +
-      '<div class="fr-log-summary"></div>' +
       '<div class="fr-log-toolbar">' +
         '<div class="fr-log-filters">' +
           '<button class="fr-log-filter-btn' + (activeLogFilter === 'all' ? ' active' : '') + '" data-filter="all" type="button">Tümü</button>' +

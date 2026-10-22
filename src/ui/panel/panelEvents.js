@@ -40,10 +40,14 @@ export function registerPanelEvents() {
   on('log:added', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (content && state.activePanelTab === 'logs') addBotLogEntry(content);
+    const botLogsPanel = document.querySelector('.fr-bot-logs-panel');
+    if (botLogsPanel) addBotLogEntry(botLogsPanel);
   });
   on('bot:stats', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (content && state.activePanelTab === 'logs') updateBotLogStats(content);
+    const botLogsPanel = document.querySelector('.fr-bot-logs-panel');
+    if (botLogsPanel) updateBotLogStats(botLogsPanel);
   });
   on('bot:status', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');

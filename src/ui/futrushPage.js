@@ -5,11 +5,11 @@ import { LOGO_SVG } from './icons.js';
 import { state } from '../core/state.js';
 import { panel, applyGeom } from './panel/panel.js';
 import { renderPanelTabs } from './panel/panelTabs.js';
-import { toggleMarketLogBox, renderMarketLogBox, openMarketLogBox, mountMarketLogBox } from './marketLogBox.js';
+import { renderBotLogs } from './panel/tabs/logsTab.js';
+import { renderMarketLogBox, openMarketLogBox, mountMarketLogBox } from './marketLogBox.js';
 
 let tabEl = null;
 let hubContainer = null;
-let logIconBtn = null;
 let eaContentHidden = false;
 let stylesInjected = false;
 
@@ -72,68 +72,6 @@ function ensureStyles() {
       line-height: 1.2;
     }
 
-    .fr-header-log-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      margin: 0 8px;
-      padding: 0;
-      background: rgba(0, 229, 255, 0.1);
-      border: 1px solid rgba(0, 229, 255, 0.35);
-      border-radius: 6px;
-      cursor: pointer;
-      color: #00e5ff;
-      transition: all 0.2s ease;
-      z-index: 100;
-      box-sizing: border-box;
-      vertical-align: middle;
-    }
-    .fr-header-log-btn:hover {
-      background: rgba(0, 229, 255, 0.25);
-      border-color: #00e5ff;
-      color: #fff;
-      box-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
-      transform: scale(1.05);
-    }
-    .fr-header-log-btn .fr-header-log-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-    }
-    .fr-header-log-btn .fr-header-log-icon svg {
-      width: 100%;
-      height: 100%;
-    }
-    .fr-header-log-tooltip {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: #0f1a2c;
-      border: 1px solid rgba(0, 229, 255, 0.5);
-      color: #e2e8f0;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 4px;
-      white-space: nowrap;
-      pointer-events: none;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.15s ease, visibility 0.15s ease;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-      z-index: 1000;
-    }
-    .fr-header-log-btn:hover .fr-header-log-tooltip {
-      opacity: 1;
-      visibility: visible;
-    }
-
     #fr-hub-view {
       position: relative;
       width: 100%;
@@ -159,29 +97,59 @@ function ensureStyles() {
       bottom: auto !important;
       flex: 0 0 auto !important;
       display: flex !important;
+      border-radius: 6px !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
     }
-    #fr-hub-view .fr-market-log-box:not(.fr-dragged) {
+    .fr-hub-side-col {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      width: 420px;
+      flex: 0 0 420px;
+      box-sizing: border-box;
+    }
+    .fr-bot-logs-panel {
       position: relative !important;
       top: auto !important;
       left: auto !important;
       right: auto !important;
       bottom: auto !important;
-      width: 400px !important;
-      min-width: 400px !important;
-      height: 400px !important;
-      min-height: 400px !important;
-      flex: 0 0 400px !important;
-      border-radius: 0 !important;
+      width: 420px !important;
+      min-width: 420px !important;
+      max-width: 420px !important;
+      height: 380px !important;
+      min-height: 380px !important;
+      max-height: 380px !important;
+      flex: 0 0 380px !important;
+      background: rgba(21, 29, 41, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px !important;
+      box-sizing: border-box;
+      padding: 10px;
+      display: flex !important;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e6f6f7;
+    }
+    .fr-hub-side-col .fr-market-log-box {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 420px !important;
+      min-width: 420px !important;
+      max-width: 420px !important;
+      height: 218px !important;
+      min-height: 218px !important;
+      max-height: 218px !important;
+      flex: 0 0 218px !important;
+      border-radius: 6px !important;
       display: flex !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-    }
-    #fr-hub-view .fr-market-log-box.fr-dragged {
-      position: fixed !important;
-      border-radius: 0 !important;
-      display: flex !important;
-      z-index: 99999 !important;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
     }
   `;
   document.head.appendChild(style);
@@ -209,45 +177,9 @@ export function updateNavigationTitle(isFutrushActive) {
 }
 
 export function placeHeaderLogButton() {
-  const header = document.querySelector('.fc-header-view, fc-header-view, #fc-header-view')
-    || document.querySelector('.ut-navigation-bar-view');
-  if (!header) return null;
-
-  if (!logIconBtn) {
-    logIconBtn = document.createElement('button');
-    logIconBtn.type = 'button';
-    logIconBtn.className = 'fr-header-log-btn';
-    logIconBtn.title = 'Genel Logları göster';
-    logIconBtn.setAttribute('aria-label', 'Genel Logları göster');
-    logIconBtn.innerHTML =
-      '<span class="fr-header-log-icon">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-          '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>' +
-          '<polyline points="14 2 14 8 20 8"></polyline>' +
-          '<line x1="16" y1="13" x2="8" y2="13"></line>' +
-          '<line x1="16" y1="17" x2="8" y2="17"></line>' +
-          '<polyline points="10 9 9 9 8 9"></polyline>' +
-        '</svg>' +
-      '</span>' +
-      '<span class="fr-header-log-tooltip">Genel Logları göster</span>';
-    logIconBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleMarketLogBox();
-    });
-  }
-
-  const titleEl = header.querySelector('.title, h1, [class*="title"]');
-  if (titleEl && titleEl.parentElement) {
-    if (logIconBtn.previousElementSibling !== titleEl) {
-      titleEl.parentElement.insertBefore(logIconBtn, titleEl.nextSibling);
-    }
-  } else if (logIconBtn.parentElement !== header) {
-    header.appendChild(logIconBtn);
-  }
-
-  logIconBtn.style.display = state.futrushPageActive ? 'inline-flex' : 'none';
-  return logIconBtn;
+  const existing = document.querySelector('.fr-header-log-btn');
+  if (existing) existing.remove();
+  return null;
 }
 
 function setupGlobalTabListeners() {
@@ -300,11 +232,31 @@ export function ensureHubContainer() {
     }
   }
 
-  // Genel Log kutusu (#fc-snipe-panel'in 15px saginda ayni yukseklikte yer alir)
-  mountMarketLogBox(hubContainer);
-  const logBox = hubContainer.querySelector('.fr-market-log-box');
-  if (panel && logBox && logBox.previousElementSibling !== panel) {
-    hubContainer.insertBefore(logBox, panel.nextSibling);
+  // Sag kolon: Ustte "Loglar" paneli (380px x 420px), 5px altinda fr-log-list / Genel Log (218px x 420px)
+  let sideCol = hubContainer.querySelector('.fr-hub-side-col');
+  if (!sideCol) {
+    sideCol = document.createElement('div');
+    sideCol.className = 'fr-hub-side-col';
+    hubContainer.appendChild(sideCol);
+  }
+  if (panel && sideCol.previousElementSibling !== panel) {
+    hubContainer.insertBefore(sideCol, panel.nextSibling);
+  }
+
+  // Ust panel: "Loglar" paneli (380px x 420px)
+  let botLogsPanel = sideCol.querySelector('.fr-bot-logs-panel');
+  if (!botLogsPanel) {
+    botLogsPanel = document.createElement('div');
+    botLogsPanel.className = 'fr-bot-logs-panel';
+    sideCol.appendChild(botLogsPanel);
+  }
+  renderBotLogs(botLogsPanel);
+
+  // Alt panel: fr-log-list / Genel Log (218px x 420px, 5px altta)
+  mountMarketLogBox(sideCol);
+  const logBox = sideCol.querySelector('.fr-market-log-box');
+  if (botLogsPanel && logBox && logBox.previousElementSibling !== botLogsPanel) {
+    sideCol.insertBefore(logBox, botLogsPanel.nextSibling);
   }
 
   return hubContainer;
@@ -325,7 +277,6 @@ export function openFutrushPage() {
 
   ensureHubContainer();
   openMarketLogBox();
-  placeHeaderLogButton();
 
   const contentArea = document.querySelector('.ut-navigation-container-view--content');
   if (contentArea) {
@@ -347,6 +298,11 @@ export function openFutrushPage() {
     applyGeom();
   }
 
+  const botLogsPanel = hubContainer.querySelector('.fr-bot-logs-panel');
+  if (botLogsPanel) {
+    renderBotLogs(botLogsPanel);
+  }
+
   renderMarketLogBox();
 }
 
@@ -354,10 +310,6 @@ export function closeFutrushPage() {
   state.futrushPageActive = false;
   if (tabEl) {
     tabEl.classList.remove('selected');
-  }
-
-  if (logIconBtn) {
-    logIconBtn.style.display = 'none';
   }
 
   if (hubContainer) {
@@ -446,7 +398,6 @@ export function placeFutrushTab() {
   }
 
   ensureHubContainer();
-  placeHeaderLogButton();
   syncPageVisibility();
 }
 
@@ -459,5 +410,5 @@ export function getHubContainer() {
 }
 
 export function getHeaderLogButton() {
-  return logIconBtn;
+  return null;
 }
