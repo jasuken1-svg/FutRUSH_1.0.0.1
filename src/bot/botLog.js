@@ -13,6 +13,8 @@ export function addBotLog(message, type) {
         name: String(message.name ?? ''),
         rating: Number(message.rating) || 0,
         price: Number(message.price) || 0,
+        profit: Number(message.profit) || 0,
+        totalProfit: Number(message.totalProfit) || 0,
         kind: String(message.kind || type || 'info')
       }
     : { id: state.botLogId, at: Date.now(), message: String(message), type: type || 'info' };

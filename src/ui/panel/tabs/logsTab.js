@@ -34,9 +34,15 @@ function createLogRow(entry, animate) {
     ));
     const coin = document.createElement('span');
     coin.className = 'fr-log-coin';
-    coin.textContent = '🪙';
-    coin.setAttribute('aria-label', 'coin');
-    message.append(coin, document.createTextNode(entry.kind === 'success' ? ' ALINDI.' : ' BAŞKASI ALDI.'));
+    coin.textContent = entry.kind === 'success' ? '😍' : '😡';
+    coin.setAttribute('aria-label', entry.kind === 'success' ? 'alındı' : 'başkası aldı');
+    if (entry.kind === 'success') {
+      const profitVal = Number(entry.totalProfit ?? entry.profit ?? 0);
+      const profitFormatted = profitVal !== 0 ? (profitVal > 0 ? '+' : '') + profitVal.toLocaleString('tr-TR') : '0';
+      message.append(coin, document.createTextNode(' ALINDI. Toplam kâr ' + profitFormatted));
+    } else {
+      message.append(coin, document.createTextNode(' BAŞKASI ALDI.'));
+    }
   } else {
     message.textContent = entry.message;
   }
@@ -157,7 +163,15 @@ export function renderBotLogs(content) {
     e.stopPropagation();
     const lines = getFilteredLogs().map((l) => {
       const time = new Date(l.at).toLocaleTimeString('tr-TR');
-      return `[${time}] ${l.name ? l.name + ' - ' : ''}${l.message || (l.kind === 'success' ? 'ALINDI' : '')}`;
+      if (l.kind === 'success') {
+        const profitVal = Number(l.totalProfit ?? l.profit ?? 0);
+        const profitFormatted = profitVal !== 0 ? (profitVal > 0 ? '+' : '') + profitVal.toLocaleString('tr-TR') : '0';
+        return `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😍 ALINDI. Toplam kâr ${profitFormatted}`;
+      }
+      if (l.kind === 'missed') {
+        return `[${time}] ${l.name} (${l.rating}) ${Number(l.price).toLocaleString('tr-TR')} 😡 BAŞKASI ALDI.`;
+      }
+      return `[${time}] ${l.name ? l.name + ' - ' : ''}${l.message || ''}`;
     });
     copyToClipboard(lines.join('\n')).then(() => {
       const orig = copyBtn.textContent;

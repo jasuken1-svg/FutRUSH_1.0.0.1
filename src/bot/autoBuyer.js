@@ -83,6 +83,7 @@ export async function runAutoBuyer(token, deps = {}) {
   let cycles = 0;
   let bought = 0;
   let totalSpent = 0;
+  let totalProfit = 0;
   let searchIndex = 0;
   const governor = deps.safetyGovernor || safetyGovernor;
   const attemptedTrades = new Set();
@@ -128,7 +129,7 @@ export async function runAutoBuyer(token, deps = {}) {
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
           if (!offer) {
             governor.recordResult(200);
-            addBotLog(target.name + ': Buy Now sınırında uygun ilan bulunamadı.', 'info');
+            addBotLog(target.name + ': Satın Al sınırında uygun ilan bulunamadı.', 'info');
           } else {
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
@@ -149,7 +150,17 @@ export async function runAutoBuyer(token, deps = {}) {
               totalSpent += offer.price;
               incrementStat('bought');
               governor.recordPurchase(offer.price);
-              addBotLog({ name: target.name, rating: offer.rating, price: offer.price, kind: 'success' });
+              const futbinPrice = Number(target.price) || 0;
+              const cardProfit = futbinPrice > 0 ? Math.round(futbinPrice * 0.95) - offer.price : 0;
+              totalProfit += cardProfit;
+              addBotLog({
+                name: target.name,
+                rating: offer.rating,
+                price: offer.price,
+                profit: cardProfit,
+                totalProfit,
+                kind: 'success'
+              });
             } else {
               const error = purchase.error;
               const classified = classifyPurchaseError(error, purchase);
