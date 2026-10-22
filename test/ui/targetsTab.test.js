@@ -241,10 +241,11 @@ describe('player target controls', () => {
     expect(profitEl.textContent).not.toContain('%');
     expect(profitEl.textContent).not.toContain('FB');
 
-    // 2c. Sağ en altta FutBIN fiyatı
+    // 2c. Sağ en altta FutBIN logosu ve fiyatı
     const futbinPrice = card.querySelector('.fr-target-futbin-price');
     expect(futbinPrice).not.toBeNull();
-    expect(futbinPrice.textContent).toBe('FutBIN: 3.000.000');
+    expect(futbinPrice.querySelector('.fr-target-futbin-icon')).not.toBeNull();
+    expect(futbinPrice.textContent.trim()).toBe('3.000.000');
 
     // 2e. Arama kapatılınca karta is-search-inactive sınıfı eklenir
     searchToggle.click();

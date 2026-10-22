@@ -14,6 +14,7 @@ import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
 import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
+import { FUTBIN_ICON_DATA } from '../../icons.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
@@ -785,7 +786,7 @@ export function renderTargetContent(content) {
     });
     body.appendChild(controls);
 
-    // 4. Alt Bilgi: FutBIN Fiyatı ve Trend Oku (sağ en alt, 9px)
+    // 4. Alt Bilgi: FutBIN Logosu, Fiyat ve Trend Oku (sağ en alt)
     const bottomBar = document.createElement('div');
     bottomBar.className = 'fr-target-card-bottom';
     const futbinPriceEl = document.createElement('span');
@@ -797,7 +798,8 @@ export function renderTargetContent(content) {
     } else if (player.priceTrend === 'down') {
       trendHtml = ' <span class="fr-target-trend-down" title="Fiyat düştü">▼</span>';
     }
-    futbinPriceEl.innerHTML = fbVal > 0 ? `FutBIN: ${fbVal.toLocaleString('tr-TR')}${trendHtml}` : 'FutBIN: —';
+    const iconHtml = `<img src="${FUTBIN_ICON_DATA}" class="fr-target-futbin-icon" width="12" height="12" alt="FutBIN" />`;
+    futbinPriceEl.innerHTML = fbVal > 0 ? `${iconHtml} <span>${fbVal.toLocaleString('tr-TR')}</span>${trendHtml}` : `${iconHtml} <span>—</span>`;
     bottomBar.appendChild(futbinPriceEl);
     body.appendChild(bottomBar);
 

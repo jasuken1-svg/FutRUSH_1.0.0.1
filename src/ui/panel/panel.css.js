@@ -877,7 +877,11 @@ export const panelCss = `
       display: flex; justify-content: flex-end; width: 100%; margin-top: 2px;
     }
     #${P.id} .fr-target-futbin-price {
-      font-size: 9px; color: #8da2ae; font-variant-numeric: tabular-nums; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; color: #8da2ae; font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    #${P.id} .fr-target-futbin-icon {
+      width: 12px; height: 12px; display: inline-block; vertical-align: middle; border-radius: 2px; flex-shrink: 0;
     }
 
     /* Alt Eylemler */
