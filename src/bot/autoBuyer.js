@@ -15,7 +15,7 @@ import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js
 import { addBotLog, setBotStatus } from './botLog.js';
 import { idleWait } from './idle.js';
 import { safetyGovernor } from './safetyGovernor.js';
-import { getEffectiveSpeedDelayMs } from './speedTiers.js';
+import { getEffectiveSpeedDelayMs, SPEED_TIERS } from './speedTiers.js';
 
 const defaultSearchJitterMs = [...CONFIG.bot.searchJitterMs];
 const defaultCycleJitterMs = [...CONFIG.bot.cycleJitterMs];
@@ -212,7 +212,23 @@ export async function runAutoBuyer(token, deps = {}) {
             const jitter = jitterMs(searchJitterRange);
             const totalDelay = baseDelay + jitter;
             debug('[FutRUSH:bot]', 'Arama arası gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
-            await idle(baseDelay + jitter, token, 'search');
+            let nextTargetName = target.name;
+            if (attempt >= attempts) {
+              const nextTarget = state.targets.slice(targetIndex + 1).find((t) => !t.searchDisabled);
+              if (nextTarget) nextTargetName = nextTarget.name;
+            }
+            const activeTier = SPEED_TIERS[state.snipeSettings?.speed] || SPEED_TIERS[1];
+            if (state.botWait) {
+              Object.assign(state.botWait, {
+                baseMs: baseDelay,
+                jitterMs: jitter,
+                nextTargetName,
+                tierColor: activeTier.color
+              });
+            } else {
+              state.botWait = { baseMs: baseDelay, jitterMs: jitter, nextTargetName, tierColor: activeTier.color };
+            }
+            await idle(totalDelay, token, 'search');
           }
         }
         if (checkLimitsReached()) break;
@@ -242,6 +258,19 @@ export async function runAutoBuyer(token, deps = {}) {
       const jitter = jitterMs(cycleJitterRange);
       const totalDelay = baseDelay + jitter;
       debug('[FutRUSH:bot]', 'Döngü sonu gecikme:', totalDelay, 'ms (taban ' + baseDelay + ' + jitter ' + jitter + ')');
+      const firstNext = state.targets.find((t) => !t.searchDisabled);
+      const nextTargetName = firstNext ? firstNext.name : (state.targets[0]?.name || 'Hedefler');
+      const activeTier = SPEED_TIERS[state.snipeSettings?.speed] || SPEED_TIERS[1];
+      if (state.botWait) {
+        Object.assign(state.botWait, {
+          baseMs: baseDelay,
+          jitterMs: jitter,
+          nextTargetName,
+          tierColor: activeTier.color
+        });
+      } else {
+        state.botWait = { baseMs: baseDelay, jitterMs: jitter, nextTargetName, tierColor: activeTier.color };
+      }
       await idle(totalDelay, token, 'cycle');
     } while (state.botRunning && token === state.botToken);
   } catch (error) {

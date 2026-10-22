@@ -1211,6 +1211,81 @@ export const panelCss = `
     #${P.id} .fr-log-enter, .fr-bot-logs-panel .fr-log-enter { animation: fr-log-enter .2s ease both; }
     #${P.id} .fr-log-missed-pulse, .fr-bot-logs-panel .fr-log-missed-pulse { animation: fr-log-enter .2s ease both, fr-log-missed-pulse .55s ease-out; }
 
+    /* Parlama (Glow) ve Canlı Bekleme Satırı */
+    #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success { --fx: 34,197,94; }
+    #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost { --fx: 239,68,68; }
+    #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success,
+    #${P.id} .log-fx-lost, .fr-bot-logs-panel .log-fx-lost {
+      position: relative; overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25);
+    }
+    #${P.id} .log-fx-new, .fr-bot-logs-panel .log-fx-new {
+      animation: logFxBurst 1.4s ease-out, logFxPulse 2.2s ease-in-out 1.4s 3;
+    }
+    #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%);
+      transform: translateX(-120%); animation: logFxShine 1.1s ease-out .15s forwards;
+    }
+    @keyframes logFxBurst {
+      0%   { background-color: rgba(var(--fx),.45); box-shadow: 0 0 0 0 rgba(var(--fx),.9), 0 0 0 0 rgba(var(--fx),0); transform: scale(1.015); }
+      40%  { box-shadow: 0 0 0 3px rgba(var(--fx),.6), 0 0 30px rgba(var(--fx),.75); }
+      100% { box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25); transform: scale(1); }
+    }
+    @keyframes logFxPulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(var(--fx),.35), 0 0 14px rgba(var(--fx),.25); }
+      50%     { box-shadow: 0 0 0 1px rgba(var(--fx),.6),  0 0 24px rgba(var(--fx),.5); }
+    }
+    @keyframes logFxShine { to { transform: translateX(120%); } }
+
+    /* Canlı Bekleme Satırı */
+    #${P.id} .log-wait, .fr-bot-logs-panel .log-wait {
+      position: relative; overflow: hidden;
+      border-left: 3px solid var(--tier, #38bdf8);
+      background: rgba(8, 24, 40, 0.7);
+      animation: logWaitBreathe 1.6s ease-in-out infinite alternate;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    @keyframes logWaitBreathe {
+      from { opacity: .85; }
+      to { opacity: 1; }
+    }
+    #${P.id} .log-wait-top, .fr-bot-logs-panel .log-wait-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    }
+    #${P.id} .log-wait-left, .fr-bot-logs-panel .log-wait-left {
+      display: flex; align-items: center; gap: 6px; font-weight: 700; color: #e8f4f6;
+    }
+    #${P.id} .log-wait-target, .fr-bot-logs-panel .log-wait-target {
+      color: #ffd447;
+    }
+    #${P.id} .log-wait-countdown, .fr-bot-logs-panel .log-wait-countdown {
+      font-weight: 800; font-variant-numeric: tabular-nums; color: var(--tier, #38bdf8);
+    }
+    #${P.id} .log-wait-breakdown, .fr-bot-logs-panel .log-wait-breakdown {
+      font-size: 9.5px; opacity: .75; font-variant-numeric: tabular-nums; color: #aebfc8;
+    }
+    #${P.id} .log-wait-bar, .fr-bot-logs-panel .log-wait-bar {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+      background: var(--tier, #38bdf8);
+      transform-origin: left;
+      animation: logWaitDrain var(--wait-ms, 2000ms) linear forwards;
+    }
+    @keyframes logWaitDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    #${P.id} .log-wait.is-done, .fr-bot-logs-panel .log-wait.is-done {
+      opacity: .6 !important;
+      animation: none !important;
+    }
+    #${P.id} .log-wait.is-done .log-wait-bar, .fr-bot-logs-panel .log-wait.is-done .log-wait-bar { display: none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      #${P.id} .log-fx-new, .fr-bot-logs-panel .log-fx-new,
+      #${P.id} .log-fx-new::after, .fr-bot-logs-panel .log-fx-new::after,
+      #${P.id} .log-wait, .fr-bot-logs-panel .log-wait,
+      #${P.id} .log-wait-bar, .fr-bot-logs-panel .log-wait-bar {
+        animation: none !important;
+      }
+    }
+
     #${P.id} .fr-waitbar, .fr-bot-logs-panel .fr-waitbar { flex: 0 0 auto; padding: 5px 7px; border: 1px solid rgba(0,229,255,.17); border-radius: 6px; background: rgba(0,229,255,.035); }
     #${P.id} .fr-waitbar[hidden], .fr-bot-logs-panel .fr-waitbar[hidden] { display: none; }
     #${P.id} .fr-waitbar-label, .fr-bot-logs-panel .fr-waitbar-label { margin-bottom: 4px; color: #b7d7dd; font-size: 11px; font-variant-numeric: tabular-nums; }

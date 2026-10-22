@@ -18,6 +18,17 @@ export function addBotLog(message, type) {
         kind: String(message.kind || type || 'info')
       }
     : { id: state.botLogId, at: Date.now(), message: String(message), type: type || 'info' };
+  if (entry.kind === 'wait') {
+    let waitCount = 0;
+    for (let i = state.botLogs.length - 1; i >= 0; i--) {
+      if (state.botLogs[i].kind === 'wait') {
+        waitCount++;
+        if (waitCount >= 30) {
+          state.botLogs.splice(i, 1);
+        }
+      }
+    }
+  }
   state.botLogs.unshift(entry);
   state.botLogs.length = Math.min(state.botLogs.length, 100);
   emit('log:added');
