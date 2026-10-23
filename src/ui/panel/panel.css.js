@@ -1043,15 +1043,11 @@ export const panelCss = `
       position: relative; transition: filter 0.2s ease, opacity 0.2s ease;
     }
     #${P.id} .fr-target-card.is-search-inactive {
-      opacity: 0.65;
-    }
-    #${P.id} .fr-target-card.is-search-inactive .fr-futbin-card {
+      opacity: 0.55;
       filter: grayscale(0.85);
     }
     #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded {
       opacity: 0.85;
-    }
-    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded .fr-futbin-card {
       filter: none;
     }
     #${P.id} .fr-target-card.is-insufficient-balance {
@@ -1150,14 +1146,22 @@ export const panelCss = `
       background: rgba(0,255,136,.18);
     }
     #${P.id} .fr-target-search-toggle.is-inactive {
-      color: #b0bec5; background: rgba(255,82,97,.1);
-      border: 1px solid rgba(255,82,97,.35);
+      color: #ffb4bc;
+      background: rgba(239, 68, 68, 0.22);
+      border: 1px solid rgba(239, 68, 68, 0.75);
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+      filter: grayscale(0) !important;
     }
     #${P.id} .fr-target-search-toggle.is-inactive .fr-search-toggle-status {
-      color: #ff5261; font-weight: 800;
+      color: #ff3b4e;
+      font-weight: 800;
+      text-shadow: 0 0 6px rgba(255, 59, 78, 0.6);
+      filter: grayscale(0) !important;
     }
     #${P.id} .fr-target-search-toggle.is-inactive:hover {
-      background: rgba(255,82,97,.18);
+      background: rgba(239, 68, 68, 0.32);
+      border-color: #ff3b4e;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
     }
 
     #${P.id} .fr-target-profit {
