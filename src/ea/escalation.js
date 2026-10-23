@@ -265,13 +265,17 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
 /**
  * Satın alma gerçekleştikten sonra basamakları ve süreyi sıfırlar.
  * @param {object} target
+ * @returns {boolean} Sıfırlanan aktif bir artırma/süre olup olmadığı
  */
 export function resetEscalationOnPurchase(target) {
   if (target?.escalation) {
+    const hadProgress = Boolean(target.escalation.enabled && (target.escalation.steps > 0 || target.escalation.activeMs > 0));
     target.escalation.steps = 0;
     target.escalation.activeMs = 0;
     target.escalation.ceilingLogged = false;
+    return hadProgress;
   }
+  return false;
 }
 
 /**

@@ -29,6 +29,11 @@ export function stopAutoBuyer(reason) {
   state.botRunning = false;
   state.botToken++;
   state.botWait = null;
+  if (Array.isArray(state.targets)) {
+    for (const t of state.targets) {
+      delete t._lastSearchActiveAt;
+    }
+  }
   emit('bot:wait');
   setBotStatus(reason || 'Tarama durduruldu.');
   addBotLog(state.botStatus, 'error');
@@ -54,6 +59,11 @@ export async function startAutoBuyer() {
   }
   state.botRunning = true;
   const token = ++state.botToken;
+  if (Array.isArray(state.targets)) {
+    for (const t of state.targets) {
+      delete t._lastSearchActiveAt;
+    }
+  }
   state.botStats = { bought: 0, missed: 0, searches: 0, errors: 0 };
   state.botWait = null;
   emit('bot:stats');
@@ -150,10 +160,11 @@ export async function runAutoBuyer(token, deps = {}) {
           const result = await search(target, eaId, token, { searchIndex, effectiveBuyNow: currentSearchBuyNow });
           const searchEndTime = Date.now();
           const now = searchEndTime;
-          const searchDurationMs = searchEndTime - searchStartTime;
-          const elapsedMs = (typeof target._lastSearchActiveAt === 'number' && target._lastSearchActiveAt > 0 && (now - target._lastSearchActiveAt <= 30000))
+          const searchDurationMs = Math.max(0, searchEndTime - searchStartTime);
+          const rawDelta = (typeof target._lastSearchActiveAt === 'number' && target._lastSearchActiveAt > 0)
             ? (now - target._lastSearchActiveAt)
             : searchDurationMs;
+          const elapsedMs = Math.max(searchDurationMs, Math.min(rawDelta, 30000));
           target._lastSearchActiveAt = now;
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
@@ -184,9 +195,11 @@ export async function runAutoBuyer(token, deps = {}) {
             }
 
             if (state.snipeSettings.dryRun) {
-              resetEscalationOnPurchase(target);
-              addMarketLog({ text: '🎯 [Otomatik Arttırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
-              emit('targets:changed');
+              const reset = resetEscalationOnPurchase(target);
+              if (reset) {
+                addMarketLog({ text: '🎯 [Otomatik Arttırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
+                emit('targets:changed');
+              }
               governor.recordPurchase(offer.price);
               incrementStat('simulatedBought');
               addBotLog({
@@ -206,9 +219,11 @@ export async function runAutoBuyer(token, deps = {}) {
               }
               if (token !== state.botToken || !state.botRunning) return;
               if (purchase.success) {
-                resetEscalationOnPurchase(target);
-                addMarketLog({ text: '🎯 [Otomatik Arttırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
-                emit('targets:changed');
+                const reset = resetEscalationOnPurchase(target);
+                if (reset) {
+                  addMarketLog({ text: '🎯 [Otomatik Arttırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
+                  emit('targets:changed');
+                }
                 bought++;
                 totalSpent += offer.price;
                 incrementStat('bought');

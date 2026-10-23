@@ -86,12 +86,21 @@ describe('ea/escalation (Phase 3 - Auto Price Escalation)', () => {
   });
 
   describe('reset functions', () => {
-    it('resetEscalationOnPurchase clears steps and activeMs', () => {
+    it('resetEscalationOnPurchase clears steps and activeMs and returns whether it had progress', () => {
       const target = { escalation: { enabled: true, steps: 3, activeMs: 15000, ceilingLogged: true } };
-      resetEscalationOnPurchase(target);
+      const hadProgress = resetEscalationOnPurchase(target);
+      expect(hadProgress).toBe(true);
       expect(target.escalation.steps).toBe(0);
       expect(target.escalation.activeMs).toBe(0);
       expect(target.escalation.ceilingLogged).toBe(false);
+
+      // Disabled target should return false
+      const disabledTarget = { escalation: { enabled: false, steps: 0, activeMs: 0 } };
+      expect(resetEscalationOnPurchase(disabledTarget)).toBe(false);
+
+      // Enabled target with 0 steps and 0 activeMs should return false
+      const zeroTarget = { escalation: { enabled: true, steps: 0, activeMs: 0 } };
+      expect(resetEscalationOnPurchase(zeroTarget)).toBe(false);
     });
 
     it('resetEscalationOnManualChange clears steps and activeMs', () => {
