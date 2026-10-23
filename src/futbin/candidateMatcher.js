@@ -107,19 +107,6 @@ export function resolvePlaystyleIconUrl(name) {
 export function extractPlaystylesPlus(row) {
   if (!row) return [];
 
-  // B4 Teşhis çıktısı: gerçek FUTBIN yanıtındaki PlayStyle alan adlarını konsola yaz
-  if (typeof console !== 'undefined' && row && typeof row === 'object') {
-    const matchedKeys = Object.keys(row).filter((k) => /play.?style/i.test(k));
-    if (matchedKeys.length > 0) {
-      console.log('[FutRUSH:PlayStyle Diagnostic]', {
-        id: row.id || row.ID,
-        name: row.playername,
-        keys: matchedKeys,
-        values: matchedKeys.map((k) => row[k])
-      });
-    }
-  }
-
   const rawPs = row.playstyles_plus ?? row.playstylesPlus ?? row.playstyle_plus ?? row.playstyleplus ?? row.playStylesPlus;
 
   const toPlaystyleObj = (rawName, explicitIcon = '') => {

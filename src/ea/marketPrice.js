@@ -1,5 +1,4 @@
 // Hedef oyuncu icin piyasa fiyati: findLowestBin + robustMarketPrice. EA'dan bagimsiz (search enjekte edilir).
-//   const result = await getMarketPrice((maxBuy) => fetchMarketPage(eaId, maxBuy), { eaId, rating, reference, token, ...ayarlar });
 // Donus: { ok, price, lowest, skipped, count, searches, exact, none, cancelled, error }
 
 import { findLowestBin, robustMarketPrice } from './lowestBin.js';

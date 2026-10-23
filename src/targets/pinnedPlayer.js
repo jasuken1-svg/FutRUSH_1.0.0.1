@@ -292,14 +292,12 @@ export async function addPinnedPlayerToTargets() {
     lookupTarget.rarityIds = intent.rarityIds;
   }
 
-  console.log('[FutRUSH] Hedef ekleme intent: ' + JSON.stringify({ name, price, playerId: lookupTarget.playerId, rarityIds: lookupTarget.rarityIds, quality: intent.quality }));
   setTargetStatus({ type: 'loading', message: name + ' kart kimliği FutBIN ile eşleştiriliyor...' });
   emit('targets:changed');
 
   let res;
   try {
     res = await fetchFutbinPlayerId(lookupTarget);
-    console.log('[FutRUSH] fetchFutbinPlayerId response: ' + JSON.stringify(res));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setTargetStatus({ type: 'error', message: 'Seçili kart FutBIN ile eşleştirilemedi: ' + message });
