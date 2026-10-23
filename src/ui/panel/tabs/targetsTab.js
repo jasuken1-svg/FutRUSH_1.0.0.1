@@ -17,6 +17,7 @@ import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
 import { FUTBIN_ICON_DATA } from '../../icons.js';
 import { getBalance } from '../../../ea/balance.js';
+import { computeEffectiveBuyNow, resetEscalationOnManualChange } from '../../../ea/escalation.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
@@ -234,6 +235,211 @@ export function expireTargetStatus(content) {
     statusElement.replaceChildren();
     statusRemovalTimer = null;
   }, 220);
+}
+
+
+export function createEscalationControl(player, onUpdate) {
+  if (!player.escalation) {
+    player.escalation = {
+      enabled: false,
+      afterMinutes: 10,
+      maxSteps: 3,
+      steps: 0,
+      activeMs: 0
+    };
+  }
+
+  const container = document.createElement('div');
+  container.className = 'fr-target-escalation-wrap';
+
+  const render = () => {
+    container.replaceChildren();
+
+    const effCalc = computeEffectiveBuyNow(player, {
+      maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold
+    });
+
+    const isEnabled = Boolean(player.escalation?.enabled);
+    const steps = Math.max(0, Math.floor(Number(player.escalation?.steps) || 0));
+
+    // 1. Üst Satır: Aç/Kapa Düğmesi + Efektif Fiyat Önizlemesi + Rozetler
+    const headerRow = document.createElement('div');
+    headerRow.className = 'fr-escalation-header-row';
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'fr-escalation-toggle-btn ' + (isEnabled ? 'is-active' : 'is-inactive');
+    toggleBtn.innerHTML = `Oto Artır: <span class="fr-escalation-toggle-status">${isEnabled ? 'Açık' : 'Kapalı'}</span>`;
+    toggleBtn.title = 'Bulunamazsa fiyatı otomatik artır (Aç/Kapat)';
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasEnabled = Boolean(player.escalation?.enabled);
+      player.escalation.enabled = !wasEnabled;
+      if (!player.escalation.enabled) {
+        if (player.escalation.steps > 0 || player.escalation.activeMs > 0) {
+          resetEscalationOnManualChange(player);
+          addMarketLog({
+            text: `⏹️ [Fiyat Artırma] ${player.name}: Otomatik artırma kapatıldı, basamaklar taban fiyata sıfırlandı.`,
+            type: 'info'
+          });
+        }
+      } else {
+        addMarketLog({
+          text: `▶️ [Fiyat Artırma] ${player.name}: Otomatik artırma açıldı (${player.escalation.afterMinutes} dk, maks ${player.escalation.maxSteps} basamak).`,
+          type: 'info'
+        });
+      }
+      saveTargets();
+      render();
+      if (typeof onUpdate === 'function') onUpdate();
+    });
+
+    headerRow.appendChild(toggleBtn);
+
+    if (isEnabled) {
+      const preview = document.createElement('div');
+      preview.className = 'fr-escalation-preview';
+      const baseFmt = Number(player.buyNow).toLocaleString('tr-TR');
+      const effFmt = Number(effCalc.effectiveBuyNow).toLocaleString('tr-TR');
+      preview.textContent = steps > 0 ? `${baseFmt} → ${effFmt} (+${steps})` : `${baseFmt} (+0)`;
+      headerRow.appendChild(preview);
+
+      const badgesWrap = document.createElement('div');
+      badgesWrap.className = 'fr-escalation-badges-wrap';
+
+      if (steps > 0) {
+        const stepBadge = document.createElement('span');
+        stepBadge.className = 'fr-escalation-badge fr-escalation-badge-step';
+        stepBadge.textContent = `+${steps} basamak`;
+        badgesWrap.appendChild(stepBadge);
+      }
+
+      if (effCalc.isAtCeiling) {
+        const ceilingBadge = document.createElement('span');
+        ceilingBadge.className = 'fr-escalation-badge fr-escalation-badge-ceiling';
+        ceilingBadge.textContent = 'TAVAN';
+        ceilingBadge.title = effCalc.ceilingReason || 'Fiyat artırma tavanına ulaşıldı';
+        badgesWrap.appendChild(ceilingBadge);
+      }
+
+      if (effCalc.isRiskOfLoss) {
+        const lossWarning = document.createElement('span');
+        lossWarning.className = 'fr-escalation-badge fr-escalation-badge-loss';
+        lossWarning.textContent = '⚠️ Zarar riski';
+        lossWarning.title = 'Efektif fiyat FutBIN piyasa fiyatının %95’ini aşıyor (%5 EA vergi sonrası zarar riski)';
+        badgesWrap.appendChild(lossWarning);
+      }
+
+      if (badgesWrap.children.length > 0) {
+        headerRow.appendChild(badgesWrap);
+      }
+    }
+
+    container.appendChild(headerRow);
+
+    // 2. Alt Satır: Ayarlar (Dakika & Maks Basamak) ve Canlı Doğrulama
+    if (isEnabled) {
+      const inputsRow = document.createElement('div');
+      inputsRow.className = 'fr-escalation-inputs-row';
+
+      const minWrap = document.createElement('div');
+      minWrap.className = 'fr-escalation-field';
+      const minLabel = document.createElement('label');
+      minLabel.className = 'fr-escalation-field-label';
+      minLabel.textContent = 'Kaç dk bulunamazsa:';
+      const minInput = document.createElement('input');
+      minInput.type = 'number';
+      minInput.className = 'fr-escalation-field-input';
+      minInput.min = '5';
+      minInput.step = '1';
+      minInput.value = String(player.escalation.afterMinutes || 10);
+      minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
+      minWrap.append(minLabel, minInput);
+
+      const maxWrap = document.createElement('div');
+      maxWrap.className = 'fr-escalation-field';
+      const maxLabel = document.createElement('label');
+      maxLabel.className = 'fr-escalation-field-label';
+      maxLabel.textContent = 'En fazla basamak:';
+      const maxInput = document.createElement('input');
+      maxInput.type = 'number';
+      maxInput.className = 'fr-escalation-field-input';
+      maxInput.min = '1';
+      maxInput.max = '10';
+      maxInput.step = '1';
+      maxInput.value = String(player.escalation.maxSteps || 3);
+      maxInput.setAttribute('aria-label', `${player.name} için maksimum artırma basamağı`);
+      maxWrap.append(maxLabel, maxInput);
+
+      inputsRow.append(minWrap, maxWrap);
+
+      const errorEl = document.createElement('div');
+      errorEl.className = 'fr-escalation-inline-error';
+      errorEl.hidden = true;
+
+      const validateAndCommitMinutes = (forceRevert = false) => {
+        const val = Number(minInput.value);
+        if (!Number.isFinite(val) || !Number.isInteger(val) || val < 5) {
+          errorEl.textContent = 'Süre en düşük 5 dakika olmalıdır.';
+          errorEl.hidden = false;
+          minInput.classList.add('is-invalid');
+          if (forceRevert) {
+            const safe = Math.max(5, Math.floor(val) || 5);
+            player.escalation.afterMinutes = safe;
+            minInput.value = String(safe);
+            minInput.classList.remove('is-invalid');
+            errorEl.hidden = true;
+            saveTargets();
+          }
+          return false;
+        }
+        errorEl.hidden = true;
+        minInput.classList.remove('is-invalid');
+        player.escalation.afterMinutes = val;
+        saveTargets();
+        return true;
+      };
+
+      const validateAndCommitMaxSteps = (forceRevert = false) => {
+        const val = Number(maxInput.value);
+        if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1 || val > 10) {
+          errorEl.textContent = 'En fazla basamak 1 ile 10 arasında olmalıdır.';
+          errorEl.hidden = false;
+          maxInput.classList.add('is-invalid');
+          if (forceRevert) {
+            const safe = Math.max(1, Math.min(10, Math.floor(val) || 3));
+            player.escalation.maxSteps = safe;
+            maxInput.value = String(safe);
+            maxInput.classList.remove('is-invalid');
+            errorEl.hidden = true;
+            saveTargets();
+            render();
+          }
+          return false;
+        }
+        errorEl.hidden = true;
+        maxInput.classList.remove('is-invalid');
+        player.escalation.maxSteps = val;
+        saveTargets();
+        render();
+        return true;
+      };
+
+      minInput.addEventListener('input', () => validateAndCommitMinutes(false));
+      minInput.addEventListener('change', () => validateAndCommitMinutes(true));
+      minInput.addEventListener('blur', () => validateAndCommitMinutes(true));
+
+      maxInput.addEventListener('input', () => validateAndCommitMaxSteps(false));
+      maxInput.addEventListener('change', () => validateAndCommitMaxSteps(true));
+      maxInput.addEventListener('blur', () => validateAndCommitMaxSteps(true));
+
+      container.append(inputsRow, errorEl);
+    }
+  };
+
+  render();
+  return { container, refresh: render };
 }
 
 export function renderTargetContent(content) {
@@ -709,6 +915,7 @@ export function renderTargetContent(content) {
     body.appendChild(head);
 
     // 3. Kontroller (Tur Sayısı ve Satın Al)
+    let escalationControl = null;
     const controls = document.createElement('div');
     controls.className = 'fr-target-controls';
     [
@@ -781,6 +988,13 @@ export function renderTargetContent(content) {
             }
           }
           player.buyNow = clampPrice(nextVal);
+          if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
+            resetEscalationOnManualChange(player);
+            addMarketLog({
+              text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+              type: 'info'
+            });
+          }
         } else {
           const step = control.step * multiplier;
           player[control.key] = Math.max(control.min, current + direction * step);
@@ -789,6 +1003,7 @@ export function renderTargetContent(content) {
         value.value = formatVal(control.key, player[control.key]);
         if (control.key === 'buyNow') {
           updateProfit(player.buyNow);
+          escalationControl?.refresh();
           const priceExceeded = isExceedingFutbin(player.buyNow, player.price);
           card.classList.toggle('is-price-exceeded', priceExceeded);
           const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
@@ -813,7 +1028,15 @@ export function renderTargetContent(content) {
           player[control.key] = entered;
           saveTargets();
           if (control.key === 'buyNow') {
+            if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
+              resetEscalationOnManualChange(player);
+              addMarketLog({
+                text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+                type: 'info'
+              });
+            }
             updateProfit(entered);
+            escalationControl?.refresh();
             const priceExceeded = isExceedingFutbin(entered, player.price);
             card.classList.toggle('is-price-exceeded', priceExceeded);
             const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
@@ -867,7 +1090,15 @@ export function renderTargetContent(content) {
         value.value = formatVal(control.key, completedValue);
         saveTargets();
         if (control.key === 'buyNow') {
+          if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
+            resetEscalationOnManualChange(player);
+            addMarketLog({
+              text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+              type: 'info'
+            });
+          }
           updateProfit(completedValue);
+          escalationControl?.refresh();
           const priceExceeded = isExceedingFutbin(completedValue, player.price);
           card.classList.toggle('is-price-exceeded', priceExceeded);
           const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
@@ -886,6 +1117,10 @@ export function renderTargetContent(content) {
       controls.appendChild(group);
     });
     body.appendChild(controls);
+
+    // Otomatik Fiyat Artırma Kontrolü
+    escalationControl = createEscalationControl(player, () => updateSummaryBar());
+    body.appendChild(escalationControl.container);
 
     // 4. Alt Bilgi: FutBIN Logosu, Fiyat ve Trend Oku (sağ en alt)
     const bottomBar = document.createElement('div');

@@ -337,4 +337,102 @@ describe('player target controls', () => {
     expect(sameIndicator.getAttribute('title')).toContain('Son Fiyat Güncellemeleri');
     expect(sameIndicator.getAttribute('title')).toContain('50.000 coin');
   });
+
+  it('renders and interacts with the escalation controls on target cards', () => {
+    state.targets = [
+      {
+        id: 'esc-target',
+        name: 'Escalation Player',
+        rating: 85,
+        price: 20000,
+        priceUpdatedAt: Date.now(),
+        buyNow: 15000,
+        searches: 3,
+        escalation: {
+          enabled: false,
+          afterMinutes: 10,
+          maxSteps: 3,
+          steps: 0,
+          activeMs: 0
+        }
+      }
+    ];
+
+    const content = dom.window.document.createElement('div');
+    renderTargetContent(content);
+
+    const card = content.querySelector('.fr-target-card');
+    const toggleBtn = card.querySelector('.fr-escalation-toggle-btn');
+    expect(toggleBtn).not.toBeNull();
+    expect(toggleBtn.textContent).toContain('Kapalı');
+
+    // Toggle ON
+    toggleBtn.click();
+    expect(state.targets[0].escalation.enabled).toBe(true);
+    const newToggle = card.querySelector('.fr-escalation-toggle-btn');
+    expect(newToggle.textContent).toContain('Açık');
+
+    // Inputs should be visible
+    const minInput = card.querySelector('.fr-escalation-field-input[min="5"]');
+    const maxInput = card.querySelector('.fr-escalation-field-input[max="10"]');
+    const errorEl = card.querySelector('.fr-escalation-inline-error');
+    expect(minInput).not.toBeNull();
+    expect(maxInput).not.toBeNull();
+    expect(minInput.value).toBe('10');
+    expect(maxInput.value).toBe('3');
+
+    // Invalid input: minutes < 5
+    minInput.value = '3';
+    minInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    expect(errorEl.hidden).toBe(false);
+    expect(errorEl.textContent).toContain('en düşük 5');
+
+    // Blur reverts to at least 5
+    minInput.dispatchEvent(new dom.window.Event('blur', { bubbles: true }));
+    expect(state.targets[0].escalation.afterMinutes).toBe(5);
+    expect(minInput.value).toBe('5');
+    expect(errorEl.hidden).toBe(true);
+
+    // Invalid input: maxSteps > 10
+    maxInput.value = '15';
+    maxInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    expect(errorEl.hidden).toBe(false);
+    expect(errorEl.textContent).toContain('1 ile 10');
+
+    // Blur clamps to 10
+    maxInput.dispatchEvent(new dom.window.Event('blur', { bubbles: true }));
+    expect(state.targets[0].escalation.maxSteps).toBe(10);
+    expect(maxInput.value).toBe('10');
+    expect(errorEl.hidden).toBe(true);
+
+    // Test with steps applied: preview and badges
+    state.targets[0].escalation.steps = 2;
+    renderTargetContent(content);
+
+    const updatedCard = content.querySelector('.fr-target-card');
+    const preview = updatedCard.querySelector('.fr-escalation-preview');
+    expect(preview.textContent).toContain('15.000 → 15.500 (+2)');
+
+    const stepBadge = updatedCard.querySelector('.fr-escalation-badge-step');
+    expect(stepBadge).not.toBeNull();
+    expect(stepBadge.textContent).toBe('+2 basamak');
+
+    // Test loss warning: effective price > FutBIN * 0.95 (20000 * 0.95 = 19000)
+    state.targets[0].buyNow = 19000;
+    state.targets[0].escalation.steps = 1; // effective = 19250 > 19000
+    renderTargetContent(content);
+
+    const warningCard = content.querySelector('.fr-target-card');
+    const lossBadge = warningCard.querySelector('.fr-escalation-badge-loss');
+    expect(lossBadge).not.toBeNull();
+    expect(lossBadge.textContent).toContain('Zarar riski');
+
+    // Changing buyNow manually resets steps to 0
+    const buyNowInput = warningCard.querySelector('[aria-label="SATIN AL değeri"]');
+    buyNowInput.value = '16000';
+    buyNowInput.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+
+    expect(state.targets[0].buyNow).toBe(16000);
+    expect(state.targets[0].escalation.steps).toBe(0);
+  });
 });

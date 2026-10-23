@@ -22,6 +22,7 @@ import { loadSnipeSettings, saveSnipeSettings } from '../../src/core/storage.js'
 import { state } from '../../src/core/state.js';
 
 const defaults = {
+  schemaVersion: 2,
   repeat: 0,
   waitSeconds: [15, 35],
   autoSell: false,
@@ -100,7 +101,8 @@ describe('snipe settings storage', () => {
       consecutiveErrorLimit: 3,
       transferListCapacity: 100,
       transferListWarnThreshold: 5,
-      maxPriceCapThreshold: 0.50
+      maxPriceCapThreshold: 0.50,
+      schemaVersion: 2
     });
   });
 
@@ -190,7 +192,8 @@ describe('snipe settings storage', () => {
       consecutiveErrorLimit: 3,
       transferListCapacity: 100,
       transferListWarnThreshold: 5,
-      maxPriceCapThreshold: 0.50
+      maxPriceCapThreshold: 0.50,
+      schemaVersion: 2
     });
   });
 });

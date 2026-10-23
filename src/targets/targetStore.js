@@ -69,7 +69,20 @@ export function normalizeTarget(item, mode) {
       leagueId: Number(item.leagueId) || 0,
       raretype: item.raretype != null ? item.raretype : null,
       isHolo: Boolean(item.isHolo),
-      searchDisabled: Boolean(item.searchDisabled)
+      searchDisabled: Boolean(item.searchDisabled),
+      escalation: (item.escalation && typeof item.escalation === 'object') ? {
+        enabled: Boolean(item.escalation.enabled),
+        afterMinutes: Math.max(5, Math.floor(Number(item.escalation.afterMinutes) || 10)),
+        maxSteps: Math.max(1, Math.min(10, Math.floor(Number(item.escalation.maxSteps) || 3))),
+        steps: Math.max(0, Math.floor(Number(item.escalation.steps) || 0)),
+        activeMs: 0
+      } : {
+        enabled: false,
+        afterMinutes: 10,
+        maxSteps: 3,
+        steps: 0,
+        activeMs: 0
+      }
     };
   }
 
@@ -120,7 +133,20 @@ export function normalizeTarget(item, mode) {
       leagueId: Number(item.leagueId) || 0,
       raretype: item.raretype != null ? item.raretype : null,
       isHolo: Boolean(item.isHolo),
-      searchDisabled: Boolean(item.searchDisabled)
+      searchDisabled: Boolean(item.searchDisabled),
+      escalation: (item.escalation && typeof item.escalation === 'object') ? {
+        enabled: Boolean(item.escalation.enabled),
+        afterMinutes: Math.max(5, Math.floor(Number(item.escalation.afterMinutes) || 10)),
+        maxSteps: Math.max(1, Math.min(10, Math.floor(Number(item.escalation.maxSteps) || 3))),
+        steps: Math.max(0, Math.floor(Number(item.escalation.steps) || 0)),
+        activeMs: 0
+      } : {
+        enabled: false,
+        afterMinutes: 10,
+        maxSteps: 3,
+        steps: 0,
+        activeMs: 0
+      }
     };
   }
 

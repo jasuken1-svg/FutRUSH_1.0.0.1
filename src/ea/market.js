@@ -109,7 +109,7 @@ export async function searchAutoBuyOffers(target, eaId, token, options = {}) {
       debug('[FutRUSH:ea]', 'EA Transfer Market önbelleği temizlenemedi.', String(e?.message || e));
     }
   }
-  const rawBuyNow = Number(target?.buyNow) || 0;
+  const rawBuyNow = Number(options.effectiveBuyNow ?? target?.buyNow) || 0;
   const snapped = roundDownToStep(rawBuyNow);
   const maxBuy = snapped < MIN_BIN ? MIN_BIN : snapped;
   const criteria = makeAutoBuyCriteria(target || eaId, maxBuy, options);

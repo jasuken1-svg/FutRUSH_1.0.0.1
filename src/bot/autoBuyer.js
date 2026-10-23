@@ -13,6 +13,7 @@ import { classifyPurchaseError } from '../ea/errorCodes.js';
 import { getCoinBalance } from '../ea/services.js';
 import { checkPilesProtection } from '../ea/piles.js';
 import { checkPriceCapGuard } from '../ea/priceCapGuard.js';
+import { computeEffectiveBuyNow, recordEscalationSearch, resetEscalationOnPurchase } from '../ea/escalation.js';
 import { hasCurrentTargetEaId, resolveTargetEaId } from '../targets/targetOps.js';
 import { addBotLog, setBotStatus } from './botLog.js';
 import { addMarketLog } from '../ui/marketLogBox.js';
@@ -125,6 +126,13 @@ export async function runAutoBuyer(token, deps = {}) {
           return;
         }
 
+        const effectiveCalc = computeEffectiveBuyNow(target, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
+        const currentSearchBuyNow = effectiveCalc.effectiveBuyNow;
+        if (!checkPriceCapGuard(target, currentSearchBuyNow)) {
+          stopAutoBuyer('Fiyat koruması: ' + target.name + ' efektif SATIN AL (' + currentSearchBuyNow.toLocaleString('tr-TR') + ') FutBIN tavanını aşıyor!');
+          return;
+        }
+
         const eaId = Number(target.eaId) || 0;
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -138,13 +146,21 @@ export async function runAutoBuyer(token, deps = {}) {
           }
           searchIndex++;
           governor.recordSearch();
-          const result = await search(target, eaId, token, { searchIndex });
+          const searchStartTime = Date.now();
+          const result = await search(target, eaId, token, { searchIndex, effectiveBuyNow: currentSearchBuyNow });
+          const searchElapsedMs = Date.now() - searchStartTime;
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
           if (!offer) {
             governor.recordResult(200);
             addBotLog(target.name + ': Satın Al sınırında uygun ilan bulunamadı.', 'info');
+            const escRecord = recordEscalationSearch(target, { matchFound: false, elapsedMs: searchElapsedMs, canProgress: true }, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
+            if (escRecord.logMessage) {
+              addMarketLog({ text: '📈 [Otomatik Artırma] ' + escRecord.logMessage, type: escRecord.steppedUp ? 'info' : 'warn' });
+              emit('targets:changed');
+            }
           } else {
+            recordEscalationSearch(target, { matchFound: true, elapsedMs: searchElapsedMs, canProgress: true });
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             if (!checkPilesProtection(governor)) return;
@@ -162,6 +178,9 @@ export async function runAutoBuyer(token, deps = {}) {
             }
 
             if (state.snipeSettings.dryRun) {
+              resetEscalationOnPurchase(target);
+              addMarketLog({ text: '🎯 [Otomatik Artırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
+              emit('targets:changed');
               governor.recordPurchase(offer.price);
               incrementStat('simulatedBought');
               addBotLog({
@@ -181,6 +200,9 @@ export async function runAutoBuyer(token, deps = {}) {
               }
               if (token !== state.botToken || !state.botRunning) return;
               if (purchase.success) {
+                resetEscalationOnPurchase(target);
+                addMarketLog({ text: '🎯 [Otomatik Artırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
+                emit('targets:changed');
                 bought++;
                 totalSpent += offer.price;
                 incrementStat('bought');

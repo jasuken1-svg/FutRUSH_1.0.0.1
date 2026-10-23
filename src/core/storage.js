@@ -1,3 +1,5 @@
+export const SETTINGS_SCHEMA_VERSION = 2;
+
 // Panel geometrisini ve kayitli hedef filtresini localStorage'dan state'e yukler.
 // Bagimliliklar: core/config, core/state ve utils/dom.
 
@@ -11,6 +13,7 @@ import { applyPrefs, loadPrefs } from './prefs.js';
 
 const SNIPE_SETTINGS_KEY = 'futrush-snipe-settings';
 const SNIPE_SETTINGS_DEFAULTS = {
+  schemaVersion: SETTINGS_SCHEMA_VERSION,
   repeat: 0,
   waitSeconds: [15, 35],
   autoSell: false,
@@ -35,6 +38,7 @@ function isNumberInRange(value, min, max) {
 export function saveSnipeSettings() {
   try {
     pageStorage().setItem(SNIPE_SETTINGS_KEY, JSON.stringify({
+      schemaVersion: SETTINGS_SCHEMA_VERSION,
       repeat: state.snipeSettings.repeat,
       waitSeconds: Array.isArray(state.snipeSettings.waitSeconds)
         ? state.snipeSettings.waitSeconds.slice(0, 2)
@@ -139,6 +143,9 @@ export function loadSnipeSettings() {
     }
     if (typeof savedSettings.maxPriceCapThreshold === 'number' && Number.isFinite(savedSettings.maxPriceCapThreshold) && savedSettings.maxPriceCapThreshold >= 0.1 && savedSettings.maxPriceCapThreshold <= 5.0) {
       loadedSettings.maxPriceCapThreshold = savedSettings.maxPriceCapThreshold;
+    }
+    if (!savedSettings.schemaVersion || savedSettings.schemaVersion < SETTINGS_SCHEMA_VERSION) {
+      loadedSettings.schemaVersion = SETTINGS_SCHEMA_VERSION;
     }
   }
 
