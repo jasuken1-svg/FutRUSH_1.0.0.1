@@ -473,13 +473,6 @@ export const panelCss = `
       min-width: 0;
     }
 
-    #${P.id} .fr-speed-options { display: flex; gap: 6px; }
-    #${P.id} .fr-speed-option {
-      flex: 1; padding: 6px 4px; border: 1px solid rgba(255,255,255,.16); border-radius: 6px;
-      color: #aebfc8; background: rgba(255,255,255,.05); font: inherit; cursor: pointer; transition: .18s ease;
-    }
-    #${P.id} .fr-speed-option[aria-pressed="true"] { color: #07131b; border-color: #00e5ff; background: #00e5ff; font-weight: 700; }
-
     #${P.id} .fr-setting-input {
       width: 100%;
       box-sizing: border-box;
