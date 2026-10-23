@@ -84,13 +84,16 @@ export function validatePriceCap(enteredBuyNow, futbinPrice, options = {}) {
  * @param {number} offerPrice - Teklif / Satın alma fiyatı
  * @returns {boolean} Alıma izin veriliyor mu
  */
-export function checkPriceCapGuard(target, offerPrice) {
+export function checkPriceCapGuard(target, offerPrice, options = {}) {
   const futbinRef = Number(target?.price);
   const priceToCheck = offerPrice != null ? Number(offerPrice) : Number(target?.buyNow);
+  const strictMode = options.strictMarketCap !== undefined
+    ? Boolean(options.strictMarketCap)
+    : Boolean(state.snipeSettings?.strictMarketCap);
 
-  // Kural: FutBIN fiyatı biliniyorsa ve SATIN AL > FutBIN ise kesinlikle engelle
-  if (isExceedingFutbin(priceToCheck, futbinRef)) {
-    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Satın Al (${priceToCheck.toLocaleString('tr-TR')}) FutBIN piyasa fiyatını (${futbinRef.toLocaleString('tr-TR')}) aşıyor! Tarama ve satın alma engellendi.`;
+  // Katı Mod aktifse: SATIN AL > FutBIN olduğunda kesinlikle engelle
+  if (strictMode && isExceedingFutbin(priceToCheck, futbinRef)) {
+    const text = `🛡️ [Fiyat Koruması - Katı Mod] ${target?.name || 'Oyuncu'}: Satın Al (${priceToCheck.toLocaleString('tr-TR')}) FutBIN piyasa fiyatını (${futbinRef.toLocaleString('tr-TR')}) aşıyor! Tarama ve satın alma engellendi.`;
     addMarketLog({
       text,
       type: 'error'
@@ -99,9 +102,10 @@ export function checkPriceCapGuard(target, offerPrice) {
     return false;
   }
 
+  // Tavan Eşik Kontrolü (Max Price Cap Guard): FutBIN * (1 + threshold) aşılırsa (fazla sıfır) engelle
   const result = validatePriceCap(priceToCheck, futbinRef);
   if (!result.allowed) {
-    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Aşırı fiyat/fazla sıfır engellendi! ${result.reason}`;
+    const text = `🛡️ [Fiyat Koruması] ${target?.name || 'Oyuncu'}: Aşırı tavan fiyat/fazla sıfır engellendi! ${result.reason}`;
     addMarketLog({
       text,
       type: 'error'

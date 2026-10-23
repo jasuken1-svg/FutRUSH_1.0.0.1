@@ -7,7 +7,7 @@ export const state = {
   panelOpen: false,  // SNIPE paneli logoyla açıldı mı
   panelExpanded: false, // SNIPE düğmesinden sekmeler açıldı mı
   activePanelTab: 'targets',
-  snipeSettings: { repeat: 0, waitSeconds: [15, 35], autoSell: false, dryRun: false, maxPlayers: 1, speed: 0, speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 }, maxSpendCoins: 0, hourlySearchLimit: 1200, dailySearchLimit: 6000, consecutiveErrorLimit: 3, transferListCapacity: 100, transferListWarnThreshold: 5, maxPriceCapThreshold: 0.50 },
+  snipeSettings: { repeat: 0, waitSeconds: [15, 35], autoSell: false, dryRun: false, strictMarketCap: false, maxPlayers: 1, speed: 0, speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 }, maxSpendCoins: 0, hourlySearchLimit: 1200, dailySearchLimit: 6000, consecutiveErrorLimit: 3, transferListCapacity: 100, transferListWarnThreshold: 5, maxPriceCapThreshold: 0.50 },
   targetFilter: { kind: 'cheap', ratings: [], count: 5 },
   targets: [],
   savedTargetLists: [],

@@ -599,7 +599,7 @@ export function renderTargetContent(content) {
       player.priceUpdatedAt = Date.now();
     }
     const isPriceExceeded = isExceedingFutbin(player.buyNow, player.price);
-    const isSearchActive = !player.searchDisabled && !player.insufficientBalance && !isPriceExceeded;
+    const isSearchActive = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !isPriceExceeded);
     const card = document.createElement('div');
     card.className = 'fr-target-card' +
       (isSearchActive ? '' : ' is-search-inactive') +
@@ -634,7 +634,8 @@ export function renderTargetContent(content) {
       searchToggle.innerHTML = `Arama: <span class="fr-search-toggle-status">${active ? 'Açık' : 'Kapalı'}</span>`;
       const priceExceeded = isExceedingFutbin(player.buyNow, player.price);
       card.classList.toggle('is-price-exceeded', priceExceeded);
-      card.classList.toggle('is-search-inactive', !active || !!player.insufficientBalance || priceExceeded);
+      const isStillActive = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
+      card.classList.toggle('is-search-inactive', !isStillActive);
     });
 
     const topRight = document.createElement('div');
@@ -790,7 +791,7 @@ export function renderTargetContent(content) {
           updateProfit(player.buyNow);
           const priceExceeded = isExceedingFutbin(player.buyNow, player.price);
           card.classList.toggle('is-price-exceeded', priceExceeded);
-          const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+          const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
           card.classList.toggle('is-search-inactive', !active);
         }
         updateSummaryBar();
@@ -815,7 +816,7 @@ export function renderTargetContent(content) {
             updateProfit(entered);
             const priceExceeded = isExceedingFutbin(entered, player.price);
             card.classList.toggle('is-price-exceeded', priceExceeded);
-            const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+            const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
             card.classList.toggle('is-search-inactive', !active);
           }
           updateSummaryBar();
@@ -869,7 +870,7 @@ export function renderTargetContent(content) {
           updateProfit(completedValue);
           const priceExceeded = isExceedingFutbin(completedValue, player.price);
           card.classList.toggle('is-price-exceeded', priceExceeded);
-          const active = !player.searchDisabled && !player.insufficientBalance && !priceExceeded;
+          const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
           card.classList.toggle('is-search-inactive', !active);
         }
         updateSummaryBar();

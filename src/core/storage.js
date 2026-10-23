@@ -15,6 +15,7 @@ const SNIPE_SETTINGS_DEFAULTS = {
   waitSeconds: [15, 35],
   autoSell: false,
   dryRun: false,
+  strictMarketCap: false,
   maxPlayers: 1,
   speed: 0,
   speedDelays: { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -40,6 +41,7 @@ export function saveSnipeSettings() {
         : [15, 35],
       autoSell: state.snipeSettings.autoSell,
       dryRun: Boolean(state.snipeSettings.dryRun),
+      strictMarketCap: Boolean(state.snipeSettings.strictMarketCap),
       maxPlayers: state.snipeSettings.maxPlayers,
       speed: state.snipeSettings.speed,
       speedDelays: state.snipeSettings.speedDelays || { 0: 5.0, 1: 4.0, 2: 2.5, 3: 1.5 },
@@ -95,6 +97,9 @@ export function loadSnipeSettings() {
     }
     if (typeof savedSettings.dryRun === 'boolean') {
       loadedSettings.dryRun = savedSettings.dryRun;
+    }
+    if (typeof savedSettings.strictMarketCap === 'boolean') {
+      loadedSettings.strictMarketCap = savedSettings.strictMarketCap;
     }
     if (Number.isSafeInteger(savedSettings.maxPlayers)
       && savedSettings.maxPlayers >= 1
