@@ -1043,11 +1043,15 @@ export const panelCss = `
       position: relative; transition: filter 0.2s ease, opacity 0.2s ease;
     }
     #${P.id} .fr-target-card.is-search-inactive {
-      opacity: 0.55;
+      opacity: 0.65;
+    }
+    #${P.id} .fr-target-card.is-search-inactive .fr-futbin-card {
       filter: grayscale(0.85);
     }
     #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded {
       opacity: 0.85;
+    }
+    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded .fr-futbin-card {
       filter: none;
     }
     #${P.id} .fr-target-card.is-insufficient-balance {
