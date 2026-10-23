@@ -207,16 +207,6 @@ export function closeMarketLogBox() {
   }
 }
 
-export function toggleMarketLogBox(force) {
-  const next = typeof force === 'boolean' ? force : !isOpenFloating;
-  if (next) {
-    openMarketLogBox();
-  } else {
-    closeMarketLogBox();
-  }
-  return isOpenFloating;
-}
-
 function setupObserver(searchPrices) {
   if (observer) {
     observer.disconnect();

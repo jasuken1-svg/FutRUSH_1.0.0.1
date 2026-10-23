@@ -2,12 +2,10 @@
 // Bağımsız saf fonksiyonlar: priceSteps ve Faz 2 priceCapGuard kuralları ile uyumlu çalışır.
 
 import { priceAbove, roundDownToStep, MIN_BIN } from './priceSteps.js';
-import { calculateMaxAllowedPrice, validatePriceCap } from './priceCapGuard.js';
+import { calculateMaxAllowedPrice } from './priceCapGuard.js';
 
 export const MIN_ESCALATION_SECONDS = 120;
 export const DEFAULT_ESCALATION_SECONDS = 120;
-export const MIN_ESCALATION_MINUTES = 2;
-export const DEFAULT_ESCALATION_MINUTES = 2;
 export const MIN_ESCALATION_STEPS = 1;
 export const MAX_ESCALATION_STEPS = 10;
 export const DEFAULT_MAX_STEPS = 3;
@@ -332,7 +330,7 @@ export function runEscalationSelfTests() {
       fn: () => {
         // FutBIN = 1000, eşik = 0.50 -> tavan = 1500. buyNow = 1400 -> priceAbove(1400) = 1500. Bir sonraki 1600 (>1500) olamaz.
         const t = { name: 'P4', buyNow: 1400, price: 1000, priceUpdatedAt: now, escalation: { enabled: true, afterMinutes: 5, maxSteps: 3, steps: 1, activeMs: 5 * 60 * 1000 } };
-        const res = recordEscalationSearch(t, { matchFound: false, elapsedMs: 1000, canProgress: true }, { now, maxPriceCapThreshold: 0.50 });
+        recordEscalationSearch(t, { matchFound: false, elapsedMs: 1000, canProgress: true }, { now, maxPriceCapThreshold: 0.50 });
         const eff = computeEffectiveBuyNow(t, { now, maxPriceCapThreshold: 0.50 });
         return eff.effectiveBuyNow === 1500 && eff.isAtCeiling;
       }

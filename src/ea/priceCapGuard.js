@@ -3,7 +3,7 @@
 // Referans: FutBIN fiyatı * (1 + threshold).
 // Bağımlılıklar: ea/priceSteps, ui/marketLogBox, core/events, core/state
 
-import { parsePriceInput, roundDownToStep } from './priceSteps.js';
+import { roundDownToStep } from './priceSteps.js';
 import { addMarketLog } from '../ui/marketLogBox.js';
 import { emit } from '../core/events.js';
 import { state } from '../core/state.js';
