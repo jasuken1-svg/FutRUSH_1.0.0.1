@@ -254,9 +254,9 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     return Math.max(120, Math.floor(Number(player.escalation.afterSeconds) || (Number(player.escalation.afterMinutes) ? player.escalation.afterMinutes * 60 : 120)));
   };
 
-  // 1. Sol alt kontrol grubu
-  const bottomLeft = document.createElement('div');
-  bottomLeft.className = 'fr-target-bottom-left';
+  // 1. Üst satır kontrol grubu (Arama butonunun yanı)
+  const topGroup = document.createElement('div');
+  topGroup.className = 'fr-escalation-top-group';
 
   const toggleBtn = document.createElement('button');
   toggleBtn.type = 'button';
@@ -268,10 +268,10 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   gearBtn.title = 'Oto Arttır Ayarları';
   gearBtn.setAttribute('aria-label', `${player.name} için Oto Arttır Ayarları`);
 
+  topGroup.append(toggleBtn, gearBtn);
+
   const badgesWrap = document.createElement('div');
   badgesWrap.className = 'fr-escalation-badges-wrap';
-
-  bottomLeft.append(toggleBtn, gearBtn, badgesWrap);
 
   // 2. Yüksekliği değiştirmeyen yüzen ayar paneli (popover)
   const popover = document.createElement('div');
@@ -390,10 +390,11 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
 
     const isEnabled = Boolean(player.escalation?.enabled);
     const steps = Math.max(0, Math.floor(Number(player.escalation?.steps) || 0));
+    const activeSec = Math.floor((Number(player.escalation?.activeMs) || 0) / 1000);
 
     toggleBtn.className = 'fr-escalation-toggle-btn ' + (isEnabled ? 'is-active' : 'is-inactive');
-    toggleBtn.innerHTML = `Oto Arttır: <span class="fr-escalation-toggle-status">${isEnabled ? 'Açık' : 'Kapalı'}</span>`;
-    toggleBtn.title = 'Bulunamazsa fiyatı otomatik arttır (Aç/Kapat)';
+    toggleBtn.innerHTML = `<span class="fr-escalation-btn-label">Oto Arttır: <span class="fr-escalation-toggle-status">${isEnabled ? 'Açık' : 'Kapalı'}</span></span><span class="fr-escalation-active-sec">(${activeSec} sn)</span>`;
+    toggleBtn.title = `Bulunamazsa fiyatı otomatik arttır (Aç/Kapat) · Geçen süre: ${activeSec} sn`;
 
     badgesWrap.replaceChildren();
     if (isEnabled) {
@@ -569,7 +570,7 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   maxInput.addEventListener('blur', () => validateAndCommitMaxSteps(true));
 
   render();
-  return { bottomLeft, popover, refresh: render };
+  return { topGroup, bottomLeft: badgesWrap, badgesWrap, popover, refresh: render };
 }
 
 export function renderTargetContent(content) {
@@ -953,9 +954,19 @@ export function renderTargetContent(content) {
     const body = document.createElement('div');
     body.className = 'fr-target-card-body';
 
-    // 1. Üst Satır: Arama Aç/Kapat (solda, ismin üstü) + Son Güncelleme & Silme (sağda)
+    let updateEffective = () => {};
+    const escalationControl = createEscalationControl(
+      player,
+      () => updateSummaryBar(),
+      () => updateEffective()
+    );
+
+    // 1. Üst Satır: Arama Aç/Kapat + Oto Arttır (solda) + Son Güncelleme & Silme (sağda)
     const topBar = document.createElement('div');
     topBar.className = 'fr-target-card-top';
+
+    const topLeft = document.createElement('div');
+    topLeft.className = 'fr-target-top-left';
 
     const searchToggle = document.createElement('button');
     searchToggle.type = 'button';
@@ -975,6 +986,8 @@ export function renderTargetContent(content) {
       const isStillActive = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
       card.classList.toggle('is-search-inactive', !isStillActive);
     });
+
+    topLeft.append(searchToggle, escalationControl.topGroup);
 
     const topRight = document.createElement('div');
     topRight.className = 'fr-target-top-right';
@@ -1018,7 +1031,7 @@ export function renderTargetContent(content) {
     });
 
     topRight.append(lastUpdate, remove);
-    topBar.append(searchToggle, topRight);
+    topBar.append(topLeft, topRight);
     body.appendChild(topBar);
 
     // 2. Başlık ve Bilgiler
@@ -1047,8 +1060,6 @@ export function renderTargetContent(content) {
     body.appendChild(head);
 
     // 3. Kontroller (Tur Sayısı ve Satın Al)
-    let escalationControl = null;
-    let updateEffective = () => {};
     const controls = document.createElement('div');
     controls.className = 'fr-target-controls';
     [
@@ -1272,15 +1283,9 @@ export function renderTargetContent(content) {
     });
     body.appendChild(controls);
 
-    // 4. Alt Bilgi: Sol tarafta Oto Arttır ve rozetler, sağda FutBIN fiyatı
+    // 4. Alt Bilgi: Sol tarafta rozetler, sağda FutBIN fiyatı
     const bottomBar = document.createElement('div');
     bottomBar.className = 'fr-target-card-bottom';
-
-    escalationControl = createEscalationControl(
-      player,
-      () => updateSummaryBar(),
-      () => updateEffective()
-    );
 
     const futbinPriceEl = document.createElement('span');
     futbinPriceEl.className = 'fr-target-futbin-price';
@@ -1296,7 +1301,7 @@ export function renderTargetContent(content) {
     }
     const iconHtml = `<img src="${FUTBIN_ICON_DATA}" class="fr-target-futbin-icon" width="12" height="12" alt="FutBIN" />`;
     futbinPriceEl.innerHTML = fbVal > 0 ? `${iconHtml} <span>${fbVal.toLocaleString('tr-TR')}</span>${trendHtml}` : `${iconHtml} <span>—</span>`;
-    bottomBar.append(escalationControl.bottomLeft, futbinPriceEl);
+    bottomBar.append(escalationControl.badgesWrap, futbinPriceEl);
     body.appendChild(bottomBar);
 
     card.appendChild(escalationControl.popover);

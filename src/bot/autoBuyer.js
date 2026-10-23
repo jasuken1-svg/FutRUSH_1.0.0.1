@@ -175,6 +175,8 @@ export async function runAutoBuyer(token, deps = {}) {
             if (escRecord.logMessage) {
               addMarketLog({ text: '📈 [Otomatik Arttırma] ' + escRecord.logMessage, type: escRecord.steppedUp ? 'info' : 'warn' });
               emit('targets:changed');
+            } else if (target.escalation?.enabled) {
+              emit('targets:changed');
             }
           } else {
             recordEscalationSearch(target, { matchFound: true, elapsedMs, canProgress: true });

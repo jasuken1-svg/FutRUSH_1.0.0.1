@@ -1110,6 +1110,12 @@ export const panelCss = `
     #${P.id} .fr-target-card-top {
       display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
     }
+    #${P.id} .fr-target-top-left {
+      display: inline-flex; align-items: center; gap: 5px; min-width: 0; flex-wrap: nowrap;
+    }
+    #${P.id} .fr-escalation-top-group {
+      display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+    }
     #${P.id} .fr-target-top-right {
       display: flex; align-items: center; gap: 8px;
     }
@@ -1224,11 +1230,18 @@ export const panelCss = `
       display: inline-flex; align-items: center; gap: 4px; min-width: 0; flex: 1; overflow: hidden;
     }
     #${P.id} .fr-escalation-toggle-btn {
-      display: inline-flex; align-items: center; gap: 3px;
-      padding: 1px 5px; border-radius: 4px;
-      font-family: inherit; font-size: 10px; font-weight: 700;
-      cursor: pointer; line-height: 1.2; user-select: none;
+      display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1px; padding: 1px 6px; border-radius: 4px;
+      font-family: inherit; font-size: 11px; font-weight: 700;
+      cursor: pointer; line-height: 1.15; user-select: none;
       white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;
+    }
+    #${P.id} .fr-escalation-btn-label {
+      display: inline-flex; align-items: center; gap: 2px; font-size: 11px;
+    }
+    #${P.id} .fr-escalation-active-sec {
+      font-size: 9px; font-weight: 700; opacity: 0.85; line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
     #${P.id} .fr-escalation-toggle-btn.is-active {
       color: #b0bec5; background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.45);
@@ -1244,9 +1257,9 @@ export const panelCss = `
     }
     #${P.id} .fr-escalation-gear-btn {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 17px; height: 17px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18);
+      width: 19px; height: 19px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #c8d7df;
-      font-size: 10px; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease;
+      font-size: 11px; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease;
     }
     #${P.id} .fr-escalation-gear-btn:hover {
       background: rgba(0, 229, 255, 0.2); border-color: #00e5ff; color: #fff;
