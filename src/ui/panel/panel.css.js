@@ -1043,12 +1043,22 @@ export const panelCss = `
       position: relative; transition: filter 0.2s ease, opacity 0.2s ease;
     }
     #${P.id} .fr-target-card.is-search-inactive {
-      opacity: 0.55;
-      filter: grayscale(0.85);
+      opacity: 0.65;
+    }
+    #${P.id} .fr-target-card.is-search-inactive > :not(.fr-target-card-body),
+    #${P.id} .fr-target-card.is-search-inactive .fr-target-card-body > :not(.fr-target-card-top),
+    #${P.id} .fr-target-card.is-search-inactive .fr-target-top-right {
+      filter: grayscale(0.9) brightness(0.8);
+      opacity: 0.7;
     }
     #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded {
       opacity: 0.85;
+    }
+    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded > :not(.fr-target-card-body),
+    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded .fr-target-card-body > :not(.fr-target-card-top),
+    #${P.id} .fr-target-card.is-search-inactive.is-price-exceeded .fr-target-top-right {
       filter: none;
+      opacity: 1;
     }
     #${P.id} .fr-target-card.is-insufficient-balance {
       border-color: rgba(245, 158, 11, 0.45);
