@@ -4,8 +4,10 @@
 import { priceAbove, roundDownToStep, MIN_BIN } from './priceSteps.js';
 import { calculateMaxAllowedPrice, validatePriceCap } from './priceCapGuard.js';
 
-export const MIN_ESCALATION_MINUTES = 5;
-export const DEFAULT_ESCALATION_MINUTES = 10;
+export const MIN_ESCALATION_SECONDS = 15;
+export const DEFAULT_ESCALATION_SECONDS = 15;
+export const MIN_ESCALATION_MINUTES = 0.25;
+export const DEFAULT_ESCALATION_MINUTES = 0.25;
 export const MIN_ESCALATION_STEPS = 1;
 export const MAX_ESCALATION_STEPS = 10;
 export const DEFAULT_MAX_STEPS = 3;
@@ -186,8 +188,10 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
   const safeDeltaMs = Math.max(0, Math.min(Number(outcome.elapsedMs) || 0, 30000));
   escalation.activeMs = (Number(escalation.activeMs) || 0) + safeDeltaMs;
 
-  const afterMinutes = Math.max(MIN_ESCALATION_MINUTES, Math.floor(Number(escalation.afterMinutes) || DEFAULT_ESCALATION_MINUTES));
-  const targetDurationMs = afterMinutes * 60 * 1000;
+  const afterSeconds = (typeof escalation.afterSeconds === 'number' && Number.isFinite(escalation.afterSeconds))
+    ? Math.max(MIN_ESCALATION_SECONDS, Math.floor(escalation.afterSeconds))
+    : Math.max(MIN_ESCALATION_SECONDS, Math.floor((Number(escalation.afterMinutes) || 0) * 60) || DEFAULT_ESCALATION_SECONDS);
+  const targetDurationMs = afterSeconds * 1000;
 
   // Süre dolmadıysa henüz artırma yapma
   if (escalation.activeMs < targetDurationMs) {
@@ -227,7 +231,10 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
   if (currentSteps < maxSteps && afterCalc.effectiveBuyNow > beforeCalc.effectiveBuyNow) {
     escalation.steps = currentSteps + 1;
     escalation.ceilingLogged = false;
-    const logMessage = `${target.name}: ${afterMinutes} dk bulunamadı, hedef ${beforeCalc.effectiveBuyNow.toLocaleString('tr-TR')} → ${afterCalc.effectiveBuyNow.toLocaleString('tr-TR')} (+${escalation.steps})`;
+    const durationLabel = afterSeconds >= 60 && afterSeconds % 60 === 0
+      ? `${afterSeconds / 60} dk`
+      : `${afterSeconds} sn`;
+    const logMessage = `${target.name}: ${durationLabel} bulunamadı, hedef ${beforeCalc.effectiveBuyNow.toLocaleString('tr-TR')} → ${afterCalc.effectiveBuyNow.toLocaleString('tr-TR')} (+${escalation.steps})`;
     return {
       steppedUp: true,
       reachedCeiling: afterCalc.isAtCeiling,

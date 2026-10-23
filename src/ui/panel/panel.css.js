@@ -1306,11 +1306,37 @@ export const panelCss = `
       display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: #aebfc8;
     }
     #${P.id} .fr-escalation-field-label { font-weight: 600; white-space: nowrap; }
+
+    #${P.id} .fr-escalation-stepper {
+      display: inline-flex; align-items: center; gap: 2px;
+    }
+    #${P.id} .fr-escalation-step-btn {
+      width: 17px; height: 20px; padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 3px; background: rgba(255, 255, 255, 0.08);
+      color: #e8f4f6; font-size: 13px; font-weight: 700; line-height: 1;
+      cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s ease;
+    }
+    #${P.id} .fr-escalation-step-btn:hover {
+      background: rgba(0, 229, 255, 0.25); border-color: #00e5ff; color: #fff;
+    }
+    #${P.id} .fr-escalation-step-btn:active {
+      transform: scale(0.95);
+    }
     #${P.id} .fr-escalation-field-input {
-      width: 40px; height: 20px; padding: 1px 3px; border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #fff;
-      font: inherit; font-size: 11px; font-weight: 700; text-align: center;
-      font-variant-numeric: tabular-nums; outline: none; transition: border-color 0.15s ease;
+      width: 36px; height: 20px; padding: 1px 2px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 3px; background: rgba(255, 255, 255, 0.06);
+      color: #fff; font: inherit; font-size: 11px; font-weight: 700;
+      text-align: center; font-variant-numeric: tabular-nums; outline: none;
+      -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield;
+      transition: border-color 0.15s ease;
+    }
+    #${P.id} .fr-escalation-field-input::-webkit-inner-spin-button,
+    #${P.id} .fr-escalation-field-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
     #${P.id} .fr-escalation-field-input:focus { border-color: #00e5ff; }
     #${P.id} .fr-escalation-field-input.is-invalid {

@@ -242,12 +242,17 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   if (!player.escalation) {
     player.escalation = {
       enabled: false,
-      afterMinutes: 10,
+      afterSeconds: 15,
+      afterMinutes: 0.25,
       maxSteps: 3,
       steps: 0,
       activeMs: 0
     };
   }
+
+  const getSeconds = () => {
+    return Math.max(15, Math.floor(Number(player.escalation.afterSeconds) || (Number(player.escalation.afterMinutes) ? player.escalation.afterMinutes * 60 : 15)));
+  };
 
   // 1. Sol alt kontrol grubu
   const bottomLeft = document.createElement('div');
@@ -294,34 +299,72 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   const inputsRow = document.createElement('div');
   inputsRow.className = 'fr-escalation-inputs-row';
 
+  // 1. afterSeconds stepper (Kaç sn bulunamazsa)
   const minWrap = document.createElement('div');
   minWrap.className = 'fr-escalation-field';
   const minLabel = document.createElement('label');
   minLabel.className = 'fr-escalation-field-label';
-  minLabel.textContent = 'Kaç dk bulunamazsa:';
-  const minInput = document.createElement('input');
-  minInput.type = 'number';
-  minInput.className = 'fr-escalation-field-input';
-  minInput.min = '5';
-  minInput.step = '1';
-  minInput.value = String(player.escalation.afterMinutes || 10);
-  minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
-  minWrap.append(minLabel, minInput);
+  minLabel.textContent = 'Kaç sn bulunamazsa:';
 
+  const minStepper = document.createElement('div');
+  minStepper.className = 'fr-escalation-stepper';
+
+  const minMinus = document.createElement('button');
+  minMinus.type = 'button';
+  minMinus.className = 'fr-escalation-step-btn';
+  minMinus.textContent = '−';
+  minMinus.setAttribute('aria-label', `${player.name} için süreyi 5 saniye azalt`);
+
+  const minInput = document.createElement('input');
+  minInput.type = 'text';
+  minInput.inputMode = 'numeric';
+  minInput.className = 'fr-escalation-field-input';
+  minInput.setAttribute('min', '15');
+  minInput.value = String(getSeconds());
+  minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
+
+  const minPlus = document.createElement('button');
+  minPlus.type = 'button';
+  minPlus.className = 'fr-escalation-step-btn';
+  minPlus.textContent = '+';
+  minPlus.setAttribute('aria-label', `${player.name} için süreyi 5 saniye artır`);
+
+  minStepper.append(minMinus, minInput, minPlus);
+  minWrap.append(minLabel, minStepper);
+
+  // 2. maxSteps stepper (En fazla basamak)
   const maxWrap = document.createElement('div');
   maxWrap.className = 'fr-escalation-field';
   const maxLabel = document.createElement('label');
   maxLabel.className = 'fr-escalation-field-label';
   maxLabel.textContent = 'En fazla basamak:';
+
+  const maxStepper = document.createElement('div');
+  maxStepper.className = 'fr-escalation-stepper';
+
+  const maxMinus = document.createElement('button');
+  maxMinus.type = 'button';
+  maxMinus.className = 'fr-escalation-step-btn';
+  maxMinus.textContent = '−';
+  maxMinus.setAttribute('aria-label', `${player.name} için maksimum basamağı azalt`);
+
   const maxInput = document.createElement('input');
-  maxInput.type = 'number';
+  maxInput.type = 'text';
+  maxInput.inputMode = 'numeric';
   maxInput.className = 'fr-escalation-field-input';
-  maxInput.min = '1';
-  maxInput.max = '10';
-  maxInput.step = '1';
+  maxInput.setAttribute('min', '1');
+  maxInput.setAttribute('max', '10');
   maxInput.value = String(player.escalation.maxSteps || 3);
   maxInput.setAttribute('aria-label', `${player.name} için maksimum artırma basamağı`);
-  maxWrap.append(maxLabel, maxInput);
+
+  const maxPlus = document.createElement('button');
+  maxPlus.type = 'button';
+  maxPlus.className = 'fr-escalation-step-btn';
+  maxPlus.textContent = '+';
+  maxPlus.setAttribute('aria-label', `${player.name} için maksimum basamağı artır`);
+
+  maxStepper.append(maxMinus, maxInput, maxPlus);
+  maxWrap.append(maxLabel, maxStepper);
 
   inputsRow.append(minWrap, maxWrap);
 
@@ -335,6 +378,10 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     e.stopPropagation();
     popover.hidden = !popover.hidden;
   });
+
+  // Mouse wheel scroll'u önle
+  minInput.addEventListener('wheel', (e) => { e.preventDefault(); minInput.blur(); }, { passive: false });
+  maxInput.addEventListener('wheel', (e) => { e.preventDefault(); maxInput.blur(); }, { passive: false });
 
   const render = () => {
     const effCalc = computeEffectiveBuyNow(player, {
@@ -378,8 +425,12 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     const effFmt = Number(effCalc.effectiveBuyNow).toLocaleString('tr-TR');
     preview.textContent = steps > 0 ? `${baseFmt} → ${effFmt} (+${steps})` : `${baseFmt} (+0)`;
 
-    minInput.value = String(player.escalation.afterMinutes || 10);
-    maxInput.value = String(player.escalation.maxSteps || 3);
+    if (document.activeElement !== minInput) {
+      minInput.value = String(getSeconds());
+    }
+    if (document.activeElement !== maxInput) {
+      maxInput.value = String(player.escalation.maxSteps || 3);
+    }
 
     if (typeof updateEffectiveLabel === 'function') {
       updateEffectiveLabel();
@@ -399,8 +450,9 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
         });
       }
     } else {
+      const durText = getSeconds() + ' sn';
       addMarketLog({
-        text: `▶️ [Fiyat Arttırma] ${player.name}: Otomatik arttırma açıldı (${player.escalation.afterMinutes} dk, maks ${player.escalation.maxSteps} basamak).`,
+        text: `▶️ [Fiyat Arttırma] ${player.name}: Otomatik arttırma açıldı (${durText}, maks ${player.escalation.maxSteps} basamak).`,
         type: 'info'
       });
     }
@@ -409,15 +461,65 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     if (typeof onUpdate === 'function') onUpdate();
   });
 
-  const validateAndCommitMinutes = (forceRevert = false) => {
-    const val = Number(minInput.value);
-    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 5) {
-      errorEl.textContent = 'Süre en düşük 5 dakika olmalıdır.';
+  // Stepper düğmeleri
+  minMinus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cur = getSeconds();
+    const nextVal = Math.max(15, cur - 5);
+    player.escalation.afterSeconds = nextVal;
+    player.escalation.afterMinutes = nextVal / 60;
+    minInput.value = String(nextVal);
+    errorEl.hidden = true;
+    minInput.classList.remove('is-invalid');
+    saveTargets();
+  });
+
+  minPlus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cur = getSeconds();
+    const nextVal = cur + 5;
+    player.escalation.afterSeconds = nextVal;
+    player.escalation.afterMinutes = nextVal / 60;
+    minInput.value = String(nextVal);
+    errorEl.hidden = true;
+    minInput.classList.remove('is-invalid');
+    saveTargets();
+  });
+
+  maxMinus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cur = Math.max(1, Math.min(10, Math.floor(Number(player.escalation.maxSteps) || 3)));
+    const nextVal = Math.max(1, cur - 1);
+    player.escalation.maxSteps = nextVal;
+    maxInput.value = String(nextVal);
+    errorEl.hidden = true;
+    maxInput.classList.remove('is-invalid');
+    saveTargets();
+    render();
+  });
+
+  maxPlus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cur = Math.max(1, Math.min(10, Math.floor(Number(player.escalation.maxSteps) || 3)));
+    const nextVal = Math.min(10, cur + 1);
+    player.escalation.maxSteps = nextVal;
+    maxInput.value = String(nextVal);
+    errorEl.hidden = true;
+    maxInput.classList.remove('is-invalid');
+    saveTargets();
+    render();
+  });
+
+  const validateAndCommitSeconds = (forceRevert = false) => {
+    const val = Number(minInput.value.trim());
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 15) {
+      errorEl.textContent = 'Süre en düşük 15 saniye olmalıdır.';
       errorEl.hidden = false;
       minInput.classList.add('is-invalid');
       if (forceRevert) {
-        const safe = Math.max(5, Math.floor(val) || 5);
-        player.escalation.afterMinutes = safe;
+        const safe = Math.max(15, Math.floor(val) || 15);
+        player.escalation.afterSeconds = safe;
+        player.escalation.afterMinutes = safe / 60;
         minInput.value = String(safe);
         minInput.classList.remove('is-invalid');
         errorEl.hidden = true;
@@ -427,13 +529,14 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     }
     errorEl.hidden = true;
     minInput.classList.remove('is-invalid');
-    player.escalation.afterMinutes = val;
+    player.escalation.afterSeconds = val;
+    player.escalation.afterMinutes = val / 60;
     saveTargets();
     return true;
   };
 
   const validateAndCommitMaxSteps = (forceRevert = false) => {
-    const val = Number(maxInput.value);
+    const val = Number(maxInput.value.trim());
     if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1 || val > 10) {
       errorEl.textContent = 'En fazla basamak 1 ile 10 arasında olmalıdır.';
       errorEl.hidden = false;
@@ -457,9 +560,9 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
     return true;
   };
 
-  minInput.addEventListener('input', () => validateAndCommitMinutes(false));
-  minInput.addEventListener('change', () => validateAndCommitMinutes(true));
-  minInput.addEventListener('blur', () => validateAndCommitMinutes(true));
+  minInput.addEventListener('input', () => validateAndCommitSeconds(false));
+  minInput.addEventListener('change', () => validateAndCommitSeconds(true));
+  minInput.addEventListener('blur', () => validateAndCommitSeconds(true));
 
   maxInput.addEventListener('input', () => validateAndCommitMaxSteps(false));
   maxInput.addEventListener('change', () => validateAndCommitMaxSteps(true));
