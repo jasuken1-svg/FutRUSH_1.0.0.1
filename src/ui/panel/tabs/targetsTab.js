@@ -238,7 +238,7 @@ export function expireTargetStatus(content) {
 }
 
 
-export function createEscalationControl(player, onUpdate) {
+export function createEscalationControl(player, onUpdate, updateEffectiveLabel) {
   if (!player.escalation) {
     player.escalation = {
       enabled: false,
@@ -249,12 +249,94 @@ export function createEscalationControl(player, onUpdate) {
     };
   }
 
-  const container = document.createElement('div');
-  container.className = 'fr-target-escalation-wrap';
+  // 1. Sol alt kontrol grubu
+  const bottomLeft = document.createElement('div');
+  bottomLeft.className = 'fr-target-bottom-left';
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+
+  const gearBtn = document.createElement('button');
+  gearBtn.type = 'button';
+  gearBtn.className = 'fr-escalation-gear-btn';
+  gearBtn.innerHTML = '⚙️';
+  gearBtn.title = 'Oto Arttır Ayarları';
+  gearBtn.setAttribute('aria-label', `${player.name} için Oto Arttır Ayarları`);
+
+  const badgesWrap = document.createElement('div');
+  badgesWrap.className = 'fr-escalation-badges-wrap';
+
+  bottomLeft.append(toggleBtn, gearBtn, badgesWrap);
+
+  // 2. Yüksekliği değiştirmeyen yüzen ayar paneli (popover)
+  const popover = document.createElement('div');
+  popover.className = 'fr-escalation-popover';
+  popover.hidden = true;
+
+  const popoverHead = document.createElement('div');
+  popoverHead.className = 'fr-escalation-popover-head';
+  const popoverTitle = document.createElement('span');
+  popoverTitle.textContent = 'Oto Arttır Ayarları';
+  const popoverClose = document.createElement('button');
+  popoverClose.type = 'button';
+  popoverClose.className = 'fr-escalation-popover-close';
+  popoverClose.textContent = '×';
+  popoverClose.setAttribute('aria-label', 'Kapat');
+  popoverClose.addEventListener('click', (e) => {
+    e.stopPropagation();
+    popover.hidden = true;
+  });
+  popoverHead.append(popoverTitle, popoverClose);
+
+  const preview = document.createElement('div');
+  preview.className = 'fr-escalation-preview';
+
+  const inputsRow = document.createElement('div');
+  inputsRow.className = 'fr-escalation-inputs-row';
+
+  const minWrap = document.createElement('div');
+  minWrap.className = 'fr-escalation-field';
+  const minLabel = document.createElement('label');
+  minLabel.className = 'fr-escalation-field-label';
+  minLabel.textContent = 'Kaç dk bulunamazsa:';
+  const minInput = document.createElement('input');
+  minInput.type = 'number';
+  minInput.className = 'fr-escalation-field-input';
+  minInput.min = '5';
+  minInput.step = '1';
+  minInput.value = String(player.escalation.afterMinutes || 10);
+  minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
+  minWrap.append(minLabel, minInput);
+
+  const maxWrap = document.createElement('div');
+  maxWrap.className = 'fr-escalation-field';
+  const maxLabel = document.createElement('label');
+  maxLabel.className = 'fr-escalation-field-label';
+  maxLabel.textContent = 'En fazla basamak:';
+  const maxInput = document.createElement('input');
+  maxInput.type = 'number';
+  maxInput.className = 'fr-escalation-field-input';
+  maxInput.min = '1';
+  maxInput.max = '10';
+  maxInput.step = '1';
+  maxInput.value = String(player.escalation.maxSteps || 3);
+  maxInput.setAttribute('aria-label', `${player.name} için maksimum artırma basamağı`);
+  maxWrap.append(maxLabel, maxInput);
+
+  inputsRow.append(minWrap, maxWrap);
+
+  const errorEl = document.createElement('div');
+  errorEl.className = 'fr-escalation-inline-error';
+  errorEl.hidden = true;
+
+  popover.append(popoverHead, preview, inputsRow, errorEl);
+
+  gearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    popover.hidden = !popover.hidden;
+  });
 
   const render = () => {
-    container.replaceChildren();
-
     const effCalc = computeEffectiveBuyNow(player, {
       maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold
     });
@@ -262,52 +344,12 @@ export function createEscalationControl(player, onUpdate) {
     const isEnabled = Boolean(player.escalation?.enabled);
     const steps = Math.max(0, Math.floor(Number(player.escalation?.steps) || 0));
 
-    // 1. Üst Satır: Aç/Kapa Düğmesi + Efektif Fiyat Önizlemesi + Rozetler
-    const headerRow = document.createElement('div');
-    headerRow.className = 'fr-escalation-header-row';
-
-    const toggleBtn = document.createElement('button');
-    toggleBtn.type = 'button';
     toggleBtn.className = 'fr-escalation-toggle-btn ' + (isEnabled ? 'is-active' : 'is-inactive');
-    toggleBtn.innerHTML = `Oto Artır: <span class="fr-escalation-toggle-status">${isEnabled ? 'Açık' : 'Kapalı'}</span>`;
-    toggleBtn.title = 'Bulunamazsa fiyatı otomatik artır (Aç/Kapat)';
+    toggleBtn.innerHTML = `Oto Arttır: <span class="fr-escalation-toggle-status">${isEnabled ? 'Açık' : 'Kapalı'}</span>`;
+    toggleBtn.title = 'Bulunamazsa fiyatı otomatik arttır (Aç/Kapat)';
 
-    toggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wasEnabled = Boolean(player.escalation?.enabled);
-      player.escalation.enabled = !wasEnabled;
-      if (!player.escalation.enabled) {
-        if (player.escalation.steps > 0 || player.escalation.activeMs > 0) {
-          resetEscalationOnManualChange(player);
-          addMarketLog({
-            text: `⏹️ [Fiyat Artırma] ${player.name}: Otomatik artırma kapatıldı, basamaklar taban fiyata sıfırlandı.`,
-            type: 'info'
-          });
-        }
-      } else {
-        addMarketLog({
-          text: `▶️ [Fiyat Artırma] ${player.name}: Otomatik artırma açıldı (${player.escalation.afterMinutes} dk, maks ${player.escalation.maxSteps} basamak).`,
-          type: 'info'
-        });
-      }
-      saveTargets();
-      render();
-      if (typeof onUpdate === 'function') onUpdate();
-    });
-
-    headerRow.appendChild(toggleBtn);
-
+    badgesWrap.replaceChildren();
     if (isEnabled) {
-      const preview = document.createElement('div');
-      preview.className = 'fr-escalation-preview';
-      const baseFmt = Number(player.buyNow).toLocaleString('tr-TR');
-      const effFmt = Number(effCalc.effectiveBuyNow).toLocaleString('tr-TR');
-      preview.textContent = steps > 0 ? `${baseFmt} → ${effFmt} (+${steps})` : `${baseFmt} (+0)`;
-      headerRow.appendChild(preview);
-
-      const badgesWrap = document.createElement('div');
-      badgesWrap.className = 'fr-escalation-badges-wrap';
-
       if (steps > 0) {
         const stepBadge = document.createElement('span');
         stepBadge.className = 'fr-escalation-badge fr-escalation-badge-step';
@@ -319,7 +361,7 @@ export function createEscalationControl(player, onUpdate) {
         const ceilingBadge = document.createElement('span');
         ceilingBadge.className = 'fr-escalation-badge fr-escalation-badge-ceiling';
         ceilingBadge.textContent = 'TAVAN';
-        ceilingBadge.title = effCalc.ceilingReason || 'Fiyat artırma tavanına ulaşıldı';
+        ceilingBadge.title = effCalc.ceilingReason || 'Fiyat arttırma tavanına ulaşıldı';
         badgesWrap.appendChild(ceilingBadge);
       }
 
@@ -330,119 +372,106 @@ export function createEscalationControl(player, onUpdate) {
         lossWarning.title = 'Efektif fiyat FutBIN piyasa fiyatının %95’ini aşıyor (%5 EA vergi sonrası zarar riski)';
         badgesWrap.appendChild(lossWarning);
       }
-
-      if (badgesWrap.children.length > 0) {
-        headerRow.appendChild(badgesWrap);
-      }
     }
 
-    container.appendChild(headerRow);
+    const baseFmt = Number(player.buyNow).toLocaleString('tr-TR');
+    const effFmt = Number(effCalc.effectiveBuyNow).toLocaleString('tr-TR');
+    preview.textContent = steps > 0 ? `${baseFmt} → ${effFmt} (+${steps})` : `${baseFmt} (+0)`;
 
-    // 2. Alt Satır: Ayarlar (Dakika & Maks Basamak) ve Canlı Doğrulama
-    if (isEnabled) {
-      const inputsRow = document.createElement('div');
-      inputsRow.className = 'fr-escalation-inputs-row';
+    minInput.value = String(player.escalation.afterMinutes || 10);
+    maxInput.value = String(player.escalation.maxSteps || 3);
 
-      const minWrap = document.createElement('div');
-      minWrap.className = 'fr-escalation-field';
-      const minLabel = document.createElement('label');
-      minLabel.className = 'fr-escalation-field-label';
-      minLabel.textContent = 'Kaç dk bulunamazsa:';
-      const minInput = document.createElement('input');
-      minInput.type = 'number';
-      minInput.className = 'fr-escalation-field-input';
-      minInput.min = '5';
-      minInput.step = '1';
-      minInput.value = String(player.escalation.afterMinutes || 10);
-      minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
-      minWrap.append(minLabel, minInput);
-
-      const maxWrap = document.createElement('div');
-      maxWrap.className = 'fr-escalation-field';
-      const maxLabel = document.createElement('label');
-      maxLabel.className = 'fr-escalation-field-label';
-      maxLabel.textContent = 'En fazla basamak:';
-      const maxInput = document.createElement('input');
-      maxInput.type = 'number';
-      maxInput.className = 'fr-escalation-field-input';
-      maxInput.min = '1';
-      maxInput.max = '10';
-      maxInput.step = '1';
-      maxInput.value = String(player.escalation.maxSteps || 3);
-      maxInput.setAttribute('aria-label', `${player.name} için maksimum artırma basamağı`);
-      maxWrap.append(maxLabel, maxInput);
-
-      inputsRow.append(minWrap, maxWrap);
-
-      const errorEl = document.createElement('div');
-      errorEl.className = 'fr-escalation-inline-error';
-      errorEl.hidden = true;
-
-      const validateAndCommitMinutes = (forceRevert = false) => {
-        const val = Number(minInput.value);
-        if (!Number.isFinite(val) || !Number.isInteger(val) || val < 5) {
-          errorEl.textContent = 'Süre en düşük 5 dakika olmalıdır.';
-          errorEl.hidden = false;
-          minInput.classList.add('is-invalid');
-          if (forceRevert) {
-            const safe = Math.max(5, Math.floor(val) || 5);
-            player.escalation.afterMinutes = safe;
-            minInput.value = String(safe);
-            minInput.classList.remove('is-invalid');
-            errorEl.hidden = true;
-            saveTargets();
-          }
-          return false;
-        }
-        errorEl.hidden = true;
-        minInput.classList.remove('is-invalid');
-        player.escalation.afterMinutes = val;
-        saveTargets();
-        return true;
-      };
-
-      const validateAndCommitMaxSteps = (forceRevert = false) => {
-        const val = Number(maxInput.value);
-        if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1 || val > 10) {
-          errorEl.textContent = 'En fazla basamak 1 ile 10 arasında olmalıdır.';
-          errorEl.hidden = false;
-          maxInput.classList.add('is-invalid');
-          if (forceRevert) {
-            const safe = Math.max(1, Math.min(10, Math.floor(val) || 3));
-            player.escalation.maxSteps = safe;
-            maxInput.value = String(safe);
-            maxInput.classList.remove('is-invalid');
-            errorEl.hidden = true;
-            saveTargets();
-            render();
-          }
-          return false;
-        }
-        errorEl.hidden = true;
-        maxInput.classList.remove('is-invalid');
-        player.escalation.maxSteps = val;
-        saveTargets();
-        render();
-        return true;
-      };
-
-      minInput.addEventListener('input', () => validateAndCommitMinutes(false));
-      minInput.addEventListener('change', () => validateAndCommitMinutes(true));
-      minInput.addEventListener('blur', () => validateAndCommitMinutes(true));
-
-      maxInput.addEventListener('input', () => validateAndCommitMaxSteps(false));
-      maxInput.addEventListener('change', () => validateAndCommitMaxSteps(true));
-      maxInput.addEventListener('blur', () => validateAndCommitMaxSteps(true));
-
-      container.append(inputsRow, errorEl);
+    if (typeof updateEffectiveLabel === 'function') {
+      updateEffectiveLabel();
     }
   };
 
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasEnabled = Boolean(player.escalation?.enabled);
+    player.escalation.enabled = !wasEnabled;
+    if (!player.escalation.enabled) {
+      if (player.escalation.steps > 0 || player.escalation.activeMs > 0) {
+        resetEscalationOnManualChange(player);
+        addMarketLog({
+          text: `⏹️ [Fiyat Arttırma] ${player.name}: Otomatik arttırma kapatıldı, basamaklar taban fiyata sıfırlandı.`,
+          type: 'info'
+        });
+      }
+    } else {
+      addMarketLog({
+        text: `▶️ [Fiyat Arttırma] ${player.name}: Otomatik arttırma açıldı (${player.escalation.afterMinutes} dk, maks ${player.escalation.maxSteps} basamak).`,
+        type: 'info'
+      });
+    }
+    saveTargets();
+    render();
+    if (typeof onUpdate === 'function') onUpdate();
+  });
+
+  const validateAndCommitMinutes = (forceRevert = false) => {
+    const val = Number(minInput.value);
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 5) {
+      errorEl.textContent = 'Süre en düşük 5 dakika olmalıdır.';
+      errorEl.hidden = false;
+      minInput.classList.add('is-invalid');
+      if (forceRevert) {
+        const safe = Math.max(5, Math.floor(val) || 5);
+        player.escalation.afterMinutes = safe;
+        minInput.value = String(safe);
+        minInput.classList.remove('is-invalid');
+        errorEl.hidden = true;
+        saveTargets();
+      }
+      return false;
+    }
+    errorEl.hidden = true;
+    minInput.classList.remove('is-invalid');
+    player.escalation.afterMinutes = val;
+    saveTargets();
+    return true;
+  };
+
+  const validateAndCommitMaxSteps = (forceRevert = false) => {
+    const val = Number(maxInput.value);
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1 || val > 10) {
+      errorEl.textContent = 'En fazla basamak 1 ile 10 arasında olmalıdır.';
+      errorEl.hidden = false;
+      maxInput.classList.add('is-invalid');
+      if (forceRevert) {
+        const safe = Math.max(1, Math.min(10, Math.floor(val) || 3));
+        player.escalation.maxSteps = safe;
+        maxInput.value = String(safe);
+        maxInput.classList.remove('is-invalid');
+        errorEl.hidden = true;
+        saveTargets();
+        render();
+      }
+      return false;
+    }
+    errorEl.hidden = true;
+    maxInput.classList.remove('is-invalid');
+    player.escalation.maxSteps = val;
+    saveTargets();
+    render();
+    return true;
+  };
+
+  minInput.addEventListener('input', () => validateAndCommitMinutes(false));
+  minInput.addEventListener('change', () => validateAndCommitMinutes(true));
+  minInput.addEventListener('blur', () => validateAndCommitMinutes(true));
+
+  maxInput.addEventListener('input', () => validateAndCommitMaxSteps(false));
+  maxInput.addEventListener('change', () => validateAndCommitMaxSteps(true));
+  maxInput.addEventListener('blur', () => validateAndCommitMaxSteps(true));
+
   render();
-  return { container, refresh: render };
+  return { bottomLeft, popover, refresh: render };
 }
 
 export function renderTargetContent(content) {
+  const existingList = content.querySelector('.fr-target-list');
+  const previousScrollTop = existingList ? existingList.scrollTop : 0;
   if (lastUpdateInterval) {
     clearInterval(lastUpdateInterval);
     lastUpdateInterval = null;
@@ -916,6 +945,7 @@ export function renderTargetContent(content) {
 
     // 3. Kontroller (Tur Sayısı ve Satın Al)
     let escalationControl = null;
+    let updateEffective = () => {};
     const controls = document.createElement('div');
     controls.className = 'fr-target-controls';
     [
@@ -928,7 +958,28 @@ export function renderTargetContent(content) {
       title.textContent = control.label;
 
       let updateProfit = () => {};
-      if (control.key === 'buyNow') {
+      if (control.key === 'searches') {
+        const effectiveEl = document.createElement('div');
+        effectiveEl.className = 'fr-target-effective-lbl';
+        updateEffective = () => {
+          const effCalc = computeEffectiveBuyNow(player, {
+            maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold
+          });
+          const isEnabled = Boolean(player.escalation?.enabled);
+          const steps = Math.max(0, Math.floor(Number(player.escalation?.steps) || 0));
+          if (isEnabled) {
+            const baseFmt = Number(player.buyNow).toLocaleString('tr-TR');
+            const effFmt = Number(effCalc.effectiveBuyNow).toLocaleString('tr-TR');
+            effectiveEl.textContent = steps > 0 ? `${baseFmt} → ${effFmt} (+${steps})` : `Efektif: ${baseFmt}`;
+            effectiveEl.title = `Efektif Satın Al: ${effFmt} coin (${steps} basamak arttırıldı)`;
+          } else {
+            effectiveEl.textContent = '';
+            effectiveEl.title = '';
+          }
+        };
+        updateEffective();
+        group.append(effectiveEl, title);
+      } else if (control.key === 'buyNow') {
         const profitEl = document.createElement('div');
         profitEl.className = 'fr-target-profit';
         updateProfit = (val) => {
@@ -991,7 +1042,7 @@ export function renderTargetContent(content) {
           if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
             resetEscalationOnManualChange(player);
             addMarketLog({
-              text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+              text: `🔄 [Fiyat Arttırma] ${player.name}: SATIN AL elle değiştirildi, arttırma basamakları sıfırlandı.`,
               type: 'info'
             });
           }
@@ -1031,7 +1082,7 @@ export function renderTargetContent(content) {
             if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
               resetEscalationOnManualChange(player);
               addMarketLog({
-                text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+                text: `🔄 [Fiyat Arttırma] ${player.name}: SATIN AL elle değiştirildi, arttırma basamakları sıfırlandı.`,
                 type: 'info'
               });
             }
@@ -1093,7 +1144,7 @@ export function renderTargetContent(content) {
           if (player.escalation && (player.escalation.steps > 0 || player.escalation.activeMs > 0)) {
             resetEscalationOnManualChange(player);
             addMarketLog({
-              text: `🔄 [Fiyat Artırma] ${player.name}: SATIN AL elle değiştirildi, artırma basamakları sıfırlandı.`,
+              text: `🔄 [Fiyat Arttırma] ${player.name}: SATIN AL elle değiştirildi, arttırma basamakları sıfırlandı.`,
               type: 'info'
             });
           }
@@ -1118,13 +1169,16 @@ export function renderTargetContent(content) {
     });
     body.appendChild(controls);
 
-    // Otomatik Fiyat Artırma Kontrolü
-    escalationControl = createEscalationControl(player, () => updateSummaryBar());
-    body.appendChild(escalationControl.container);
-
-    // 4. Alt Bilgi: FutBIN Logosu, Fiyat ve Trend Oku (sağ en alt)
+    // 4. Alt Bilgi: Sol tarafta Oto Arttır ve rozetler, sağda FutBIN fiyatı
     const bottomBar = document.createElement('div');
     bottomBar.className = 'fr-target-card-bottom';
+
+    escalationControl = createEscalationControl(
+      player,
+      () => updateSummaryBar(),
+      () => updateEffective()
+    );
+
     const futbinPriceEl = document.createElement('span');
     futbinPriceEl.className = 'fr-target-futbin-price';
     const fbVal = Number(player.price) || 0;
@@ -1139,12 +1193,22 @@ export function renderTargetContent(content) {
     }
     const iconHtml = `<img src="${FUTBIN_ICON_DATA}" class="fr-target-futbin-icon" width="12" height="12" alt="FutBIN" />`;
     futbinPriceEl.innerHTML = fbVal > 0 ? `${iconHtml} <span>${fbVal.toLocaleString('tr-TR')}</span>${trendHtml}` : `${iconHtml} <span>—</span>`;
-    bottomBar.appendChild(futbinPriceEl);
+    bottomBar.append(escalationControl.bottomLeft, futbinPriceEl);
     body.appendChild(bottomBar);
 
+    card.appendChild(escalationControl.popover);
     card.appendChild(body);
     list.appendChild(card);
   });
+
+  if (previousScrollTop > 0) {
+    list.scrollTop = previousScrollTop;
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        if (list) list.scrollTop = previousScrollTop;
+      });
+    }
+  }
 
   if (state.targets.length > 0) {
     lastUpdateInterval = setInterval(() => {

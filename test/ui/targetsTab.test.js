@@ -364,13 +364,13 @@ describe('player target controls', () => {
     const card = content.querySelector('.fr-target-card');
     const toggleBtn = card.querySelector('.fr-escalation-toggle-btn');
     expect(toggleBtn).not.toBeNull();
-    expect(toggleBtn.textContent).toContain('Kapalı');
+    expect(toggleBtn.textContent).toContain('Oto Arttır: Kapalı');
 
     // Toggle ON
     toggleBtn.click();
     expect(state.targets[0].escalation.enabled).toBe(true);
     const newToggle = card.querySelector('.fr-escalation-toggle-btn');
-    expect(newToggle.textContent).toContain('Açık');
+    expect(newToggle.textContent).toContain('Oto Arttır: Açık');
 
     // Inputs should be visible
     const minInput = card.querySelector('.fr-escalation-field-input[min="5"]');
@@ -434,5 +434,24 @@ describe('player target controls', () => {
 
     expect(state.targets[0].buyNow).toBe(16000);
     expect(state.targets[0].escalation.steps).toBe(0);
+  });
+
+  it('preserves list scrollTop when renderTargetContent is re-executed', () => {
+    state.targets = [
+      { id: 't1', name: 'Player 1', price: 1000, buyNow: 1000, searches: 3 },
+      { id: 't2', name: 'Player 2', price: 2000, buyNow: 2000, searches: 3 },
+      { id: 't3', name: 'Player 3', price: 3000, buyNow: 3000, searches: 3 }
+    ];
+    const content = dom.window.document.createElement('div');
+    renderTargetContent(content);
+
+    const list = content.querySelector('.fr-target-list');
+    list.scrollTop = 145;
+
+    // Simulate targets:changed re-render
+    renderTargetContent(content);
+
+    const updatedList = content.querySelector('.fr-target-list');
+    expect(updatedList.scrollTop).toBe(145);
   });
 });

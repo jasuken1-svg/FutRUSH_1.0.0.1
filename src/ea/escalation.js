@@ -1,4 +1,4 @@
-// Bulunamazsa otomatik fiyat artırma (Escalation) motoru
+// Bulunamazsa otomatik fiyat arttırma (Escalation) motoru
 // Bağımsız saf fonksiyonlar: priceSteps ve Faz 2 priceCapGuard kuralları ile uyumlu çalışır.
 
 import { priceAbove, roundDownToStep, MIN_BIN } from './priceSteps.js';
@@ -183,7 +183,7 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
   }
 
   // Sekme arka planda iken zamanlayıcı sıçramasını önlemek için üst sınır (ör. 15 saniye)
-  const safeDeltaMs = Math.max(0, Math.min(Number(outcome.elapsedMs) || 0, 15000));
+  const safeDeltaMs = Math.max(0, Math.min(Number(outcome.elapsedMs) || 0, 30000));
   escalation.activeMs = (Number(escalation.activeMs) || 0) + safeDeltaMs;
 
   const afterMinutes = Math.max(MIN_ESCALATION_MINUTES, Math.floor(Number(escalation.afterMinutes) || DEFAULT_ESCALATION_MINUTES));
@@ -242,7 +242,7 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
   let logMessage;
   if (!escalation.ceilingLogged) {
     escalation.ceilingLogged = true;
-    logMessage = `${target.name}: Fiyat artırma tavanına ulaştı (${beforeCalc.effectiveBuyNow.toLocaleString('tr-TR')}), daha fazla artırılamaz.`;
+    logMessage = `${target.name}: Fiyat arttırma tavanına ulaştı (${beforeCalc.effectiveBuyNow.toLocaleString('tr-TR')}), daha fazla artırılamaz.`;
   }
 
   return {

@@ -1214,88 +1214,55 @@ export const panelCss = `
       width: 12px; height: 12px; display: inline-block; vertical-align: middle; border-radius: 2px; flex-shrink: 0;
     }
 
-    /* Otomatik Fiyat Artırma (Escalation) Bileşeni */
-    #${P.id} .fr-target-escalation-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      padding: 6px 8px;
-      margin-top: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.25);
+    /* Otomatik Fiyat Arttırma (Escalation) Bileşeni */
+    #${P.id} .fr-target-effective-lbl {
+      font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+      margin-bottom: 2px; line-height: 1.2; text-align: center; white-space: nowrap;
+      height: 14px; color: #00e5ff; overflow: hidden; text-overflow: ellipsis;
     }
-    #${P.id} .fr-escalation-header-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
+    #${P.id} .fr-target-bottom-left {
+      display: inline-flex; align-items: center; gap: 4px; min-width: 0; flex: 1; overflow: hidden;
     }
     #${P.id} .fr-escalation-toggle-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: inherit;
-      font-size: 10.5px;
-      font-weight: 700;
-      cursor: pointer;
-      line-height: 1.2;
-      user-select: none;
-      transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 1px 5px; border-radius: 4px;
+      font-family: inherit; font-size: 10px; font-weight: 700;
+      cursor: pointer; line-height: 1.2; user-select: none;
+      white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;
     }
     #${P.id} .fr-escalation-toggle-btn.is-active {
-      color: #b0bec5;
-      background: rgba(0, 229, 255, 0.12);
-      border: 1px solid rgba(0, 229, 255, 0.45);
+      color: #b0bec5; background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.45);
     }
     #${P.id} .fr-escalation-toggle-btn.is-active .fr-escalation-toggle-status {
-      color: #00e5ff;
-      font-weight: 800;
+      color: #00e5ff; font-weight: 800;
     }
     #${P.id} .fr-escalation-toggle-btn.is-inactive {
-      color: #8da2ae;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #8da2ae; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.18);
     }
     #${P.id} .fr-escalation-toggle-btn.is-inactive .fr-escalation-toggle-status {
-      color: #8da2ae;
-      font-weight: 700;
+      color: #8da2ae; font-weight: 700;
     }
-    #${P.id} .fr-escalation-preview {
-      font-size: 11px;
-      font-weight: 700;
-      color: #00e5ff;
-      font-variant-numeric: tabular-nums;
-      margin-left: 2px;
+    #${P.id} .fr-escalation-gear-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 17px; height: 17px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #c8d7df;
+      font-size: 10px; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease;
+    }
+    #${P.id} .fr-escalation-gear-btn:hover {
+      background: rgba(0, 229, 255, 0.2); border-color: #00e5ff; color: #fff;
     }
     #${P.id} .fr-escalation-badges-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 3px; overflow: hidden;
     }
     #${P.id} .fr-escalation-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 9.5px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      white-space: nowrap;
-      user-select: none;
+      display: inline-flex; align-items: center; padding: 1px 4px; border-radius: 3px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; user-select: none;
     }
     #${P.id} .fr-escalation-badge-step {
-      color: #00e5ff;
-      background: rgba(0, 229, 255, 0.15);
-      border: 1px solid rgba(0, 229, 255, 0.45);
+      color: #00e5ff; background: rgba(0, 229, 255, 0.15); border: 1px solid rgba(0, 229, 255, 0.45);
     }
     #${P.id} .fr-escalation-badge-ceiling {
-      color: #ff5261;
-      background: rgba(255, 82, 97, 0.22);
-      border: 1px solid rgba(255, 82, 97, 0.65);
+      color: #ff5261; background: rgba(255, 82, 97, 0.22); border: 1px solid rgba(255, 82, 97, 0.65);
       animation: fr-ceiling-pulse 1.8s ease-in-out infinite alternate;
     }
     @keyframes fr-ceiling-pulse {
@@ -1303,55 +1270,54 @@ export const panelCss = `
       to { box-shadow: 0 0 8px rgba(255, 82, 97, 0.7); }
     }
     #${P.id} .fr-escalation-badge-loss {
-      color: #fbbf24;
-      background: rgba(245, 158, 11, 0.2);
-      border: 1px solid rgba(245, 158, 11, 0.65);
+      color: #fbbf24; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.65);
+    }
+    #${P.id} .fr-escalation-popover {
+      position: absolute; bottom: 25px; left: 6px; right: 6px; z-index: 100;
+      display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
+      background: rgba(6, 18, 30, 0.98); border: 1px solid rgba(0, 229, 255, 0.55);
+      border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px); animation: fr-popover-in 0.15s ease;
+    }
+    #${P.id} .fr-escalation-popover[hidden] {
+      display: none !important;
+    }
+    @keyframes fr-popover-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #${P.id} .fr-escalation-popover-head {
+      display: flex; align-items: center; justify-content: space-between;
+      color: #00e5ff; font-size: 11px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 4px;
+    }
+    #${P.id} .fr-escalation-popover-close {
+      border: 0; background: transparent; color: #ff5261; font-size: 15px; font-weight: 700;
+      cursor: pointer; padding: 0 2px; line-height: 1;
+    }
+    #${P.id} .fr-escalation-popover-close:hover { color: #ff7582; }
+    #${P.id} .fr-escalation-preview {
+      font-size: 10.5px; font-weight: 700; color: #00e5ff; font-variant-numeric: tabular-nums;
     }
     #${P.id} .fr-escalation-inputs-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 2px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
     #${P.id} .fr-escalation-field {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10.5px;
-      color: #aebfc8;
+      display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: #aebfc8;
     }
-    #${P.id} .fr-escalation-field-label {
-      font-weight: 600;
-      white-space: nowrap;
-    }
+    #${P.id} .fr-escalation-field-label { font-weight: 600; white-space: nowrap; }
     #${P.id} .fr-escalation-field-input {
-      width: 44px;
-      height: 20px;
-      padding: 1px 4px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.06);
-      color: #fff;
-      font: inherit;
-      font-size: 11px;
-      font-weight: 700;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      outline: none;
-      transition: border-color 0.15s ease;
+      width: 40px; height: 20px; padding: 1px 3px; border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #fff;
+      font: inherit; font-size: 11px; font-weight: 700; text-align: center;
+      font-variant-numeric: tabular-nums; outline: none; transition: border-color 0.15s ease;
     }
-    #${P.id} .fr-escalation-field-input:focus {
-      border-color: #00e5ff;
-    }
+    #${P.id} .fr-escalation-field-input:focus { border-color: #00e5ff; }
     #${P.id} .fr-escalation-field-input.is-invalid {
-      border-color: #ff5261 !important;
-      background: rgba(255, 82, 97, 0.12) !important;
+      border-color: #ff5261 !important; background: rgba(255, 82, 97, 0.12) !important;
     }
     #${P.id} .fr-escalation-inline-error {
-      color: #ff5261;
-      font-size: 10px;
-      font-weight: 600;
-      line-height: 1.2;
+      color: #ff5261; font-size: 9.5px; font-weight: 600; line-height: 1.2;
     }
 
     /* Alt Eylemler */

@@ -148,19 +148,25 @@ export async function runAutoBuyer(token, deps = {}) {
           governor.recordSearch();
           const searchStartTime = Date.now();
           const result = await search(target, eaId, token, { searchIndex, effectiveBuyNow: currentSearchBuyNow });
-          const searchElapsedMs = Date.now() - searchStartTime;
+          const searchEndTime = Date.now();
+          const now = searchEndTime;
+          const searchDurationMs = searchEndTime - searchStartTime;
+          const elapsedMs = (typeof target._lastSearchActiveAt === 'number' && target._lastSearchActiveAt > 0 && (now - target._lastSearchActiveAt <= 30000))
+            ? (now - target._lastSearchActiveAt)
+            : searchDurationMs;
+          target._lastSearchActiveAt = now;
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
           if (!offer) {
             governor.recordResult(200);
             addBotLog(target.name + ': Satın Al sınırında uygun ilan bulunamadı.', 'info');
-            const escRecord = recordEscalationSearch(target, { matchFound: false, elapsedMs: searchElapsedMs, canProgress: true }, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
+            const escRecord = recordEscalationSearch(target, { matchFound: false, elapsedMs, canProgress: true }, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
             if (escRecord.logMessage) {
-              addMarketLog({ text: '📈 [Otomatik Artırma] ' + escRecord.logMessage, type: escRecord.steppedUp ? 'info' : 'warn' });
+              addMarketLog({ text: '📈 [Otomatik Arttırma] ' + escRecord.logMessage, type: escRecord.steppedUp ? 'info' : 'warn' });
               emit('targets:changed');
             }
           } else {
-            recordEscalationSearch(target, { matchFound: true, elapsedMs: searchElapsedMs, canProgress: true });
+            recordEscalationSearch(target, { matchFound: true, elapsedMs, canProgress: true });
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             if (!checkPilesProtection(governor)) return;
@@ -179,7 +185,7 @@ export async function runAutoBuyer(token, deps = {}) {
 
             if (state.snipeSettings.dryRun) {
               resetEscalationOnPurchase(target);
-              addMarketLog({ text: '🎯 [Otomatik Artırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
+              addMarketLog({ text: '🎯 [Otomatik Arttırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
               emit('targets:changed');
               governor.recordPurchase(offer.price);
               incrementStat('simulatedBought');
@@ -201,7 +207,7 @@ export async function runAutoBuyer(token, deps = {}) {
               if (token !== state.botToken || !state.botRunning) return;
               if (purchase.success) {
                 resetEscalationOnPurchase(target);
-                addMarketLog({ text: '🎯 [Otomatik Artırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
+                addMarketLog({ text: '🎯 [Otomatik Arttırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
                 emit('targets:changed');
                 bought++;
                 totalSpent += offer.price;
