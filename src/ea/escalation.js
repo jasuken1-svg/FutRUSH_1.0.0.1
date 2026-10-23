@@ -4,10 +4,10 @@
 import { priceAbove, roundDownToStep, MIN_BIN } from './priceSteps.js';
 import { calculateMaxAllowedPrice, validatePriceCap } from './priceCapGuard.js';
 
-export const MIN_ESCALATION_SECONDS = 15;
-export const DEFAULT_ESCALATION_SECONDS = 15;
-export const MIN_ESCALATION_MINUTES = 0.25;
-export const DEFAULT_ESCALATION_MINUTES = 0.25;
+export const MIN_ESCALATION_SECONDS = 120;
+export const DEFAULT_ESCALATION_SECONDS = 120;
+export const MIN_ESCALATION_MINUTES = 2;
+export const DEFAULT_ESCALATION_MINUTES = 2;
 export const MIN_ESCALATION_STEPS = 1;
 export const MAX_ESCALATION_STEPS = 10;
 export const DEFAULT_MAX_STEPS = 3;

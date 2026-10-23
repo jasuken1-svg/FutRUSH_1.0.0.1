@@ -373,24 +373,24 @@ describe('player target controls', () => {
     expect(newToggle.textContent).toContain('Oto Arttır: Açık');
 
     // Inputs should be visible
-    const minInput = card.querySelector('.fr-escalation-field-input[min="15"]');
+    const minInput = card.querySelector('.fr-escalation-field-input[min="120"]');
     const maxInput = card.querySelector('.fr-escalation-field-input[max="10"]');
     const errorEl = card.querySelector('.fr-escalation-inline-error');
     expect(minInput).not.toBeNull();
     expect(maxInput).not.toBeNull();
-    expect(Number(minInput.value)).toBeGreaterThanOrEqual(15);
+    expect(Number(minInput.value)).toBeGreaterThanOrEqual(120);
     expect(maxInput.value).toBe('3');
 
-    // Invalid input: seconds < 15
-    minInput.value = '5';
+    // Invalid input: seconds < 120
+    minInput.value = '50';
     minInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     expect(errorEl.hidden).toBe(false);
-    expect(errorEl.textContent).toContain('en düşük 15');
+    expect(errorEl.textContent).toContain('en düşük 120');
 
-    // Blur reverts to at least 15
+    // Blur reverts to at least 120
     minInput.dispatchEvent(new dom.window.Event('blur', { bubbles: true }));
-    expect(state.targets[0].escalation.afterSeconds).toBe(15);
-    expect(minInput.value).toBe('15');
+    expect(state.targets[0].escalation.afterSeconds).toBe(120);
+    expect(minInput.value).toBe('120');
     expect(errorEl.hidden).toBe(true);
 
     // Invalid input: maxSteps > 10

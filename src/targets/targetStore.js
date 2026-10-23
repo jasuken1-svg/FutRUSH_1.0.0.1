@@ -73,18 +73,18 @@ export function normalizeTarget(item, mode) {
       escalation: (item.escalation && typeof item.escalation === 'object') ? {
         enabled: Boolean(item.escalation.enabled),
         afterSeconds: (typeof item.escalation.afterSeconds === 'number' && Number.isFinite(item.escalation.afterSeconds))
-          ? Math.max(15, Math.floor(item.escalation.afterSeconds))
-          : Math.max(15, Math.floor((Number(item.escalation.afterMinutes) || 0) * 60) || 15),
+          ? Math.max(120, Math.floor(item.escalation.afterSeconds))
+          : Math.max(120, Math.floor((Number(item.escalation.afterMinutes) || 0) * 60) || 120),
         afterMinutes: (typeof item.escalation.afterSeconds === 'number' && Number.isFinite(item.escalation.afterSeconds))
-          ? Math.max(0.25, item.escalation.afterSeconds / 60)
-          : Math.max(0.25, Number(item.escalation.afterMinutes) || 0.25),
+          ? Math.max(2, item.escalation.afterSeconds / 60)
+          : Math.max(2, Number(item.escalation.afterMinutes) || 2),
         maxSteps: Math.max(1, Math.min(10, Math.floor(Number(item.escalation.maxSteps) || 3))),
         steps: Math.max(0, Math.floor(Number(item.escalation.steps) || 0)),
         activeMs: 0
       } : {
         enabled: false,
-        afterSeconds: 15,
-        afterMinutes: 0.25,
+        afterSeconds: 120,
+        afterMinutes: 2,
         maxSteps: 3,
         steps: 0,
         activeMs: 0
@@ -143,18 +143,18 @@ export function normalizeTarget(item, mode) {
       escalation: (item.escalation && typeof item.escalation === 'object') ? {
         enabled: Boolean(item.escalation.enabled),
         afterSeconds: (typeof item.escalation.afterSeconds === 'number' && Number.isFinite(item.escalation.afterSeconds))
-          ? Math.max(15, Math.floor(item.escalation.afterSeconds))
-          : Math.max(15, Math.floor((Number(item.escalation.afterMinutes) || 0) * 60) || 15),
+          ? Math.max(120, Math.floor(item.escalation.afterSeconds))
+          : Math.max(120, Math.floor((Number(item.escalation.afterMinutes) || 0) * 60) || 120),
         afterMinutes: (typeof item.escalation.afterSeconds === 'number' && Number.isFinite(item.escalation.afterSeconds))
-          ? Math.max(0.25, item.escalation.afterSeconds / 60)
-          : Math.max(0.25, Number(item.escalation.afterMinutes) || 0.25),
+          ? Math.max(2, item.escalation.afterSeconds / 60)
+          : Math.max(2, Number(item.escalation.afterMinutes) || 2),
         maxSteps: Math.max(1, Math.min(10, Math.floor(Number(item.escalation.maxSteps) || 3))),
         steps: Math.max(0, Math.floor(Number(item.escalation.steps) || 0)),
         activeMs: 0
       } : {
         enabled: false,
-        afterSeconds: 15,
-        afterMinutes: 0.25,
+        afterSeconds: 120,
+        afterMinutes: 2,
         maxSteps: 3,
         steps: 0,
         activeMs: 0

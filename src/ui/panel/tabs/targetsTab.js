@@ -242,8 +242,8 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   if (!player.escalation) {
     player.escalation = {
       enabled: false,
-      afterSeconds: 15,
-      afterMinutes: 0.25,
+      afterSeconds: 120,
+      afterMinutes: 2,
       maxSteps: 3,
       steps: 0,
       activeMs: 0
@@ -251,7 +251,7 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   }
 
   const getSeconds = () => {
-    return Math.max(15, Math.floor(Number(player.escalation.afterSeconds) || (Number(player.escalation.afterMinutes) ? player.escalation.afterMinutes * 60 : 15)));
+    return Math.max(120, Math.floor(Number(player.escalation.afterSeconds) || (Number(player.escalation.afterMinutes) ? player.escalation.afterMinutes * 60 : 120)));
   };
 
   // 1. Sol alt kontrol grubu
@@ -319,7 +319,7 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   minInput.type = 'text';
   minInput.inputMode = 'numeric';
   minInput.className = 'fr-escalation-field-input';
-  minInput.setAttribute('min', '15');
+  minInput.setAttribute('min', '120');
   minInput.value = String(getSeconds());
   minInput.setAttribute('aria-label', `${player.name} için bulunamazsa artırma süresi`);
 
@@ -465,7 +465,7 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
   minMinus.addEventListener('click', (e) => {
     e.stopPropagation();
     const cur = getSeconds();
-    const nextVal = Math.max(15, cur - 5);
+    const nextVal = Math.max(120, cur - 5);
     player.escalation.afterSeconds = nextVal;
     player.escalation.afterMinutes = nextVal / 60;
     minInput.value = String(nextVal);
@@ -512,12 +512,12 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
 
   const validateAndCommitSeconds = (forceRevert = false) => {
     const val = Number(minInput.value.trim());
-    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 15) {
-      errorEl.textContent = 'Süre en düşük 15 saniye olmalıdır.';
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 120) {
+      errorEl.textContent = 'Süre en düşük 120 saniye olmalıdır.';
       errorEl.hidden = false;
       minInput.classList.add('is-invalid');
       if (forceRevert) {
-        const safe = Math.max(15, Math.floor(val) || 15);
+        const safe = Math.max(120, Math.floor(val) || 120);
         player.escalation.afterSeconds = safe;
         player.escalation.afterMinutes = safe / 60;
         minInput.value = String(safe);
