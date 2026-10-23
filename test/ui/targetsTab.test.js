@@ -7,6 +7,7 @@ let originalDocument;
 let originalUnsafeWindow;
 let state;
 let renderTargetContent;
+let updateTargetEscalationDisplay;
 
 beforeAll(async () => {
   dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://futrush.test' });
@@ -18,7 +19,7 @@ beforeAll(async () => {
   globalThis.unsafeWindow = dom.window;
 
   ({ state } = await import('../../src/core/state.js'));
-  ({ renderTargetContent } = await import('../../src/ui/panel/tabs/targetsTab.js'));
+  ({ renderTargetContent, updateTargetEscalationDisplay } = await import('../../src/ui/panel/tabs/targetsTab.js'));
 });
 
 afterAll(() => {
@@ -359,6 +360,7 @@ describe('player target controls', () => {
     ];
 
     const content = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(content);
     renderTargetContent(content);
 
     const card = content.querySelector('.fr-target-card');
@@ -443,6 +445,7 @@ describe('player target controls', () => {
       { id: 't3', name: 'Player 3', price: 3000, buyNow: 3000, searches: 3 }
     ];
     const content = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(content);
     renderTargetContent(content);
 
     const list = content.querySelector('.fr-target-list');
@@ -453,5 +456,46 @@ describe('player target controls', () => {
 
     const updatedList = content.querySelector('.fr-target-list');
     expect(updatedList.scrollTop).toBe(145);
+  });
+  it('updates escalation display in place without destroying DOM elements or losing focus', () => {
+    state.targets = [
+      {
+        id: 't-esc',
+        name: 'Esc Target',
+        rating: 85,
+        price: 20000,
+        buyNow: 15000,
+        searches: 3,
+        escalation: { enabled: true, afterSeconds: 120, maxSteps: 3, steps: 0, activeMs: 0 }
+      }
+    ];
+    const content = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(content);
+    renderTargetContent(content);
+
+    const cardBefore = content.querySelector('.fr-target-card');
+    const input = cardBefore.querySelector('[aria-label="SATIN AL değeri"]');
+    input.focus();
+
+    // Progress activeMs and steps
+    state.targets[0].escalation.activeMs = 45000;
+    state.targets[0].escalation.steps = 1;
+
+    updateTargetEscalationDisplay(state.targets[0]);
+
+    const cardAfter = content.querySelector('.fr-target-card');
+    expect(cardAfter).toBe(cardBefore); // DOM identity preserved
+
+    const activeSecEl = cardAfter.querySelector('.fr-escalation-active-sec');
+    expect(activeSecEl.textContent).toBe('(45 sn)');
+
+    const effectiveEl = cardAfter.querySelector('.fr-target-effective-lbl');
+    expect(effectiveEl.textContent).toContain('15.000 → 15.250 (+1)');
+
+    // Minus button decreases base price and resets steps
+    const minusBtn = cardAfter.querySelector('[aria-label="SATIN AL azalt"]');
+    minusBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(state.targets[0].buyNow).toBe(14750);
+    expect(state.targets[0].escalation.steps).toBe(0);
   });
 });

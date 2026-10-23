@@ -6,7 +6,7 @@ import { state } from '../../core/state.js';
 import { panel } from './panel.js';
 import { renderPanelTabContent } from './panelTabs.js';
 import { addBotLogEntry, updateBotLogStats } from './tabs/logsTab.js';
-import { expireTargetStatus, renderTargetContent, updateTargetStatus } from './tabs/targetsTab.js';
+import { expireTargetStatus, renderTargetContent, updateTargetStatus, updateTargetEscalationDisplay } from './tabs/targetsTab.js';
 
 function updateStartButton(content) {
   const button = content.querySelector('.fr-start');
@@ -25,6 +25,10 @@ export function registerPanelEvents() {
   on('targets:changed', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');
     if (content && state.activePanelTab === 'targets') renderTargetContent(content);
+  });
+  on('escalation:update', (target) => {
+    const content = panel?.querySelector('.fc-snipe-tab-content');
+    if (content && state.activePanelTab === 'targets') updateTargetEscalationDisplay(target);
   });
   on('balance:changed', () => {
     const content = panel?.querySelector('.fc-snipe-tab-content');

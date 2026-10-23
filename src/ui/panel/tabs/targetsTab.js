@@ -75,12 +75,18 @@ export function formatPriceHistoryTooltip(player) {
   return lines.join('\n');
 }
 
+const activeHoldRepeatStops = new Set();
+
 export function attachHoldRepeat(button, onTrigger) {
   let timer = null;
   let interval = null;
   let didTriggerOnDown = false;
 
   const stop = () => {
+    activeHoldRepeatStops.delete(stop);
+    window.removeEventListener('mouseup', stop, true);
+    window.removeEventListener('touchend', stop, true);
+    window.removeEventListener('touchcancel', stop, true);
     if (timer) {
       clearTimeout(timer);
       timer = null;
@@ -102,9 +108,23 @@ export function attachHoldRepeat(button, onTrigger) {
     didTriggerOnDown = true;
     if (timer) clearTimeout(timer);
     if (interval) clearInterval(interval);
+
+    activeHoldRepeatStops.add(stop);
+    window.addEventListener('mouseup', stop, { capture: true, once: true });
+    window.addEventListener('touchend', stop, { capture: true, once: true });
+    window.addEventListener('touchcancel', stop, { capture: true, once: true });
+
     onTrigger(e);
     timer = setTimeout(() => {
+      if (!button.isConnected) {
+        stop();
+        return;
+      }
       interval = setInterval(() => {
+        if (!button.isConnected) {
+          stop();
+          return;
+        }
         onTrigger(e);
       }, 70);
     }, 1000);
@@ -574,6 +594,11 @@ export function createEscalationControl(player, onUpdate, updateEffectiveLabel) 
 }
 
 export function renderTargetContent(content) {
+  activeHoldRepeatStops.forEach((stop) => {
+    try { stop(); } catch (_) {}
+  });
+  activeHoldRepeatStops.clear();
+
   const existingList = content.querySelector('.fr-target-list');
   const previousScrollTop = existingList ? existingList.scrollTop : 0;
   if (lastUpdateInterval) {
@@ -961,6 +986,12 @@ export function renderTargetContent(content) {
       () => updateEffective()
     );
 
+    card.dataset.targetId = String(player.id || (player.name + ':' + player.rating));
+    card._refreshEscalation = () => {
+      escalationControl?.refresh();
+      updateEffective();
+    };
+
     // 1. Üst Satır: Arama Aç/Kapat + Oto Arttır (solda) + Son Güncelleme & Silme (sağda)
     const topBar = document.createElement('div');
     topBar.className = 'fr-target-card-top';
@@ -1341,4 +1372,13 @@ export function renderTargetContent(content) {
     emit('ui:open-save-dialog');
   });
   content.querySelector('[data-filter-mode="load"]').addEventListener('click', () => emit('ui:open-filter-modal', { mode: 'load' }));
+}
+
+export function updateTargetEscalationDisplay(target) {
+  if (!target) return;
+  const targetId = String(target.id || (target.name + ':' + target.rating));
+  const card = document.querySelector(`.fr-target-card[data-target-id="${targetId}"]`);
+  if (card && typeof card._refreshEscalation === 'function') {
+    card._refreshEscalation();
+  }
 }

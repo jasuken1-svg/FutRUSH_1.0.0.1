@@ -268,6 +268,9 @@ export function recordEscalationSearch(target, outcome, ctx = {}) {
  * @returns {boolean} Sıfırlanan aktif bir artırma/süre olup olmadığı
  */
 export function resetEscalationOnPurchase(target) {
+  if (target) {
+    target._lastSearchActiveAt = null;
+  }
   if (target?.escalation) {
     const hadProgress = Boolean(target.escalation.enabled && (target.escalation.steps > 0 || target.escalation.activeMs > 0));
     target.escalation.steps = 0;
@@ -283,6 +286,9 @@ export function resetEscalationOnPurchase(target) {
  * @param {object} target
  */
 export function resetEscalationOnManualChange(target) {
+  if (target) {
+    target._lastSearchActiveAt = null;
+  }
   if (target?.escalation) {
     target.escalation.steps = 0;
     target.escalation.activeMs = 0;

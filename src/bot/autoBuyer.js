@@ -136,18 +136,19 @@ export async function runAutoBuyer(token, deps = {}) {
           return;
         }
 
-        const effectiveCalc = computeEffectiveBuyNow(target, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
-        const currentSearchBuyNow = effectiveCalc.effectiveBuyNow;
-        if (!checkPriceCapGuard(target, currentSearchBuyNow)) {
-          stopAutoBuyer('Fiyat koruması: ' + target.name + ' efektif SATIN AL (' + currentSearchBuyNow.toLocaleString('tr-TR') + ') FutBIN tavanını aşıyor!');
-          return;
-        }
-
         const eaId = Number(target.eaId) || 0;
         const attempts = Math.max(1, Math.round(Number(target.searches) || 1));
         for (let attempt = 1; attempt <= attempts; attempt++) {
           if (token !== state.botToken || !state.botRunning) return;
           if (checkLimitsReached()) return;
+
+          const effectiveCalc = computeEffectiveBuyNow(target, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
+          const currentSearchBuyNow = effectiveCalc.effectiveBuyNow;
+          if (!checkPriceCapGuard(target, currentSearchBuyNow)) {
+            stopAutoBuyer('Fiyat koruması: ' + target.name + ' efektif SATIN AL (' + currentSearchBuyNow.toLocaleString('tr-TR') + ') FutBIN tavanını aşıyor!');
+            return;
+          }
+
           setBotStatus(target.name + ' aranıyor (' + attempt + '/' + attempts + ') · en fazla ' + Number(target.buyNow).toLocaleString('tr-TR'));
           incrementStat('searches');
           if (newlyResolvedTargets.has(target) && !loggedMatches.has(target)) {
@@ -164,7 +165,7 @@ export async function runAutoBuyer(token, deps = {}) {
           const rawDelta = (typeof target._lastSearchActiveAt === 'number' && target._lastSearchActiveAt > 0)
             ? (now - target._lastSearchActiveAt)
             : searchDurationMs;
-          const elapsedMs = Math.max(searchDurationMs, Math.min(rawDelta, 30000));
+          const elapsedMs = Math.max(searchDurationMs, Math.min(rawDelta, 8000));
           target._lastSearchActiveAt = now;
           if (result.stopped) return;
           const offer = result.offers.find((item) => !attemptedTrades.has(item.tradeId));
@@ -174,12 +175,11 @@ export async function runAutoBuyer(token, deps = {}) {
             const escRecord = recordEscalationSearch(target, { matchFound: false, elapsedMs, canProgress: true }, { maxPriceCapThreshold: state.snipeSettings?.maxPriceCapThreshold });
             if (escRecord.logMessage) {
               addMarketLog({ text: '📈 [Otomatik Arttırma] ' + escRecord.logMessage, type: escRecord.steppedUp ? 'info' : 'warn' });
-              emit('targets:changed');
-            } else if (target.escalation?.enabled) {
-              emit('targets:changed');
             }
+            emit('escalation:update', target);
           } else {
             recordEscalationSearch(target, { matchFound: true, elapsedMs, canProgress: true });
+            emit('escalation:update', target);
             attemptedTrades.add(offer.tradeId);
             if (checkLimitsReached(offer.price)) return;
             if (!checkPilesProtection(governor)) return;
@@ -200,7 +200,7 @@ export async function runAutoBuyer(token, deps = {}) {
               const reset = resetEscalationOnPurchase(target);
               if (reset) {
                 addMarketLog({ text: '🎯 [Otomatik Arttırma - Kuru Çalıştırma] ' + target.name + ' simüle alındı, fiyat adımları sıfırlandı.', type: 'info' });
-                emit('targets:changed');
+                emit('escalation:update', target);
               }
               governor.recordPurchase(offer.price);
               incrementStat('simulatedBought');
@@ -224,7 +224,7 @@ export async function runAutoBuyer(token, deps = {}) {
                 const reset = resetEscalationOnPurchase(target);
                 if (reset) {
                   addMarketLog({ text: '🎯 [Otomatik Arttırma] ' + target.name + ' satın alındı, fiyat adımları sıfırlandı.', type: 'success' });
-                  emit('targets:changed');
+                  emit('escalation:update', target);
                 }
                 bought++;
                 totalSpent += offer.price;
