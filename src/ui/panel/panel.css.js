@@ -1192,6 +1192,11 @@ export const panelCss = `
       font-size: 14px; line-height: 1; cursor: pointer; user-select: none;
     }
     #${P.id} .fr-target-counter button:active { background: rgba(0,229,255,.2); }
+    #${P.id} .fr-target-lowest-btn {
+      flex: 0 0 auto !important; width: auto !important; height: 22px !important; padding: 0 6px !important;
+      font-size: 10px !important; white-space: nowrap; letter-spacing: .02em;
+    }
+    #${P.id} .fr-target-lowest-btn[disabled] { opacity: .55; cursor: wait; }
     #${P.id} .fr-target-counter-input {
       box-sizing: border-box; flex: 1 1 auto; width: 100%; max-width: 9ch; min-width: 44px; height: 22px;
       padding: 2px 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 4px;

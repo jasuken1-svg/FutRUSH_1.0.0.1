@@ -92,6 +92,11 @@ export const nextPriceDown = (price) => {
 
 export const priceBelow = (price) => (price > MIN_PRICE ? nextPriceDown(price) : 0);
 
+// Paletools "Lowest Market Price" akisi icin isim takmaclari:
+// gorulen en dusuk fiyatin bir alt kademesi / bir ust kademe.
+export const getNextLowerPrice = (price) => priceBelow(price);
+export const getNextHigherPrice = (price) => nextPriceUp(price);
+
 export const bindPriceStepRounding = (inputElement, onCommit) => {
   if (!inputElement) return () => {};
   let lastCommitted = null;

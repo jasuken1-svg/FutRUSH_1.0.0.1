@@ -13,11 +13,14 @@ import { createEaCardElement } from '../cardRenderer.js';
 import { CONFIG } from '../../../core/config.js';
 import { MIN_PRICE, clampPrice, nextPriceUp, nextPriceDown, roundDownToStep, roundToPriceStep } from '../../../ea/priceSteps.js';
 import { validatePriceCap, isExceedingFutbin } from '../../../ea/priceCapGuard.js';
+import { getMarketPrice } from '../../../ea/marketPrice.js';
+import { fetchMarketPage } from '../../../ea/marketPage.js';
 import { addMarketLog } from '../../marketLogBox.js';
 import { wait } from '../../../utils/async.js';
 import { FUTBIN_ICON_DATA } from '../../icons.js';
 import { getBalance } from '../../../ea/balance.js';
 import { computeEffectiveBuyNow, resetEscalationOnManualChange } from '../../../ea/escalation.js';
+import { safetyGovernor } from '../../../bot/safetyGovernor.js';
 
 let isHydrating = false;
 let isUpdatingPrices = false;
@@ -1143,6 +1146,95 @@ export function renderTargetContent(content) {
 
       const counter = document.createElement('div');
       counter.className = 'fr-target-counter fr-target-counter-editable';
+
+      // "En Düşük Fiyatı Bul" (Check Lowest BIN): EA Transfer Market'te maxBuy tavanini
+      // kademeli dusurerek kartin kesin en dusuk Hemen Al fiyatini arar; bulunan deger
+      // SATIN AL kutusuna tek tikla aktarilir. Bot calisiyorken veya CAPTCHA kilidi
+      // varken baslatilamaz (rushButton defaultCanRun ile ayni guvenlik kapisi).
+      let lowestBtn = null;
+      let lowestSearching = false;
+      const setLowestBusy = (busy) => {
+        lowestSearching = busy;
+        if (!lowestBtn) return;
+        lowestBtn.disabled = busy;
+        lowestBtn.textContent = busy ? 'Aranıyor...' : '🔎 En Düşük';
+        lowestBtn.title = busy
+          ? 'EA Transfer Market taranıyor...'
+          : 'En Düşük Hemen Al fiyatını bul ve SATIN AL kutusuna aktar';
+      };
+      if (control.key === 'buyNow') {
+        lowestBtn = document.createElement('button');
+        lowestBtn.type = 'button';
+        lowestBtn.className = 'fr-target-lowest-btn';
+        setLowestBusy(false);
+        lowestBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (lowestSearching || state.botRunning || safetyGovernor?.isCaptchaHalted?.()) {
+            setTargetStatus({ type: 'error', message: 'Bot çalışırken veya CAPTCHA kilidi varken fiyat araması başlatılamaz.' });
+            return;
+          }
+          const eaId = Number(player.eaId) > 0 ? Number(player.eaId) & 0xffffff : 0;
+          if (!eaId) {
+            setTargetStatus({ type: 'error', message: `${player.name}: EA kart kimliği (eaId) bulunamadı; arama yapılamıyor.` });
+            return;
+          }
+          setLowestBusy(true);
+          try {
+            const result = await getMarketPrice((maxBuy) => fetchMarketPage(eaId, maxBuy), {
+              eaId,
+              rating: player.rating,
+              reference: Number(player.price) || 0,
+              maxSearches: CONFIG.targetAdd?.maxSearches ?? 5,
+              gapMs: [300, 700], // soft-ban korumasi: iki arama arasi rastgele jitter
+              outlierRatio: CONFIG.targetAdd?.outlierRatio ?? 0.9
+            });
+            if (result.none || (!result.ok && !result.price && !result.lowest)) {
+              setTargetStatus({ type: 'error', message: `Markette kart bulunamadı (Extinct): ${player.name}` });
+              addMarketLog({ text: `🔎 [En Düşük Fiyat] ${player.name}: Markette kart bulunamadı (Extinct).`, type: 'warn' });
+              return;
+            }
+            if (!result.ok) {
+              const errorMsg = String(result.error?.message || result.error || 'EA araması başarısız');
+              const rateLimited = /429|rate.?limit|too many/i.test(errorMsg);
+              setTargetStatus({
+                type: 'error',
+                message: rateLimited
+                  ? `Fiyat araması hız sınırına takıldı (429): ${player.name}. Biraz sonra tekrar deneyin.`
+                  : `Fiyat araması başarısız (${player.name}): ${errorMsg}`
+              });
+              addMarketLog({ text: `⚠️ [En Düşük Fiyat] ${player.name}: ${errorMsg}`, type: 'warn' });
+              return;
+            }
+            const found = Number(result.price || result.lowest) || 0;
+            if (!(found > 0)) {
+              setTargetStatus({ type: 'error', message: `Markette kart bulunamadı (Extinct): ${player.name}` });
+              return;
+            }
+            const applied = clampPrice(roundToPriceStep(found, 'nearest'));
+            player.buyNow = applied;
+            value.value = formatVal('buyNow', applied);
+            saveTargets();
+            updateProfit(applied);
+            escalationControl?.refresh();
+            const priceExceeded = isExceedingFutbin(applied, player.price);
+            card.classList.toggle('is-price-exceeded', priceExceeded);
+            const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
+            card.classList.toggle('is-search-inactive', !active);
+            updateSummaryBar();
+            const exactLbl = result.exact ? 'kesin' : 'tahmini';
+            setTargetStatus({ type: 'success', message: `${player.name} en düşük BIN: ${applied.toLocaleString('tr-TR')} (${exactLbl}) → SATIN AL güncellendi.` });
+            addMarketLog({
+              text: `🔎 [En Düşük Fiyat] ${player.name}: ${applied.toLocaleString('tr-TR')} coin (${exactLbl}, ${result.searches || 0} arama) SATIN AL kutusuna aktarıldı.`,
+              type: 'info'
+            });
+          } catch (err) {
+            setTargetStatus({ type: 'error', message: `Fiyat araması hatası (${player.name}): ${String(err?.message || err)}` });
+          } finally {
+            setLowestBusy(false);
+          }
+        });
+      }
+
       const minus = document.createElement('button');
       minus.type = 'button';
       minus.textContent = '−';
@@ -1304,6 +1396,7 @@ export function renderTargetContent(content) {
       attachHoldRepeat(minus, (e) => change(-1, e?.shiftKey ? 10 : 1));
       attachHoldRepeat(plus, (e) => change(1, e?.shiftKey ? 10 : 1));
       counter.append(minus, value, plus);
+      if (lowestBtn) counter.appendChild(lowestBtn);
       group.append(counter);
       controls.appendChild(group);
     });

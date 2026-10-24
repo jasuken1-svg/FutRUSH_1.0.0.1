@@ -6,9 +6,15 @@ import { findLowestMarketPrice } from '../ea/lowestMarketPrice.js';
 import { state } from '../core/state.js';
 import { safetyGovernor } from '../bot/safetyGovernor.js';
 import { pageWindow } from '../utils/dom.js';
+import { clampPrice, roundToNearestStep } from '../ea/priceSteps.js';
 
 export const IDLE_TEXT = 'RUSHbuttonv1';
 export const BTN_CLASS = 'futrush-rush-action-btn';
+// Bulunan en dusuk fiyat tek tiklamada snipe/listeleme (FUTRUSH paneli) kutusuna aktarilir.
+export const SNIPE_INPUT_SELECTORS = [
+  '#fr-buy-now', '.fr-snipe-price input', '.fr-target-buynow',
+  '[data-setting="snipeBuyNow"]', '#frTargetBuyNow'
+];
 
 let isSearching = false;
 let patched = false;
@@ -74,10 +80,41 @@ function attachButtonEvents(btn, onClick) {
 }
 
 export function formatResult(r) {
-  if (r.status === 'EXTINCT') return 'EXTINCT';
+  if (r.status === 'EXTINCT') return 'Markette kart bulunamadı (Extinct)';
   if (r.status !== 'OK') return 'ERROR';
   const countSuffix = (r.count >= 20 || r.partial) ? `(x${r.count}+)` : `(x${r.count})`;
   return `🪙 ${r.price.toLocaleString('tr-TR')} ${countSuffix}`;
+}
+
+// Bulunan en dusuk fiyat tek tiklamada snipe/listeleme kutusuna aktarilir.
+// Once paneldeki SATIN AL girdisi aranir; yoksa EA arama sayfasi "Buy Now"
+// girdisine (Paletools akisi) fallback yapilir. Fiyat kademe basamagina yuvarlanir.
+export function transferLowestPriceToSnipeInput(price, doc = (typeof document !== 'undefined' ? document : null)) {
+  if (!doc || !(Number(price) > 0)) return false;
+  const rounded = clampPrice(roundToNearestStep(price));
+  const text = rounded.toLocaleString('tr-TR');
+  for (const selector of SNIPE_INPUT_SELECTORS) {
+    let el = null;
+    try { el = doc.querySelector(selector); } catch (e) { continue; }
+    if (el && typeof el.focus === 'function') {
+      el.focus();
+      el.value = text;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }
+  }
+  // EA arama sayfasi Buy Now girdisi fallback'i.
+  const eaInputs = Array.from(doc.querySelectorAll('#listSearchFormBuyNow, input[id^="listSearchFormBuyNow"]'));
+  const target = eaInputs.find((el) => typeof el.focus === 'function') || null;
+  if (!target) return false;
+  target.focus();
+  target.select?.();
+  target.value = String(rounded);
+  ['keydown', 'keyup', 'input', 'change'].forEach((type) => {
+    target.dispatchEvent(new Event(type, { bubbles: true }));
+  });
+  return true;
 }
 
 export function defaultCanRun() {
@@ -267,12 +304,17 @@ async function handleButtonClick(btn, deps = {}) {
   try {
     const result = await findLowestMarketPrice(itemEntity, {
       ...deps.finderDeps,
+      gapMs: [300, 700], // soft-ban korumasi: iki arama arasi rastgele jitter
       onProgress: ({ step, maxSteps }) => {
-        setButtonLabel(btn, `Searching ${step}/${maxSteps}...`);
+        setButtonLabel(btn, `Aranıyor ${step}/${maxSteps}...`);
       }
     });
 
     setButtonLabel(btn, formatResult(result));
+    // Tek tikla: bulunan en dusuk fiyat (veya bir alt kademesi) snipe/listeleme kutusuna aktarilir.
+    if (result.status === 'OK' && Number(result.price) > 0) {
+      transferLowestPriceToSnipeInput(result.lowerTierPrice || result.price);
+    }
   } catch (_) {
     setButtonLabel(btn, 'ERROR');
   } finally {

@@ -34,7 +34,7 @@ describe('rushButton in Action Panel', () => {
   });
 
   it('formatResult outputs expected text without misleading exactness', () => {
-    expect(formatResult({ status: 'EXTINCT' })).toBe('EXTINCT');
+    expect(formatResult({ status: 'EXTINCT' })).toBe('Markette kart bulunamadı (Extinct)');
     expect(formatResult({ status: 'ERROR' })).toBe('ERROR');
     expect(formatResult({ status: 'OK', price: 45000, count: 2 })).toBe('🪙 45.000 (x2)');
     expect(formatResult({ status: 'OK', price: 12000, count: 20 })).toBe('🪙 12.000 (x20+)');
@@ -160,8 +160,8 @@ describe('rushButton in Action Panel', () => {
     rushBtn.dispatchEvent(new dom.window.MouseEvent('mousedown', { bubbles: true }));
     rushBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
 
-    // Buton tıklamayı alıp 'Searching...' durumuna geçmeli
-    expect(rushBtn.textContent).toContain('Searching');
+    // Buton tıklamayı alıp arama (yüklleniyor) durumuna geçmeli
+    expect(rushBtn.textContent).toContain('Aranıyor');
   });
 
   it('cleans up rogue buttons from list cards in syncRushActionButtons', () => {
