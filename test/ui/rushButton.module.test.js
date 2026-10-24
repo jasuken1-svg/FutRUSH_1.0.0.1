@@ -8,7 +8,7 @@ describe('rushButtonModule registry contract', () => {
     expect(rushButtonModule.feature).toBe('rushButton');
     expect(typeof rushButtonModule.init).toBe('function');
     expect(typeof rushButtonModule.sync).toBe('function');
-    expect(rushButtonModule.initOrder).toBe(5);
+    expect(rushButtonModule.initOrder).toBe(4);
   });
 
   it('shouldEnableRushButton respects CONFIG.features.rushButton', () => {

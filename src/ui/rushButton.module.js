@@ -23,5 +23,5 @@ export default {
   feature: 'rushButton',
   init: initRushButton,
   sync: syncRushButton,
-  initOrder: 5
+  initOrder: 4
 };

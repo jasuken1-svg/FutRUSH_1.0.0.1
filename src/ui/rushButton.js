@@ -419,3 +419,6 @@ export function resetPatchFlagForTesting() {
   isSearching = false;
   lastSearchTimeByDefId.clear();
 }
+
+export const initRushButton = installRushActionButtons;
+export const syncRushButton = syncRushActionButtons;

@@ -57,6 +57,12 @@ export const CONFIG = {
     title: 'FutRUSH Snipe'
   },
 
+  // Kadro, Transfer Listesi ve Kulüp kartlarındaki tek-kart piyasa butonu
+  rushButton: {
+    className: 'fr-rush-btn',
+    label: 'RUSHbuttonv1'
+  },
+
   // Reset / Search yanındaki FutRUSH butonu
   searchButton: {
     className: 'futrush-search-btn',
