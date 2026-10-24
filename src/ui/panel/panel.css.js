@@ -1364,23 +1364,6 @@ export const panelCss = `
     #${P.id} .fr-target-save { background: linear-gradient(135deg, #0879dc, #13b5f4); border-color: rgba(115,214,255,.6); }
     #${P.id} .fr-target-load { background: linear-gradient(135deg, #bd2537, #f04452); border-color: rgba(255,150,155,.6); }
 
-    /* Undo Toast Bildirimi (Bölüm 3.7) */
-    .fr-undo-toast {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #14264a; color: #fff; padding: 8px 14px; border-radius: 6px;
-      border: 1px solid #00e5ff; box-shadow: 0 4px 14px rgba(0,0,0,0.6);
-      display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600;
-      z-index: 9999999; animation: fr-toast-in 0.2s ease;
-    }
-    .fr-undo-btn {
-      background: #00e5ff; color: #040c16; border: 0; border-radius: 4px;
-      padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;
-    }
-    @keyframes fr-toast-in {
-      from { opacity: 0; transform: translate(-50%, 10px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-
     /* Log Sekmesi ve Log Paneli */
     #${P.id} .fr-logs-view, .fr-bot-logs-panel .fr-logs-view { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; font-size: 11px; }
     .fr-bot-logs-panel .fr-logs-header {

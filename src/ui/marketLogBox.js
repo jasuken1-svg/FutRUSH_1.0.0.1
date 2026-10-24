@@ -220,10 +220,10 @@ function setupObserver(searchPrices) {
   observer.observe(scope, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
 }
 
-export function addMarketLog({ text, type = 'info', undoAction = null }) {
+export function addMarketLog({ text, type = 'info' }) {
   if (!text) return;
   const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const entry = { text, type, time, undoAction, id: Date.now() + Math.random() };
+  const entry = { text, type, time, id: Date.now() + Math.random() };
   logHistory.unshift(entry);
   if (logHistory.length > MAX_LOGS) {
     logHistory.pop();

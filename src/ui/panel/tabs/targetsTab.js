@@ -1052,13 +1052,7 @@ export function renderTargetContent(content) {
       updateSummaryBar();
 
       addMarketLog({
-        text: `${deletedPlayer.name} hedeflerden silindi.`,
-        undoAction: () => {
-          state.targets.splice(Math.min(index, state.targets.length), 0, deletedPlayer);
-          saveTargets();
-          emit('targets:changed');
-          renderTargetContent(content);
-        }
+        text: `${deletedPlayer.name} hedeflerden silindi.`
       });
     });
 
