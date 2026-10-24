@@ -53,7 +53,7 @@ export function initSettings() {
       color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); font-size: 16px;
     }
     #${N.modalId} .fr-close:hover { background: rgba(255,255,255,.18); }
-    #${N.modalId} .fr-body { flex: 1; padding: 18px; overflow: auto; }   /* şimdilik boş */
+    #${N.modalId} .fr-body { flex: 1; padding: 18px; overflow: auto; }
   ` + settingsModalCss;
     document.head.appendChild(navStyle);
 
