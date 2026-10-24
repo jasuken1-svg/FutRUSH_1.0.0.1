@@ -43,6 +43,24 @@ export function roundToTier(price, tiers) {
 }
 
 /**
+ * İlan veya kart nesnesinden geçerli definitionId değerini okur.
+ * @param {object} item
+ * @returns {number}
+ */
+export function getItemDefId(item) {
+  if (!item) return 0;
+  return Number(
+    item.definitionId ||
+    item._auction?.item?.definitionId ||
+    item.auctionItem?.item?.definitionId ||
+    item.data?.definitionId ||
+    item._data?.definitionId ||
+    item.item?.definitionId ||
+    0
+  );
+}
+
+/**
  * İlan nesnesinden geçerli buyNowPrice değerini okur.
  * @param {object} item
  * @returns {number}
@@ -50,8 +68,8 @@ export function roundToTier(price, tiers) {
 export function getBuyNow(item) {
   if (!item) return 0;
   const a = (typeof item.getAuctionData === 'function' && item.getAuctionData()) || item?.getAuction?.() || item?._auction || item;
-  const v = a?.buyNowPrice;
-  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+  const v = a?.buyNowPrice ?? item?.buyNowPrice;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
 function getServices() {
@@ -65,6 +83,13 @@ async function searchPage1(services, criteria) {
   try {
     const observable = services.Item.searchTransferMarket(criteria, 1);
     const response = await observeEaRequest(observable, SEARCH_TIMEOUT_MS);
+    if (response && response.success) {
+      if (!response.data?.items && Array.isArray(response.items)) {
+        response.data = { items: response.items };
+      } else if (!response.data?.items && Array.isArray(response.data)) {
+        response.data = { items: response.data };
+      }
+    }
     return response;
   } catch (error) {
     return { success: false, error };
@@ -153,9 +178,14 @@ export async function findLowestMarketPrice(itemEntity, deps = {}) {
     // Tuzak 2: 1. adımda gelen gerçek kart sayısı ile sayfa eşiği tespiti
     if (step === 1) threshold = Math.max(fullPage, items.length);
 
-    // Tuzak 3: definitionId filtrelemesi
+    // Tuzak 3: definitionId filtrelemesi (kart ve baseId uyumluluğu)
+    const targetDefId = Number(defId) || 0;
     const prices = items
-      .filter((it) => it?.definitionId === defId)
+      .filter((it) => {
+        const itDefId = getItemDefId(it);
+        if (!itDefId) return true;
+        return itDefId === targetDefId || (targetDefId > 0 && (itDefId & 0xffffff) === (targetDefId & 0xffffff));
+      })
       .map(getBuyNow)
       .filter((p) => p > 0);
 
