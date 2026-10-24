@@ -1448,7 +1448,6 @@ export const panelCss = `
     #${P.id} .fr-log-row[data-tone="info"], .fr-bot-logs-panel .fr-log-row[data-tone="info"] { border-left-color: #3ea8ff; color: #bfe4ff; background: rgba(62,168,255,.12); }
     #${P.id} .fr-log-row[data-tone="error"], .fr-bot-logs-panel .fr-log-row[data-tone="error"] { border-left-color: #ff5261; color: #ffb3ba; background: rgba(255,82,97,.14); }
     #${P.id} .fr-log-enter, .fr-bot-logs-panel .fr-log-enter { animation: fr-log-enter .2s ease both; }
-    #${P.id} .fr-log-missed-pulse, .fr-bot-logs-panel .fr-log-missed-pulse { animation: fr-log-enter .2s ease both; }
 
     /* Parlama (Glow) Animasyonu — Alındı ve BAŞKASI ALDI */
     #${P.id} .log-fx-success, .fr-bot-logs-panel .log-fx-success { --fx: 34,197,94; color: #bbf7d0 !important; }
@@ -1587,18 +1586,15 @@ export const panelCss = `
     @keyframes fr-status-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
     @keyframes fr-status-flash { 0% { box-shadow: 0 0 0 rgba(81,216,138,0); } 35% { box-shadow: 0 0 14px rgba(81,216,138,.34); } 100% { box-shadow: 0 0 0 rgba(81,216,138,0); } }
     @keyframes fr-log-enter { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fr-log-missed-pulse { 0%, 100% { background: rgba(255,82,97,.14); } 45% { background: rgba(255,82,97,.26); } }
     @keyframes fr-wait-drain { to { transform: scaleX(0); } }
 
     @media (prefers-reduced-motion: reduce) {
       #${P.id} .fr-card-holo-shimmer,
       #${P.id} .fr-target-status-icon[data-type="loading"],
-      #${P.id} .fr-status-message-enter,
       #${P.id} .fr-status-success-flash,
       #${P.id} .fr-target-status[data-type="loading"]::after,
       #${P.id} .fr-start[data-state="running"],
       #${P.id} .fr-log-enter,
-      #${P.id} .fr-log-missed-pulse,
       #${P.id} .fr-waitbar-fill { animation: none !important; }
       #${P.id} .fr-target-progress-fill,
       #${P.id} .fr-target-status,
