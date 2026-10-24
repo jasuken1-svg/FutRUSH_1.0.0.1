@@ -12,6 +12,7 @@ export const BTN_CLASS = 'futrush-rush-action-btn';
 
 let isSearching = false;
 let patched = false;
+let lastKnownSelectedItem = null;
 const lastSearchTimeByDefId = new Map();
 const COOLDOWN_MS = 2500;
 
@@ -109,11 +110,24 @@ function extractItemFromAny(obj) {
 export function getSelectedItemEntity(panelOrView) {
   // 1. Panel/View nesnesi üzerinden doğrudan kontrol
   const directItem = extractItemFromAny(panelOrView);
-  if (directItem?.definitionId > 0) return directItem;
+  if (directItem?.definitionId > 0) {
+    lastKnownSelectedItem = directItem;
+    return directItem;
+  }
+
+  if (panelOrView?.__savedItem?.definitionId > 0) {
+    return panelOrView.__savedItem;
+  }
 
   if (panelOrView?.__panelView) {
     const fromPanel = extractItemFromAny(panelOrView.__panelView);
-    if (fromPanel?.definitionId > 0) return fromPanel;
+    if (fromPanel?.definitionId > 0) {
+      lastKnownSelectedItem = fromPanel;
+      return fromPanel;
+    }
+    if (panelOrView.__panelView.__savedItem?.definitionId > 0) {
+      return panelOrView.__panelView.__savedItem;
+    }
   }
 
   // 2. EA View Controller hiyerarşisinden seçili kartı al
@@ -125,9 +139,12 @@ export function getSelectedItemEntity(panelOrView) {
       const candidate = extractItemFromAny(
         curr.selectedItem || curr._selectedItem || curr.item || curr._item ||
         curr.viewmodel?.selectedItem || curr._viewmodel?._selectedItem ||
-        curr.viewmodel?.item || curr._viewmodel?._item
+        curr.viewmodel?.item || curr._viewmodel?._item ||
+        curr._viewmodel?._items?.[curr._viewmodel?._selectedIndex] ||
+        curr.viewmodel?.items?.[curr.viewmodel?.selectedIndex]
       );
       if (candidate?.definitionId > 0) {
+        lastKnownSelectedItem = candidate;
         return candidate;
       }
       curr = typeof curr.getCurrentViewController === 'function'
@@ -144,21 +161,28 @@ export function getSelectedItemEntity(panelOrView) {
     ].filter(Boolean);
 
     for (const el of candidates) {
-      const defAttr = el.getAttribute('data-definition-id') || el.querySelector('[data-definition-id]')?.getAttribute('data-definition-id');
-      const resAttr = el.getAttribute('data-resource-id') || el.querySelector('[data-resource-id]')?.getAttribute('data-resource-id');
+      const defAttr = el.getAttribute('data-definition-id') || el.dataset?.definitionId || el.querySelector('[data-definition-id]')?.getAttribute('data-definition-id');
+      const resAttr = el.getAttribute('data-resource-id') || el.dataset?.resourceId || el.querySelector('[data-resource-id]')?.getAttribute('data-resource-id');
       const eaAttr = el.getAttribute('data-ea-id') || el.getAttribute('data-id') || el.querySelector('[data-ea-id]')?.getAttribute('data-ea-id');
       const img = el.querySelector('img[src*="/players/"], img[src*="/p"], img[src*="/items/images/"]');
       const imgId = img?.getAttribute('src')?.match(/\/p?(\d+)(?:\.png|\.webp|\.jpg|@|$)/i)?.[1];
 
       const defId = Number(defAttr || resAttr || eaAttr || imgId) || 0;
       if (defId > 0) {
-        return {
+        const item = {
           definitionId: defId,
           type: 'player',
           category: 'any'
         };
+        lastKnownSelectedItem = item;
+        return item;
       }
     }
+  }
+
+  // 4. Son bilinen seçili kart fallback'i
+  if (lastKnownSelectedItem?.definitionId > 0) {
+    return lastKnownSelectedItem;
   }
 
   return null;
@@ -310,15 +334,21 @@ export function injectRushButtonIntoPanel(panelOrView, deps = {}) {
     attachButtonEvents(btn, () => handleButtonClick(btn, deps));
   }
 
-  btn.__panelView = panelOrView;
+  if (!panelOrView?.nodeType || !btn.__panelView) {
+    btn.__panelView = panelOrView;
+  }
 
   // Seçili kart değiştiyse butonu sıfırla
-  const currentItem = getSelectedItemEntity(panelOrView);
-  if (currentItem && btn.__currentDefId !== currentItem.definitionId) {
-    btn.__currentDefId = currentItem.definitionId;
-    if (!isSearching) {
-      setButtonLabel(btn, IDLE_TEXT);
-      btn.disabled = false;
+  const currentItem = getSelectedItemEntity(panelOrView) || getSelectedItemEntity(btn.__panelView);
+  if (currentItem && currentItem.definitionId > 0) {
+    btn.__savedItem = currentItem;
+    lastKnownSelectedItem = currentItem;
+    if (btn.__currentDefId !== currentItem.definitionId) {
+      btn.__currentDefId = currentItem.definitionId;
+      if (!isSearching) {
+        setButtonLabel(btn, IDLE_TEXT);
+        btn.disabled = false;
+      }
     }
   }
 
@@ -382,6 +412,10 @@ export function installRushActionButtons(deps = {}) {
         proto[methodName] = function (...args) {
           if (args[0] && typeof args[0] === 'object') {
             this._rushItem = args[0];
+            const candidate = extractItemFromAny(args[0]);
+            if (candidate?.definitionId > 0) {
+              lastKnownSelectedItem = candidate;
+            }
           }
           const res = origMethod.apply(this, args);
           try {
@@ -392,6 +426,25 @@ export function installRushActionButtons(deps = {}) {
       }
     });
   });
+
+  // 3. UTItemView setItemData kancası (DOM recycling ve son kart takibi)
+  if (win.UTItemView && win.UTItemView.prototype) {
+    const itemProto = win.UTItemView.prototype;
+    const origSetData = itemProto.setItemData;
+    if (typeof origSetData === 'function') {
+      itemProto.setItemData = function (...args) {
+        try {
+          const candidate = extractItemFromAny(args[0]) || extractItemFromAny(this.data);
+          if (candidate?.definitionId > 0) {
+            lastKnownSelectedItem = candidate;
+            const root = (typeof this.getRootElement === 'function' ? this.getRootElement() : null) || this._root;
+            if (root && root.dataset) root.dataset.definitionId = String(candidate.definitionId);
+          }
+        } catch (_) {}
+        return origSetData.apply(this, args);
+      };
+    }
+  }
 }
 
 /**
@@ -417,6 +470,7 @@ export function syncRushActionButtons(deps = {}) {
 export function resetPatchFlagForTesting() {
   patched = false;
   isSearching = false;
+  lastKnownSelectedItem = null;
   lastSearchTimeByDefId.clear();
 }
 

@@ -37,7 +37,7 @@ export function getItemDefId(item) {
 export function getBuyNow(item) {
   if (!item) return 0;
   const a = auctionOf(item);
-  const v = a?.buyNowPrice ?? item?.buyNowPrice;
+  const v = a?.buyNowPrice ?? item?.buyNowPrice ?? item?._auction?.buyNowPrice;
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
@@ -85,8 +85,15 @@ export function makeLowestMarketCriteria(itemEntity, { maxBuy, createCriteria } 
 
   const defId = getItemDefId(itemEntity);
   criteria.defId = [defId];
-  criteria.type = resolveItemSearchType(itemEntity);
-  criteria.category = resolveItemCategory(itemEntity);
+  const type = resolveItemSearchType(itemEntity);
+  criteria.type = type;
+  if (type === 'player' && defId > 0) {
+    criteria.maskedDefId = Number(defId) & 0xffffff;
+  }
+  const category = resolveItemCategory(itemEntity);
+  if (category && category !== 'any') {
+    criteria.category = category;
+  }
   if (maxBuy != null && Number.isFinite(Number(maxBuy))) {
     criteria.maxBuy = Math.max(0, Math.min(MAX_TIER_PRICE, Number(maxBuy)));
   }
@@ -121,9 +128,13 @@ function emitSearchPin(criteria) {
 
 function matchingBuyNowItems(items, definitionId) {
   const wanted = Number(definitionId);
+  const wantedBase = wanted > 0 ? (wanted & 0xffffff) : 0;
   return (Array.isArray(items) ? items : []).filter((item) => {
     const itDefId = getItemDefId(item);
-    if (itDefId && itDefId !== wanted && (itDefId & 0xffffff) !== (wanted & 0xffffff)) return false;
+    if (itDefId > 0 && wanted > 0) {
+      const itBase = itDefId & 0xffffff;
+      if (itDefId !== wanted && itBase !== wantedBase) return false;
+    }
     const price = getBuyNow(item);
     return price > 0;
   });
