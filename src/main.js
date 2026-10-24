@@ -14,6 +14,7 @@ import panelModule from './ui/panel/panel.module.js';
 import futrushPageModule from './ui/futrushPage.module.js';
 import searchButtonModule from './ui/searchButton.module.js';
 import navButtonModule from './ui/navButton.module.js';
+import rushButtonModule from './ui/rushButton.module.js';
 import { registerPanelEvents } from './ui/panel/panelEvents.js';
 import { registerModalEvents as registerSaveDialogEvents } from './ui/modals/saveDialog.js';
 import { registerModalEvents as registerFilterModalEvents } from './ui/modals/filterModal.js';
@@ -27,6 +28,7 @@ registry.register(futrushPageModule);
 registry.register(searchButtonModule);
 registry.register(fitContentModule);
 registry.register(navButtonModule);
+registry.register(rushButtonModule);
 
 registerPanelEvents();
 registerSaveDialogEvents();
