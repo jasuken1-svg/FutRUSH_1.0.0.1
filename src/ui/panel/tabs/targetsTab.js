@@ -1150,7 +1150,7 @@ export function renderTargetContent(content) {
       // "En Düşük Fiyatı Bul" (Check Lowest BIN): EA Transfer Market'te maxBuy tavanini
       // kademeli dusurerek kartin kesin en dusuk Hemen Al fiyatini arar; bulunan deger
       // SATIN AL kutusuna tek tikla aktarilir. Bot calisiyorken veya CAPTCHA kilidi
-      // varken baslatilamaz (rushButton defaultCanRun ile ayni guvenlik kapisi).
+      // varken baslatilamaz (ayni guvenlik kapisi).
       let lowestBtn = null;
       let lowestSearching = false;
       const setLowestBusy = (busy) => {
