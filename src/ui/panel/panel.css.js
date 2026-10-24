@@ -1219,9 +1219,6 @@ export const panelCss = `
       margin-bottom: 2px; line-height: 1.2; text-align: center; white-space: nowrap;
       height: 14px; color: #00e5ff; overflow: hidden; text-overflow: ellipsis;
     }
-    #${P.id} .fr-target-bottom-left {
-      display: inline-flex; align-items: center; gap: 4px; min-width: 0; flex: 1; overflow: hidden;
-    }
     #${P.id} .fr-escalation-toggle-btn {
       display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 1px; padding: 1px 6px; border-radius: 4px;
