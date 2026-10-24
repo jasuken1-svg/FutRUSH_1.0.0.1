@@ -9,7 +9,6 @@ import { pageWindow } from '../utils/dom.js';
 
 export const IDLE_TEXT = 'RUSHbuttonv1';
 export const BTN_CLASS = 'futrush-rush-action-btn';
-const ISOLATED_EVENTS = ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend'];
 
 let isSearching = false;
 let patched = false;
@@ -17,7 +16,8 @@ const lastSearchTimeByDefId = new Map();
 const COOLDOWN_MS = 2500;
 
 export const RUSH_ACTION_BTN_CSS = `
-.${BTN_CLASS} {
+.${BTN_CLASS},
+.${BTN_CLASS} .btn-text {
   color: #1b5e20 !important;
   font-weight: 700 !important;
   cursor: pointer;
@@ -41,19 +41,35 @@ export function injectRushButtonStyles() {
   document.head.appendChild(style);
 }
 
-function isolate(btn, onClick) {
-  for (const type of ISOLATED_EVENTS) {
-    btn.addEventListener(
-      type,
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        if (type === 'click') onClick();
-      },
-      { passive: false }
-    );
+function setButtonLabel(btn, text) {
+  if (!btn) return;
+  const label = btn.querySelector('.btn-text');
+  if (label) {
+    label.textContent = text;
+  } else {
+    btn.textContent = text;
   }
+}
+
+function attachButtonEvents(btn, onClick) {
+  // 1. Standart tıklama olayı
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick();
+  });
+
+  // 2. Mousedown ve touch olaylarının kart seçimini bozmasını engelle (stopPropagation)
+  // preventDefault çağrılmaz; böylece tarayıcı click olayını normal şekilde tetikler.
+  btn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+  });
+  btn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+  btn.addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
 }
 
 export function formatResult(r) {
@@ -69,16 +85,35 @@ export function defaultCanRun() {
   return true;
 }
 
+function extractItemFromAny(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  if (Number(obj.definitionId) > 0) return obj;
+  if (Number(obj._rushItem?.definitionId) > 0) return obj._rushItem;
+  if (Number(obj.item?.definitionId) > 0) return obj.item;
+  if (Number(obj._item?.definitionId) > 0) return obj._item;
+  if (Number(obj._auctionItem?.item?.definitionId) > 0) return obj._auctionItem.item;
+  if (Number(obj.auctionItem?.item?.definitionId) > 0) return obj.auctionItem.item;
+  if (Number(obj._auctionItem?.definitionId) > 0) return obj._auctionItem;
+  if (Number(obj.data?.definitionId) > 0) return obj.data;
+  if (Number(obj._data?.definitionId) > 0) return obj._data;
+  if (Number(obj._slot?.item?.definitionId) > 0) return obj._slot.item;
+  if (Number(obj.squadSlot?.item?.definitionId) > 0) return obj.squadSlot.item;
+  return null;
+}
+
 /**
  * Yan eylem panelinde veya ekranda seçili olan kart nesnesini (itemEntity) tespit eder.
  * @param {Element|object} [panelOrView]
  * @returns {object|null}
  */
 export function getSelectedItemEntity(panelOrView) {
-  // 1. View nesnesi üzerinden doğrudan data/item kontrolü
-  if (panelOrView && typeof panelOrView === 'object') {
-    const directItem = panelOrView._item || panelOrView.item || panelOrView._auctionItem || panelOrView.auctionItem || panelOrView.data || panelOrView._data;
-    if (directItem?.definitionId > 0) return directItem;
+  // 1. Panel/View nesnesi üzerinden doğrudan kontrol
+  const directItem = extractItemFromAny(panelOrView);
+  if (directItem?.definitionId > 0) return directItem;
+
+  if (panelOrView?.__panelView) {
+    const fromPanel = extractItemFromAny(panelOrView.__panelView);
+    if (fromPanel?.definitionId > 0) return fromPanel;
   }
 
   // 2. EA View Controller hiyerarşisinden seçili kartı al
@@ -86,10 +121,14 @@ export function getSelectedItemEntity(panelOrView) {
     const app = pageWindow.getAppMain?.();
     const root = app?.getRootViewController?.();
     let curr = root?.getPresentedViewController?.() || root;
-    for (let i = 0; i < 6 && curr; i++) {
-      const item = curr.selectedItem || curr._selectedItem || curr.item || curr._item || curr.viewmodel?.selectedItem || curr._viewmodel?._selectedItem;
-      if (item && item.definitionId > 0) {
-        return item;
+    for (let i = 0; i < 8 && curr; i++) {
+      const candidate = extractItemFromAny(
+        curr.selectedItem || curr._selectedItem || curr.item || curr._item ||
+        curr.viewmodel?.selectedItem || curr._viewmodel?._selectedItem ||
+        curr.viewmodel?.item || curr._viewmodel?._item
+      );
+      if (candidate?.definitionId > 0) {
+        return candidate;
       }
       curr = typeof curr.getCurrentViewController === 'function'
         ? curr.getCurrentViewController()
@@ -99,13 +138,18 @@ export function getSelectedItemEntity(panelOrView) {
 
   // 3. DOM üzerinden seçili kart elemanından veriyi ayıkla
   if (typeof document !== 'undefined') {
-    const selectedEl = document.querySelector('.listFUTItem.selected, li.selected, [aria-selected="true"], .ut-item-view.selected, .ut-split-view__detail');
-    if (selectedEl) {
-      const defAttr = selectedEl.getAttribute('data-definition-id') || selectedEl.querySelector('[data-definition-id]')?.getAttribute('data-definition-id');
-      const resAttr = selectedEl.getAttribute('data-resource-id') || selectedEl.querySelector('[data-resource-id]')?.getAttribute('data-resource-id');
-      const eaAttr = selectedEl.getAttribute('data-ea-id') || selectedEl.getAttribute('data-id') || selectedEl.querySelector('[data-ea-id]')?.getAttribute('data-ea-id');
-      const img = selectedEl.querySelector('img[src*="/players/"], img[src*="/p"]');
-      const imgId = img?.getAttribute('src')?.match(/\/p?(\d+)/i)?.[1];
+    const candidates = [
+      document.querySelector('.ut-split-view__detail .ut-item-view, .ut-split-view__detail .ut-item-card, .ut-item-details-view'),
+      document.querySelector('.listFUTItem.selected, li.selected, [aria-selected="true"], .ut-item-view.selected')
+    ].filter(Boolean);
+
+    for (const el of candidates) {
+      const defAttr = el.getAttribute('data-definition-id') || el.querySelector('[data-definition-id]')?.getAttribute('data-definition-id');
+      const resAttr = el.getAttribute('data-resource-id') || el.querySelector('[data-resource-id]')?.getAttribute('data-resource-id');
+      const eaAttr = el.getAttribute('data-ea-id') || el.getAttribute('data-id') || el.querySelector('[data-ea-id]')?.getAttribute('data-ea-id');
+      const img = el.querySelector('img[src*="/players/"], img[src*="/p"], img[src*="/items/images/"]');
+      const imgId = img?.getAttribute('src')?.match(/\/p?(\d+)(?:\.png|\.webp|\.jpg|@|$)/i)?.[1];
+
       const defId = Number(defAttr || resAttr || eaAttr || imgId) || 0;
       if (defId > 0) {
         return {
@@ -161,14 +205,25 @@ export function findActionButtons(container) {
 async function handleButtonClick(btn, deps = {}) {
   if (isSearching) return;
 
+  setButtonLabel(btn, 'Searching...');
+  btn.disabled = true;
+
   const itemEntity = getSelectedItemEntity(btn.__panelView || btn.parentElement);
-  if (!itemEntity || !itemEntity.definitionId) return;
+  if (!itemEntity || !itemEntity.definitionId) {
+    setButtonLabel(btn, 'KART YOK');
+    setTimeout(() => {
+      setButtonLabel(btn, IDLE_TEXT);
+      btn.disabled = false;
+    }, 1500);
+    return;
+  }
 
   const canRunFn = deps.canRun ?? defaultCanRun;
   if (!canRunFn()) {
-    btn.textContent = 'LOCKED';
+    setButtonLabel(btn, 'LOCKED');
     setTimeout(() => {
-      if (btn && btn.textContent === 'LOCKED') btn.textContent = IDLE_TEXT;
+      setButtonLabel(btn, IDLE_TEXT);
+      btn.disabled = false;
     }, 1500);
     return;
   }
@@ -176,24 +231,26 @@ async function handleButtonClick(btn, deps = {}) {
   const defId = itemEntity.definitionId;
   const now = Date.now();
   const lastTime = lastSearchTimeByDefId.get(defId) || 0;
-  if (now - lastTime < COOLDOWN_MS) return;
+  if (now - lastTime < COOLDOWN_MS) {
+    btn.disabled = false;
+    setButtonLabel(btn, IDLE_TEXT);
+    return;
+  }
   lastSearchTimeByDefId.set(defId, now);
 
   isSearching = true;
-  btn.disabled = true;
-  btn.textContent = 'Searching...';
 
   try {
     const result = await findLowestMarketPrice(itemEntity, {
       ...deps.finderDeps,
       onProgress: ({ step, maxSteps }) => {
-        btn.textContent = `Searching ${step}/${maxSteps}...`;
+        setButtonLabel(btn, `Searching ${step}/${maxSteps}...`);
       }
     });
 
-    btn.textContent = formatResult(result);
+    setButtonLabel(btn, formatResult(result));
   } catch (_) {
-    btn.textContent = 'ERROR';
+    setButtonLabel(btn, 'ERROR');
   } finally {
     isSearching = false;
     btn.disabled = false;
@@ -202,6 +259,7 @@ async function handleButtonClick(btn, deps = {}) {
 
 /**
  * Yan eylem panelinin içine "Compare Price" ve "Quick Sell" arasına butonu yerleştirir.
+ * Kartların kendisi üzerine KESİNLİKLE buton eklemez.
  * @param {Element|object} panelOrView
  * @param {object} [deps]
  */
@@ -209,19 +267,30 @@ export function injectRushButtonIntoPanel(panelOrView, deps = {}) {
   const container = panelOrView?.getRootElement?.() || panelOrView?._root || (panelOrView?.nodeType ? panelOrView : null);
   if (!container) return;
 
-  // Buton grubunu bul
-  const group = container.querySelector('.ut-button-group') ||
-    container.querySelector('.ut-action-list-view') ||
-    container.querySelector('.sub-actions') ||
-    container;
+  // 1. Kartların kendi elemanları üzerine (liste, pitch vb.) KESİNLİKLE buton ekleme!
+  if (typeof container.closest === 'function') {
+    if (container.closest('.listFUTItem, .ut-pinned-list-item, .itemList, .ut-pinned-list, .ut-pitch-slot')) {
+      return;
+    }
+  }
 
-  const { compareBtn, quickSellBtn } = findActionButtons(group);
+  // 2. Action paneldeki "Compare Price" ve "Quick Sell" butonlarını ara
+  const { compareBtn, quickSellBtn } = findActionButtons(container);
 
-  let btn = group.querySelector('.' + BTN_CLASS);
+  // Compare Price veya Quick Sell yoksa bu konteyner doğru yan eylem paneli DEĞİLDİR
+  if (!compareBtn && !quickSellBtn) {
+    return;
+  }
+
+  const targetParent = (compareBtn || quickSellBtn).parentElement;
+  if (!targetParent) return;
+
+  // 3. Bu panelde zaten bir RUSH butonu var mı kontrol et (çift buton engelleme)
+  let btn = targetParent.querySelector('.' + BTN_CLASS) || container.querySelector('.' + BTN_CLASS);
+
   if (!btn) {
     btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = IDLE_TEXT;
     btn.dataset.frInjected = 'true';
 
     // Tasarım ve font uyumu: Compare Price varsa onun sınıflarını kopyala
@@ -233,7 +302,12 @@ export function injectRushButtonIntoPanel(panelOrView, deps = {}) {
       btn.className = 'btn-standard call-to-action ' + BTN_CLASS;
     }
 
-    isolate(btn, () => handleButtonClick(btn, deps));
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'btn-text';
+    labelSpan.textContent = IDLE_TEXT;
+    btn.appendChild(labelSpan);
+
+    attachButtonEvents(btn, () => handleButtonClick(btn, deps));
   }
 
   btn.__panelView = panelOrView;
@@ -243,22 +317,28 @@ export function injectRushButtonIntoPanel(panelOrView, deps = {}) {
   if (currentItem && btn.__currentDefId !== currentItem.definitionId) {
     btn.__currentDefId = currentItem.definitionId;
     if (!isSearching) {
-      btn.textContent = IDLE_TEXT;
+      setButtonLabel(btn, IDLE_TEXT);
       btn.disabled = false;
     }
   }
 
-  // Tam konumlandırma: "Compare Price" hemen altına, "Quick Sell" hemen üstüne
-  if (compareBtn && compareBtn.parentElement === group) {
+  // 4. Tam konumlandırma: "Compare Price" hemen altına, "Quick Sell" hemen üstüne
+  if (compareBtn && compareBtn.parentElement === targetParent) {
     if (compareBtn.nextSibling !== btn) {
       compareBtn.insertAdjacentElement('afterend', btn);
     }
-  } else if (quickSellBtn && quickSellBtn.parentElement === group) {
+  } else if (quickSellBtn && quickSellBtn.parentElement === targetParent) {
     if (quickSellBtn.previousSibling !== btn) {
       quickSellBtn.insertAdjacentElement('beforebegin', btn);
     }
-  } else if (!btn.parentElement) {
-    group.appendChild(btn);
+  }
+
+  // 5. Paneldeki olası mükerrer butonları temizle (tek buton garantisi)
+  const allInContainer = container.querySelectorAll('.' + BTN_CLASS);
+  if (allInContainer.length > 1) {
+    allInContainer.forEach((b) => {
+      if (b !== btn) b.remove();
+    });
   }
 }
 
@@ -300,6 +380,9 @@ export function installRushActionButtons(deps = {}) {
       if (typeof proto[methodName] === 'function') {
         const origMethod = proto[methodName];
         proto[methodName] = function (...args) {
+          if (args[0] && typeof args[0] === 'object') {
+            this._rushItem = args[0];
+          }
           const res = origMethod.apply(this, args);
           try {
             injectRushButtonIntoPanel(this, deps);
@@ -317,13 +400,16 @@ export function installRushActionButtons(deps = {}) {
  */
 export function syncRushActionButtons(deps = {}) {
   if (typeof document === 'undefined') return;
-  const actionContainers = document.querySelectorAll('.ut-button-group, .ut-action-list-view, .ut-item-details-view, .ut-split-view__detail');
-  actionContainers.forEach((container) => {
+
+  // 1. Kartların üzerindeki olası kaçak butonları temizle
+  const rogueButtons = document.querySelectorAll('.listFUTItem .' + BTN_CLASS + ', .itemList .' + BTN_CLASS);
+  rogueButtons.forEach((b) => b.remove());
+
+  // 2. Yalnızca sağdaki yan eylem panelini (Detail view) hedefle
+  const actionPanels = document.querySelectorAll('.ut-split-view__detail, .ut-item-details-view, .DetailPanel');
+  actionPanels.forEach((panel) => {
     try {
-      const hasActionButtons = container.querySelector('button');
-      if (hasActionButtons) {
-        injectRushButtonIntoPanel(container, deps);
-      }
+      injectRushButtonIntoPanel(panel, deps);
     } catch (_) {}
   });
 }
@@ -331,4 +417,5 @@ export function syncRushActionButtons(deps = {}) {
 export function resetPatchFlagForTesting() {
   patched = false;
   isSearching = false;
+  lastSearchTimeByDefId.clear();
 }

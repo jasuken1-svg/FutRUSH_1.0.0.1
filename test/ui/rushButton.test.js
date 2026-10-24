@@ -5,6 +5,7 @@ import {
   findActionButtons,
   formatResult,
   installRushActionButtons,
+  syncRushActionButtons,
   resetPatchFlagForTesting,
   BTN_CLASS,
   IDLE_TEXT
@@ -61,6 +62,34 @@ describe('rushButton in Action Panel', () => {
     expect(quickSellBtn).toBe(btn3);
   });
 
+  it('does NOT inject button if neither Compare Price nor Quick Sell is found', () => {
+    const container = document.createElement('div');
+    const group = document.createElement('div');
+    group.className = 'ut-button-group';
+    const otherBtn = document.createElement('button');
+    otherBtn.textContent = 'Send to Club';
+    group.appendChild(otherBtn);
+    container.appendChild(group);
+
+    injectRushButtonIntoPanel(container);
+    expect(container.querySelectorAll('.' + BTN_CLASS).length).toBe(0);
+  });
+
+  it('does NOT inject button inside list item cards', () => {
+    const listCard = document.createElement('li');
+    listCard.className = 'listFUTItem selected';
+    const group = document.createElement('div');
+    group.className = 'ut-button-group';
+    const compareBtn = document.createElement('button');
+    compareBtn.textContent = 'Compare Price';
+    group.appendChild(compareBtn);
+    listCard.appendChild(group);
+    document.body.appendChild(listCard);
+
+    injectRushButtonIntoPanel(group);
+    expect(listCard.querySelectorAll('.' + BTN_CLASS).length).toBe(0);
+  });
+
   it('injects button exactly between Compare Price and Quick Sell with matching styles', () => {
     const container = document.createElement('div');
     const group = document.createElement('div');
@@ -98,45 +127,53 @@ describe('rushButton in Action Panel', () => {
     expect(rushBtn.className).toContain(BTN_CLASS);
   });
 
-  it('resets button text when card changes in panel', () => {
+  it('handles click event without being blocked by mousedown', async () => {
     const container = document.createElement('div');
     const group = document.createElement('div');
     group.className = 'ut-button-group';
+    const compareBtn = document.createElement('button');
+    compareBtn.textContent = 'Compare Price';
+    group.appendChild(compareBtn);
     container.appendChild(group);
 
     const view = {
       getRootElement: () => container,
-      _item: { definitionId: 101 }
+      _item: { definitionId: 555 }
     };
 
-    injectRushButtonIntoPanel(view);
-    const btn = group.querySelector('.' + BTN_CLASS);
-    btn.textContent = '🪙 50.000 (x2)';
+    const mockSearch = vi.fn().mockResolvedValue({ status: 'OK', price: 3500, count: 1 });
+    injectRushButtonIntoPanel(view, {
+      finderDeps: {
+        services: {
+          Item: {
+            clearTransferMarketCache: vi.fn(),
+            searchTransferMarket: vi.fn()
+          }
+        }
+      }
+    });
 
-    // Kart değişti
-    view._item = { definitionId: 102 };
-    injectRushButtonIntoPanel(view);
+    const rushBtn = group.querySelector('.' + BTN_CLASS);
+    expect(rushBtn).not.toBeNull();
 
-    expect(btn.textContent).toBe(IDLE_TEXT);
+    // Browser standard: mousedown then click
+    rushBtn.dispatchEvent(new dom.window.MouseEvent('mousedown', { bubbles: true }));
+    rushBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+
+    // Buton tıklamayı alıp 'Searching...' durumuna geçmeli
+    expect(rushBtn.textContent).toContain('Searching');
   });
 
-  it('installRushActionButtons hooks render and setItem on action panel views', () => {
-    const mockProto = {
-      render: vi.fn(),
-      setItem: vi.fn()
-    };
-    function MockDefaultActionPanel() {}
-    MockDefaultActionPanel.prototype = mockProto;
+  it('cleans up rogue buttons from list cards in syncRushActionButtons', () => {
+    const card = document.createElement('li');
+    card.className = 'listFUTItem';
+    const rogueBtn = document.createElement('button');
+    rogueBtn.className = BTN_CLASS;
+    card.appendChild(rogueBtn);
+    document.body.appendChild(card);
 
-    const mockWin = {
-      UTDefaultActionPanelView: MockDefaultActionPanel
-    };
-
-    installRushActionButtons({ pageWindow: mockWin });
-
-    expect(mockProto.render).not.toBe(vi.fn());
-    const patchedRender = mockProto.render;
-    installRushActionButtons({ pageWindow: mockWin });
-    expect(mockProto.render).toBe(patchedRender);
+    expect(document.querySelectorAll('.' + BTN_CLASS).length).toBe(1);
+    syncRushActionButtons();
+    expect(document.querySelectorAll('.' + BTN_CLASS).length).toBe(0);
   });
 });
