@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buyNowStep, floorPrice, parsePrice, parseFutbinPrice } from '../../src/utils/format.js';
+import { buyNowStep, floorPrice, parsePrice, parseFutbinPrice, roundPriceToTier } from '../../src/utils/format.js';
 
 describe('parsePrice', () => {
   it.each([
@@ -44,5 +44,17 @@ describe('buyNowStep', () => {
     ])('completes %i down to an EA tier', (price, expected) => {
       expect(floorPrice(price)).toBe(expected);
     });
+  });
+});
+
+describe('roundPriceToTier', () => {
+  it.each([
+    [5400, 5400],
+    [5450, 5500],
+    [980, 1000],
+    [0, 0],
+    [16000000, 15000000]
+  ])('rounds %i to nearest PRICE_TIERS step as %i', (price, expected) => {
+    expect(roundPriceToTier(price)).toBe(expected);
   });
 });

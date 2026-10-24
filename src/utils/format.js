@@ -14,21 +14,52 @@ export function parsePrice(text) {
 
 export const parseFutbinPrice = parsePrice;
 
-const fallbackPriceTiers = [
+export const DEFAULT_PRICE_TIERS = Object.freeze([
   { min: 100000, inc: 1000 },
   { min: 50000, inc: 500 },
   { min: 10000, inc: 250 },
   { min: 1000, inc: 100 },
   { min: 150, inc: 50 },
   { min: 0, inc: 150 }
-];
+]);
+
+const fallbackPriceTiers = DEFAULT_PRICE_TIERS;
+const MAX_TIER_PRICE = 15000000;
+
+export function getJsPriceTiers(pageWin) {
+  const tiers = pageWin && pageWin.JSUtils && pageWin.JSUtils.PRICE_TIERS;
+  return Array.isArray(tiers) && tiers.length ? tiers : DEFAULT_PRICE_TIERS;
+}
+
+function tierIncrement(tier) {
+  return Number(tier && (tier.inc || tier.step)) || 50;
+}
+
+function matchingPriceTier(price, priceTiers) {
+  let best = null;
+  for (const tier of priceTiers) {
+    if (price >= (Number(tier.min) || 0)) {
+      if (!best || (Number(tier.min) || 0) > (Number(best.min) || 0)) best = tier;
+    }
+  }
+  return best;
+}
 
 export function floorPrice(value, priceTiers = fallbackPriceTiers) {
   const price = Math.floor(Number(value) || 0);
   if (price < 150) return 0;
-  const tier = priceTiers.find((item) => price >= item.min);
+  const tier = matchingPriceTier(price, priceTiers) || priceTiers.find((item) => price >= item.min);
   if (!tier) return 0;
-  return Math.floor(price / tier.inc) * tier.inc;
+  return Math.floor(price / tierIncrement(tier)) * tierIncrement(tier);
+}
+
+export function roundPriceToTier(value, priceTiers = fallbackPriceTiers) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  const price = Math.max(0, Math.min(MAX_TIER_PRICE, num));
+  const tier = matchingPriceTier(price, priceTiers);
+  const inc = tierIncrement(tier);
+  return Math.max(0, Math.min(MAX_TIER_PRICE, Math.round(price / inc) * inc));
 }
 
 export function buyNowStep(price) {
