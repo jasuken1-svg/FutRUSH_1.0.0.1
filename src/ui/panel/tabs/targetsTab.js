@@ -87,6 +87,7 @@ export function attachHoldRepeat(button, onTrigger) {
     window.removeEventListener('mouseup', stop, true);
     window.removeEventListener('touchend', stop, true);
     window.removeEventListener('touchcancel', stop, true);
+    window.removeEventListener('blur', stop, true);
     if (timer) {
       clearTimeout(timer);
       timer = null;
@@ -113,6 +114,7 @@ export function attachHoldRepeat(button, onTrigger) {
     window.addEventListener('mouseup', stop, { capture: true, once: true });
     window.addEventListener('touchend', stop, { capture: true, once: true });
     window.addEventListener('touchcancel', stop, { capture: true, once: true });
+    window.addEventListener('blur', stop, { capture: true, once: true });
 
     onTrigger(e);
     timer = setTimeout(() => {
@@ -136,7 +138,6 @@ export function attachHoldRepeat(button, onTrigger) {
   button.addEventListener('touchstart', start, { passive: true });
   button.addEventListener('touchend', stop);
   button.addEventListener('touchcancel', stop);
-  window.addEventListener('blur', stop);
 
   button.addEventListener('click', (e) => {
     e.preventDefault();
