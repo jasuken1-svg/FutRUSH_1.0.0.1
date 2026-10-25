@@ -242,8 +242,15 @@ export function recordStepBuckets(accumulator, buckets) {
   for (const [price, bucket] of buckets) {
     let entry = accumulator.get(price);
     if (!entry) {
-      entry = { seen: new Set(), bestUnknown: 0 };
+      entry = { seen: new Set(), bestUnknown: 0, pageTruncated: false, capCut: false, stepsSeen: 0, lastStepSeen: 0 };
       accumulator.set(price, entry);
+    }
+    // Kademe birden fazla ARAMA ADIMINDA gorulduyse listeler ustuste binmistir:
+    // gorulen ilan kademenin TAMamina ulasmistir -> kesinti sinyalleri gecersiz kilinir.
+    entry.stepsSeen += 1;
+    if (entry.stepsSeen > 1) {
+      entry.pageTruncated = false;
+      entry.capCut = false;
     }
     for (const id of bucket.ids) entry.seen.add(id);
     // ID yoksa tekrar sayisini onlemek icin tek adimda gorilen en yuksek adedi baz al.
@@ -252,14 +259,66 @@ export function recordStepBuckets(accumulator, buckets) {
   return accumulator;
 }
 
+// Bulunan kademelerin son GORULME arama adimini kaydeder (findLowestMarketPrice'in
+// tavan kesintisi tespiti icin). `step` 1'den basar; testlerde adim verilmeyebilir.
+export function markTierStepsSeen(accumulator, step) {
+  if (!Number.isFinite(step)) return accumulator;
+  for (const entry of accumulator.values()) entry.lastStepSeen = step;
+  return accumulator;
+}
+
+// Sayfa tam dolmusken gorulen EN DUSUK kademenin sayfada kesildigini isaretleme.
+// Kesinti icin DORT kosul birlikte aranir:
+//  (1) sayfa tam dolu (matchedCount >= fullPage);
+//  (2) kademe sayfadaki en dusuk fiyat olmali - EA ilanlari artan BIN sirasiyla
+//      dondurur, boylece sayfada o kademeden sonra gelen tum ilanlar da ayni
+//      fiyattadir;
+//  (3) kademe sayfada GORULEN en yuksek fiyat olmamali - aksi halde sayfanin
+//      altinda o kademeden ilan kalmiyordur (liste kesilmemistir);
+//  (4) kademenin GORULEN ilani sayfa limitine ulasmis olmali (listedAtLowest >=
+//      fullPage). Aksi halde kademe TAM gorulmustur: EA listesi o kademeyi eksiksiz
+//      yayimlamistir ve sayfayi daha YUKSEK fiyatli kademeler doldurmustur.
+// ONEMLI: Bir sonraki adimda tavanin kademenin ALTINA inmesi tek basina kesinti
+// kaniti DEGILDIR - ucuz ama tam kademe de tavan dusurmeyi tetikler. Gercek kanit
+// listedir: kademenin gorulen ilani sayfanin tamamini kaplamis ve ustunde baska
+// fiyat gorulmus. Kesilen kademeler buildTopPrices'ta x21'e tamamlanir.
+export function markTruncatedLowestTier(accumulator, lowestSeen, highestSeen, listedAtLowest, fullPage, matchedCount) {
+  if (!(fullPage > 0) || !(matchedCount >= fullPage)) return accumulator;
+  if (!(lowestSeen > 0) || lowestSeen === highestSeen) return accumulator;
+  if (!(listedAtLowest >= fullPage)) return accumulator;
+  const entry = accumulator.get(Number(lowestSeen));
+  if (entry) entry.pageTruncated = true;
+  return accumulator;
+}
+
+// Kademenin gercek ilan sayisini tahmin eder. KESENTI sinyali (yalnizca LISTE
+// KESINTISI / sayfa doluluk kontrolu):
+//  (A) kademe, sayfa TAM doluyken gorulen EN DUSUK fiyatti, sayfada daha yuksek
+//      fiyat da vardi ve kademenin gorulen ilani sayfa limitine ulasmisti ->
+//      gorulen ilan sayfanin tamamini kaplamistir, kalan ilanlar da ayni
+//      fiyattadir (EA artan BIN sirasi) -> adet x21'e tamamlanir.
+// Tavan dusurme (capCut) tek basina KESINTI KANITI DEGILDIR: ucuz ama TAM bir
+// kademe de tavan dusurmeyi tetikler ve sonraki adimda kaybolabilir; boyle bir
+// kademe x21'e tamamlanirsa yanlis pozitif uretilir (gercek adet karartilir).
+// CapCut yalnizca bilgi amaçlı entry üzerinde tutulur; sayimda kullanilmaz.
+// isFullPage kontrolu ile son kart fiyat kontrolu (highestSeen !== lowestSeen)
+// birlikte degerlendirildigi icin: tam yuklenmis sayfalarda eksik yuklenmismis
+// gibi raporlanmaz (yanlis negatif yok), eksik yuklenmis sayfalarda ise A kosulu
+// zaten devreye girmez (yanlis pozitif yok).
+export function resolveTierCount(entry) {
+  const rawCount = entry.seen.size + entry.bestUnknown;
+  let count = Math.max(1, rawCount);
+  if (entry.pageTruncated && !(entry.stepsSeen > 1)) count = Math.max(count, MAX_TOP_PRICE_COUNT);
+  return Math.min(MAX_TOP_PRICE_COUNT, count);
+}
+
 // Birikimli kademelerden kucukten buyuge en dusuk N fiyat listesini uretir.
 // Adet = benzersiz tradeId sayisi (+ fallback unknown adedi), max x21 kirpilir.
+// Kesilen kademeler resolveTierCount ile x21 olarak raporlanir.
 export function buildTopPrices(accumulator, limit = 3) {
   const tiers = [];
   for (const [price, entry] of accumulator) {
-    const rawCount = entry.seen.size + entry.bestUnknown;
-    const count = Math.min(MAX_TOP_PRICE_COUNT, Math.max(1, rawCount));
-    tiers.push({ price, count });
+    tiers.push({ price, count: resolveTierCount(entry) });
   }
   tiers.sort((a, b) => a.price - b.price);
   return tiers.slice(0, Math.max(0, limit)).map((tier, index) => ({ rank: index + 1, ...tier }));
@@ -366,18 +425,45 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
     // Kayit slice'tan SONRA yapilir: ID alinamayan (tradeId'siz) sahte/eski veri sadece
     // en dusuk kademeyle gorunurce accumulator kirlenmesin; asagidaki slices fallback'i
     // bu durumda devreye girer.
-    recordStepBuckets(topAccumulator, groupMatchedByPrice(items, definitionId));
+    const stepBuckets = groupMatchedByPrice(items, definitionId);
+    // Tavan kesintisi sinyali (B): onceki adimda kaydedilen ama bu adimda YINLENMEYEN
+    // kademeler - bir sonraki aramanin maxBuy'u bunlarin ALTINA inmisti ve ilanlari
+    // artik listede gorunmuyor. `lastStepSeen === step - 1` ile yalnizca BIR ONCEKI
+    // adimdan beri gorus kapali kademeler isaretlenir; dongu zaten her adimda tavanin
+    // altindaki ilanlari eleyen bir adim daha atar, boylece gercekten kesilmis kademe
+    // en gec iki adim sonra yakalanir, ara adimlardaki cache/sayfa varyasyonlari ise
+    // yanlis pozitif uretemez.
+    for (const [price, entry] of topAccumulator) {
+      if (entry.lastStepSeen === step - 1 && !stepBuckets.has(price)) entry.capCut = true;
+    }
+    recordStepBuckets(topAccumulator, stepBuckets);
+    markTierStepsSeen(topAccumulator, step);
 
     const isFullPage = items.length >= pageSize;
+    // LISTE KESINTISI sinyali (A): sayfa tam dolmusken gorulen EN DUSUK kademe, sayfada
+    // GORULEN en yuksek fiyatdan farkliysa ve gorulen ilani sayfa limitine ulasmisrsa
+    // listenin altinda kesilmistir (EA artan BIN sirasi -> kalan ilanlar da ayni
+    // fiyattadir) ve x21'e tamamlanir. Aksi halde kademe TAM gorulmustur; adet oldugu
+    // gibi kalir.
+    if (isFullPage) {
+      let lowestSeen = Infinity;
+      let highestSeen = 0;
+      for (const price of stepBuckets.keys()) {
+        if (price < lowestSeen) lowestSeen = price;
+        if (price > highestSeen) highestSeen = price;
+      }
+      const listedAtLowest = matchingBuyNowItems(items, definitionId)
+        .filter((item) => getBuyNow(item) === lowestSeen).length;
+      markTruncatedLowestTier(topAccumulator, lowestSeen, highestSeen, listedAtLowest, pageSize, items.length);
+    }
     if (!isFullPage) break;
 
-    // Tavan dusurme: onceki en dusuk tavanin altina inilmeli. Ayrica birikimli
-    // kademelerden 3. fiyat garanti icin hedeflenen kademenin de altina inilir;
-    // daha dusuk ilan kalmadiysa dongu durur ve onceki adimlardaki yuksek
-    // kademeler topPrices'ta korunmus olur.
-    let nextMaxBuy = nextMaxBuyFromLowest(slice.price, priceTiers);
-    const tierCap = nextMaxBuyBelowTiers(topAccumulator, priceTiers, assignedMaxBuy);
-    if (tierCap > 0 && nextMaxBuy > tierCap) nextMaxBuy = tierCap;
+    // Tavan dusurme: yalnizca gorulen EN DUSUK kademenin bir kademe altina inilir.
+    // Birikimli kademelere gore agresif tavan dusurulmez (nextMaxBuyBelowTiers):
+    // aksi halde 2./3. kademeler hic gorulmeden maxBuy altiinda kalip elenirdi ve
+    // "topPrices'ta 3 fiyat garantisi" ihlal edilirdi. Sayfa doluluk/kademe kontrolu
+    // donguyu yeterince durdurur; onceki adimlarda kaydedilen kademeler korunur.
+    const nextMaxBuy = nextMaxBuyFromLowest(slice.price, priceTiers);
     if (!(nextMaxBuy > 0) || (assignedMaxBuy != null && nextMaxBuy >= assignedMaxBuy)) break;
     criteria.maxBuy = nextMaxBuy;
     assignedMaxBuy = nextMaxBuy;

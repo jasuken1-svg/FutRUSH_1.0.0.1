@@ -15,7 +15,7 @@
 //     native value setter kullanilir ve input/change/blur eventleri tetiklenir.
 
 import { pageWindow, visibleElement } from '../../utils/dom.js';
-import { findLowestMarketPrice, getItemDefId } from '../../ea/lowestMarketPrice.js';
+import { findLowestMarketPrice, getItemDefId, makeLowestMarketCriteria } from '../../ea/lowestMarketPrice.js';
 import { getNextLowerPrice } from '../../ea/priceSteps.js';
 import { addMarketLog } from '../marketLogBox.js';
 
@@ -40,6 +40,72 @@ function isItemLike(entity) {
   return Boolean(entity._auction && entity.definitionId);
 }
 
+// Kart tanimi icin genis alan listesi (EA surumlerine gore degisken adlar).
+const DEF_ID_FIELDS = [
+  'definitionId', '_definitionId', 'defId', 'id', '_id', 'itemId', 'assetId', 'baseId', 'cardId'
+];
+
+function getDefIdLoose(entity) {
+  if (!entity || typeof entity !== 'object') return 0;
+  // 1) Bilinen dogrudan alanlar.
+  for (const key of DEF_ID_FIELDS) {
+    try {
+      const n = Number(entity[key]);
+      if (Number.isFinite(n) && n > 0) return n;
+    } catch (e) {}
+  }
+  // 2) getItemDefinition / getDefinition gibi API'ler.
+  try {
+    const def = typeof entity.getItemDefinition === 'function' ? entity.getItemDefinition()
+      : typeof entity.getDefinition === 'function' ? entity.getDefinition() : null;
+    const n = Number(def && (def.definitionId ?? def.id));
+    if (Number.isFinite(n) && n > 0) return n;
+  } catch (e) {}
+  // 3) auction/item alt nesneleri.
+  try {
+    const inner = (typeof entity.getAuctionData === 'function' && entity.getAuctionData())
+      || entity._auction || entity.item || entity.auctionItem || null;
+    const n = Number(inner && (inner.item?.definitionId ?? inner.definitionId ?? inner.tradeId));
+    if (Number.isFinite(n) && n > 0) return n;
+  } catch (e) {}
+  return 0;
+}
+
+// Detay paneli DOM'unu tarayarak kart kimligini (data-* / id nitelikleri) oku.
+// Yalnizca panel kapsayicisi ve dogrudan ebeveyni taranir; buton grubunun kendi
+// alt agaci tum kart listelerini icerdiginden yanlis defId üretebilir (atlanır).
+function readCardIdsFromDom(group) {
+  const result = { definitionId: 0, tradeId: 0 };
+  if (!group || !group.closest) return result;
+  const scopes = [];
+  const panel = group.closest('.ut-detail-panel, .ut-panel, .ut-quick-list-panel-view, [class*="detail"]');
+  if (panel) scopes.push(panel);
+  if (group.parentElement) scopes.push(group.parentElement);
+  const attrNames = [
+    'data-definition-id', 'data-definitionid', 'data-defid', 'data-item-id', 'data-itemid',
+    'data-card-id', 'data-id', 'data-trade-id', 'data-tradeid', 'data-auction-id'
+  ];
+  for (const scope of scopes) {
+    if (!scope || !scope.querySelectorAll) continue;
+    const nodes = [scope, ...Array.from(scope.querySelectorAll('[data-definition-id], [data-definitionid], [data-defid], [data-item-id], [data-itemid], [data-card-id], [data-id], [data-trade-id], [data-tradeid], [data-auction-id]'))];
+    for (const node of nodes) {
+      if (!node || node === group || (group.contains && group.contains(node))) continue;
+      if (!node.getAttribute) continue;
+      for (const attr of attrNames) {
+        const raw = node.getAttribute(attr);
+        if (!raw) continue;
+        const n = Number(String(raw).replace(/[^0-9]/g, ''));
+        if (!Number.isFinite(n) || n <= 0) continue;
+        if (/trade|auction/.test(attr)) { if (!result.tradeId) result.tradeId = n; }
+        else if (!result.definitionId) result.definitionId = n;
+      }
+    }
+    if (result.definitionId || result.tradeId) break;
+  }
+  return result;
+}
+
+// services.Item aramalarindan kalan son sonuc dizisi / secim referanslari.
 function findItemEntityInObject(obj, seen, depth) {
   if (!obj || typeof obj !== 'object' || seen.has(obj) || depth > 6) return null;
   seen.add(obj);
@@ -74,11 +140,43 @@ function resolveSelectedCard() {
       if (found) return found;
     }
   } catch (e) {}
-  // 3) services.Item uzerindeki son arama/secim verisi.
+  // 3) services.Item uzerindeki son arama/secim verisi — TUM olasi alanlarda ara.
   try {
     const service = win.services && win.services.Item;
-    const found = findItemEntityInObject(service, new WeakSet(), 0);
-    if (found) return found;
+    if (service) {
+      const preferredKeys = ['_lastSearchResult', 'lastSearchResult', '_searchResult', 'searchResult',
+        'items', '_items', 'selectedItems', '_selectedItems', 'currentItem', '_currentItem'];
+      for (const key of preferredKeys) {
+        try {
+          const val = service[key];
+          const list = Array.isArray(val) ? val : (val && Array.isArray(val.items) ? val.items : null);
+          if (list && list.length && isItemLike(list[0])) return list[0];
+          const found = findItemEntityInObject(val, new WeakSet(), 0);
+          if (found) return found;
+        } catch (e) {}
+      }
+      const found = findItemEntityInObject(service, new WeakSet(), 0);
+      if (found) return found;
+    }
+  } catch (e) {}
+  // 4) Genis tarama: controller agacinda itemEntity benzeri ilk nesne.
+  try {
+    const app = win.getAppMain ? win.getAppMain() : null;
+    if (app) {
+      const seen = new WeakSet();
+      const queue = [{ obj: app, depth: 0 }];
+      while (queue.length) {
+        const { obj, depth } = queue.shift();
+        if (!obj || typeof obj !== 'object' || seen.has(obj) || depth > 5) continue;
+        seen.add(obj);
+        if (isItemLike(obj)) return obj;
+        let names = [];
+        try { names = Object.keys(obj); } catch (e) {}
+        for (const name of names.slice(0, 80)) {
+          try { queue.push({ obj: obj[name], depth: depth + 1 }); } catch (e) {}
+        }
+      }
+    }
   } catch (e) {}
   return null;
 }
@@ -211,69 +309,248 @@ function renderResults(container, result, group) {
   }
 }
 
+// Detay paneli basligindaki kart adini oku (EA'da ornek: "Rodri · 87 ST").
+function readPanelCardName(group) {
+  if (!group || !group.closest) return '';
+  const panel = group.closest('.ut-detail-panel, .ut-panel, [class*="detail"]') || document;
+  if (!panel.querySelectorAll) return '';
+  const nodes = Array.from(panel.querySelectorAll(
+    '.ut-detail-panel-title, .ut-panel-title, h1, h2, h3, [class*="title"], [class*="name"]'
+  )).slice(0, 40);
+  for (const node of nodes) {
+    const text = String(node.textContent || '').trim();
+    // Cok uzun metinler / buton etiketleri baslik olamaz.
+    if (text.length >= 2 && text.length <= 60 && !/[<>{}]/.test(text)) {
+      return text.split(/[·|•\-–]\s*\d{2,3}\b/)[0].trim() || text;
+    }
+  }
+  return '';
+}
+
+// Panel DOM'unun yanina EA'in kendi React/Fiber verisini gomulü olabilir; fiber
+// dugumlerini tarayarak itemEntity benzeri bir nesne bulmayi dene.
+function findItemViaReactFiber(group) {
+  try {
+    const panel = group.closest ? (group.closest('.ut-detail-panel, .ut-panel, [class*="detail"]') || group.parentElement) : null;
+    if (!panel) return null;
+    const roots = [panel, ...Array.from(panel.querySelectorAll('*')).slice(0, 300)];
+    for (const el of roots) {
+      if (!el) continue;
+      let fiber = el.__reactInternalInstance$ || el._reactInternalFiber || null;
+      if (!fiber) {
+        for (const key of Object.keys(el)) {
+          if (key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')) { fiber = el[key]; break; }
+        }
+      }
+      let hops = 0;
+      while (fiber && hops < 40) {
+        const props = fiber.memoizedProps || fiber.pendingProps;
+        if (props) {
+          const found = findItemEntityInObject(props, new WeakSet(), 0);
+          if (found) return found;
+        }
+        fiber = fiber.return;
+        hops += 1;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Secili kartin definitionId'sini cozumlemede son care: pazar arama sonucu
+// dizisindeki (services.Item cache'i) kart adiyla eslesen ilk kart.
+function resolveDefIdByName(group) {
+  const name = readPanelCardName(group);
+  if (!name) return 0;
+  try {
+    const service = pageWindow.services && pageWindow.services.Item;
+    const caches = ['_lastSearchResult', 'lastSearchResult', '_searchResult', 'items', '_items'];
+    for (const key of caches) {
+      let list = null;
+      try {
+        const val = service && service[key];
+        list = Array.isArray(val) ? val : (val && Array.isArray(val.items) ? val.items : null);
+      } catch (e) {}
+      if (!list) continue;
+      for (const it of list) {
+        try {
+          const itemName = String(it?.fullName || it?.name || it?.getFullName?.() || '').trim();
+          if (itemName && itemName.toLowerCase() === name.toLowerCase()) {
+            const defId = getDefIdLoose(it);
+            if (defId > 0) return defId;
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (e) {}
+  return 0;
+}
+
+// ---- Card (kart) secimini DOM MutationObserver ile yakala ----
+// EA'da bir karta tiklandiginda detay paneli / ut-button-group DOM'a eklenir ya da
+// icerigi guncellenir. Bu anda services.Item / controller agacindaki itemEntity
+// referansi en taze halindedir; hemen kopyalanip saklanir. Boylece butona tiklandiginda
+// ("Kart Seçili Değil" hatasinin onune gecmek icin) secim referansi hâlâ hazirdir.
+
+let lastSelectedCard = null; // { itemEntity, defId } | null
+
+function captureSelectedCard() {
+  try {
+    const itemEntity = resolveSelectedCard();
+    if (!itemEntity) return;
+    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
+    if (!(defId > 0)) return;
+    lastSelectedCard = { itemEntity, defId };
+  } catch (e) {}
+}
+
+// ---- Secili kart cozumlemesi icin kisa onbellek (cache) ----
+// resolveTargetForGroup cok asamali ve pahali bir tarama yapar (controller agaci,
+// React fiber, DOM nitelikleri). Ayni grup icin saniyeler boyunca ayni sonucu
+// tekrar tekrar uretmek yerine kisa omurlu cache kullanilir.
+let cachedTarget = null; // { group, target, at }
+const TARGET_CACHE_MS = 2000;
+
+function resolveTargetForGroup(group) {
+  if (cachedTarget && cachedTarget.group === group && (Date.now() - cachedTarget.at) < TARGET_CACHE_MS) {
+    return cachedTarget.target;
+  }
+  const target = computeTargetForGroup(group);
+  cachedTarget = { group, target, at: Date.now() };
+  return target;
+}
+
+function computeTargetForGroup(group) {
+  // 1) Taze secim yakalama kaydi (card tiklandiginda alindi).
+  if (lastSelectedCard && lastSelectedCard.defId > 0) return lastSelectedCard;
+  // 2) EA controller/service agaci.
+  const itemEntity = resolveSelectedCard();
+  if (itemEntity) {
+    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
+    if (defId > 0) return { itemEntity, defId };
+  }
+  // 3) React fiber agaci (detay paneli bilesenlerinin props'larindaki kart).
+  const fiberItem = findItemViaReactFiber(group);
+  if (fiberItem) {
+    const defId = getItemDefId(fiberItem) || getDefIdLoose(fiberItem);
+    if (defId > 0) return { itemEntity: fiberItem, defId };
+  }
+  // 4) Panel DOM'undaki data-* kart kimlik nitelikleri.
+  const domIds = readCardIdsFromDom(group);
+  if (domIds.definitionId > 0) return { itemEntity: null, defId: domIds.definitionId };
+  // 5) Panel basligindaki kart adini pazar cache'indeki kartlarla eslestir.
+  const byName = resolveDefIdByName(group);
+  if (byName > 0) return { itemEntity: null, defId: byName };
+  return null;
+}
+
+async function runLowestSearch(btn, results, group, target) {
+  searchingStates.set(btn, true);
+  btn.disabled = true;
+  btn.textContent = 'Aranıyor...';
+  results.innerHTML = '';
+  try {
+    // findLowestMarketPrice ilk arguman olarak itemEntity bekler; yalnizca defId
+    // cozulebildiyse (DOM niteligi / cache eslestirmesi) minimal bir sahte entity
+    // uretilir — makeLowestMarketCriteria bu nesneyi standart akista kullanilir
+    // hale getirir.
+    const searchTarget = target.itemEntity || makeLowestMarketCriteria({ definitionId: target.defId });
+    const result = await findLowestMarketPrice(searchTarget, { gapMs: [150, 400] });
+    if (!result || !result.ok || !(result.price > 0)) {
+      if (result && result.extinct) {
+        btn.textContent = 'Markette yok';
+        addMarketLog({ text: '🔎 [En Düşük Fiyatlar] Markette kart bulunamadı (Extinct).', type: 'warn' });
+      } else {
+        btn.textContent = 'Arama başarısız';
+        addMarketLog({ text: `⚠️ [En Düşük Fiyatlar] ${String((result && result.error && result.error.message) || 'EA araması başarısız')}`, type: 'warn' });
+      }
+      restoreBtnText(group, btn, 4000);
+      return;
+    }
+    renderResults(results, result, group);
+    btn.textContent = DEFAULT_BTN_TEXT;
+  } catch (err) {
+    btn.textContent = 'Hata';
+    restoreBtnText(group, btn, 4000);
+    addMarketLog({ text: `❌ [En Düşük Fiyatlar] ${String(err?.message || err)}`, type: 'error' });
+  } finally {
+    searchingStates.set(btn, false);
+    btn.disabled = false;
+  }
+}
+
+const searchingStates = new WeakMap();
+
+function restoreBtnText(group, btn, delayMs) {
+  setTimeout(() => {
+    if (!searchingStates.get(btn) && btn.isConnected) btn.textContent = DEFAULT_BTN_TEXT;
+  }, delayMs);
+}
+
 function ensureControls(group) {
   if (!group || group.nodeType !== 1) return;
-  if (group.querySelector(`.${BTN_CLASS}`)) return; // zaten enjekte edildi
+  let btn = group.querySelector(`.${BTN_CLASS}`);
+  if (btn) { scheduleDiagnostics(); return; } // zaten enjekte edildi
 
-  const btn = document.createElement('button');
+  btn = document.createElement('button');
   btn.type = 'button';
   btn.className = `ut-btn ${BTN_CLASS}`;
   btn.textContent = DEFAULT_BTN_TEXT;
   btn.title = 'Bu kart için pazardaki en düşük 1., 2. ve 3. Hemen Al fiyatlarını ara';
+  // EA panel animasyonlari butonlara pointer-events kapatabiliyor; garanti altina al.
+  btn.style.pointerEvents = 'auto';
 
   const results = document.createElement('span');
   results.className = RESULTS_CLASS;
 
-  let searching = false;
-  const restoreText = (delayMs) => {
-    setTimeout(() => {
-      if (!searching && btn.isConnected) btn.textContent = DEFAULT_BTN_TEXT;
-    }, delayMs);
-  };
   btn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (searching) return;
-    const itemEntity = resolveSelectedCard();
-    if (!itemEntity || !getItemDefId(itemEntity)) {
+    if (searchingStates.get(btn)) return;
+
+    // Secili kati cok asamali cozumle (yukarida aciklanan siralamayla).
+    const target = resolveTargetForGroup(group);
+    if (!target) {
       btn.textContent = 'Kart seçili değil';
-      restoreText(2500);
+      restoreBtnText(group, btn, 2500);
       return;
     }
-    searching = true;
-    btn.disabled = true;
-    btn.textContent = 'Aranıyor...';
-    results.innerHTML = '';
-    try {
-      const result = await findLowestMarketPrice(itemEntity, { gapMs: [150, 400] });
-      if (!result || !result.ok || !(result.price > 0)) {
-        if (result && result.extinct) {
-          btn.textContent = 'Markette yok';
-          addMarketLog({ text: '🔎 [En Düşük Fiyatlar] Markette kart bulunamadı (Extinct).', type: 'warn' });
-        } else {
-          btn.textContent = 'Arama başarısız';
-          addMarketLog({ text: `⚠️ [En Düşük Fiyatlar] ${String((result && result.error && result.error.message) || 'EA araması başarısız')}`, type: 'warn' });
-        }
-        restoreText(4000);
-        return;
-      }
-      renderResults(results, result, group);
-      btn.textContent = DEFAULT_BTN_TEXT;
-    } catch (err) {
-      btn.textContent = 'Hata';
-      restoreText(4000);
-      addMarketLog({ text: `❌ [En Düşük Fiyatlar] ${String(err?.message || err)}`, type: 'error' });
-    } finally {
-      searching = false;
-      btn.disabled = false;
-    }
+    await runLowestSearch(btn, results, group, target);
   });
 
   group.appendChild(btn);
   group.appendChild(results);
 }
 
+// ---- Butonlarin tikanabilirligini tespit et (yalnizca browser console'a yazar) ----
+let diagTimer = null;
+function scheduleDiagnostics() {
+  if (diagTimer !== null) return;
+  diagTimer = setTimeout(() => {
+    diagTimer = null;
+    try { runClickDiagnostics(); } catch (e) {}
+  }, 1500);
+}
+
+function runClickDiagnostics() {
+  try {
+    const btns = document.querySelectorAll(`.${BTN_CLASS}`);
+    for (const btn of btns) {
+      ['click', 'mousedown', 'mouseup'].forEach((type) => {
+        btn.addEventListener(type, () => {
+          try {
+            console.info('[FutRUSH][EnDusukFiyatlar] buton uzerinde ' + type + ' alindi.',
+              { text: btn.textContent, disabled: btn.disabled });
+          } catch (e) {}
+        }, true);
+      });
+    }
+  } catch (e) {}
+}
+
 function injectIntoVisibleGroups(root) {
   const scope = root && root.querySelectorAll ? root : document;
+  // Kart secimi degistiginde (panel DOM'u guncellendiginde) secim referansini tazele.
+  captureSelectedCard();
   const groups = Array.from(scope.querySelectorAll(GROUP_SELECTOR));
   for (const group of groups) {
     if (!visibleElement(group)) continue;

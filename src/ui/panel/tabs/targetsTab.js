@@ -1167,12 +1167,22 @@ export function renderTargetContent(content) {
         if (!lowestBtn || lowestSearching) return;
         lowestBtn.textContent = LOWEST_BTN_DEFAULT_TEXT;
       };
+      // Satir DOM'dan kaldirilirken (panel yeniden cizimi) bekleyen 10sn timer'ini temizle.
+      const unbindLowestBtn = () => {
+        clearLowestResetTimer();
+        if (lowestBtn && lowestBtn.parentNode === counter) {
+          counter.removeEventListener('detach', unbindLowestBtn);
+        }
+      };
+      counter.addEventListener('detach', unbindLowestBtn);
       const setLowestBusy = (busy) => {
         lowestSearching = busy;
         if (!lowestBtn) return;
         if (busy) clearLowestResetTimer();
         lowestBtn.disabled = busy;
-        lowestBtn.textContent = busy ? 'Aranıyor...' : LOWEST_BTN_DEFAULT_TEXT;
+        // Arama bittiginde buton metni DERHAL varsayilana donmez: fiyat bulunduysa
+        // 10 saniye boyunca "🔎 <fiyat>" olarak kalir (timer asagida kurulur).
+        if (busy) lowestBtn.textContent = 'Aranıyor...';
         lowestBtn.title = busy
           ? 'EA Transfer Market taranıyor...'
           : 'En Düşük Hemen Al fiyatını bul (fiyat yalnızca butonda gösterilir, SATIN AL kutusuna yazılmaz)';
@@ -1205,7 +1215,6 @@ export function renderTargetContent(content) {
             });
             if (result.none || (!result.ok && !result.price && !result.lowest)) {
               setTargetStatus({ type: 'error', message: `Markette kart bulunamadı (Extinct): ${player.name}` });
-              addMarketLog({ text: `🔎 [En Düşük Fiyat] ${player.name}: Markette kart bulunamadı (Extinct).`, type: 'warn' });
               return;
             }
             if (!result.ok) {
@@ -1217,7 +1226,6 @@ export function renderTargetContent(content) {
                   ? `Fiyat araması hız sınırına takıldı (429): ${player.name}. Biraz sonra tekrar deneyin.`
                   : `Fiyat araması başarısız (${player.name}): ${errorMsg}`
               });
-              addMarketLog({ text: `⚠️ [En Düşük Fiyat] ${player.name}: ${errorMsg}`, type: 'warn' });
               return;
             }
             const found = Number(result.price || result.lowest) || 0;
@@ -1227,6 +1235,8 @@ export function renderTargetContent(content) {
             }
             // SADECE GÖSTERİM: bulunan en dusuk 1 fiyat yalnizca buton metnine yazilir;
             // player.buyNow ve SATIN AL input'u bilincli olarak DEGISTIRILMEZ.
+            // Buton metni 10 saniye boyunca "🔎 <fiyat>" kalir, sonra "🔎 En Düşük"e doner.
+            // Log'a yazılmaz; hedef durum satırına da mesaj basılmaz.
             const shown = found.toLocaleString('tr-TR');
             lowestBtn.textContent = `🔎 ${shown}`;
             lowestBtn.title = `En düşük BIN: ${shown} coin — 10 sn içinde buton eski metnine döner (SATIN AL kutusu değiştirilmedi).`;
@@ -1236,11 +1246,6 @@ export function renderTargetContent(content) {
               // 10 sn dolunca buton varsayilan metne doner (arama hâlâ sürüyorsa dokunma).
               resetLowestBtnText();
             }, LOWEST_BTN_RESET_MS);
-            setTargetStatus({ type: 'success', message: `${player.name} en düşük BIN: ${shown} — yalnızca gösterildi, SATIN AL kutusuna yazılmadı.` });
-            addMarketLog({
-              text: `🔎 [En Düşük Fiyat] ${player.name}: ${shown} coin (kesin: ${Boolean(result.exact)}, ${result.searches || 0} arama) — sadece butonda gösterildi, input değişmedi.`,
-              type: 'info'
-            });
           } catch (err) {
             setTargetStatus({ type: 'error', message: `Fiyat araması hatası (${player.name}): ${String(err?.message || err)}` });
           } finally {

@@ -18,13 +18,15 @@ function fakeServices(market, { fail = false } = {}) {
       clearTransferMarketCache() {},
       searchTransferMarket(criteria) {
         const limit = criteria.maxBuy ?? Infinity;
+        // Gercek EA davranisi: minBid ustu ilanlar da doner (asgari teklif filtresi).
+        const floor = criteria.minBid ?? 0;
         // Fiyat okumasi getBuyNow ile ayni: düz buyNowPrice VEYA _auction.buyNowPrice.
         const priceOf = (c) => (typeof c.buyNowPrice === 'number' ? c.buyNowPrice : (c._auction?.buyNowPrice ?? 0));
         const items = fail
           ? null
           : market
               .filter((c) => criteria.defId.includes(c.definitionId) || c.definitionId !== criteria.defId[0])
-              .filter((c) => priceOf(c) <= limit)
+              .filter((c) => priceOf(c) <= limit && priceOf(c) >= floor)
               .slice(0, 21);
         return {
           observe(_o, cb) {
@@ -100,8 +102,68 @@ describe('findLowestMarketPrice', () => {
     expect(r.topPrices).toEqual([
       { rank: 1, price: 1200, count: 4 },
       { rank: 2, price: 1300, count: 12 },
-      { rank: 3, price: 1400, count: 21 }, // x21 siniri
+      { rank: 3, price: 1400, count: 5 }, // sayfa dolmadigi icin kademe TAM goruldu -> kesinti YOK
     ]);
+  });
+
+  it('tam dolu sayfada en düsk kademe sayfayi kaplarsa kesilir ve x21 raporlanır', async () => {
+    let calls = 0;
+    const searchPage = () => {
+      calls += 1;
+      if (calls === 1) {
+        // Sayfa TAM dolu (21): ilk 21 ilan 1200'de kesilmis kademe, ustunde 1300 var.
+        return Promise.resolve({
+          ok: true,
+          items: [
+            ...Array.from({ length: 21 }, (_, i) => tradeCard(900 + i, 1200)),
+            tradeCard(5000, 1300),
+          ],
+        });
+      }
+      // Tavan 1200'un altina iner; tavan kesintisi tek basina x21'i DEGIL,
+      // yukaridaki liste kesinti sinyali tetikler.
+      return Promise.resolve({ ok: true, items: [] });
+    };
+    const r = await findLowestMarketPrice({ definitionId: 111 }, {
+      createCriteria: () => ({ count: 30 }),
+      priceTiers: TIERS,
+      searchPage,
+      sleep: async () => {},
+    });
+    expect(r.price).toBe(1200);
+    expect(r.topPrices).toEqual([
+      { rank: 1, price: 1200, count: 21 }, // liste kesintisi -> x21'e tamamlandi
+      { rank: 2, price: 1300, count: 1 },
+    ]);
+  });
+
+  it('sayfa tam dolu ama son kart fiyatı eksikse kademe kesilmiş sayılmaz', async () => {
+    let calls = 0;
+    const searchPage = () => {
+      calls += 1;
+      if (calls === 1) {
+        // 21 kart: 12 tanesi 1200, 9 tanesi 1300, son kartta fiyat bilgisi YOK
+        // (henuz yuklenmemis kart simulasyonu). Gorulen en dusuk kademe sayfayi
+        // kaplamadigi icin kesinti degil -> yanlis pozitif uretilmez.
+        return Promise.resolve({
+          ok: true,
+          items: [
+            ...Array.from({ length: 12 }, (_, i) => tradeCard(900 + i, 1200)),
+            ...Array.from({ length: 8 }, (_, i) => tradeCard(1900 + i, 1300)),
+            { definitionId: 111 },
+          ],
+        });
+      }
+      return Promise.resolve({ ok: true, items: [tradeCard(900, 1200)] });
+    };
+    const r = await findLowestMarketPrice({ definitionId: 111 }, {
+      createCriteria: () => ({ count: 30 }),
+      priceTiers: TIERS,
+      searchPage,
+      sleep: async () => {},
+    });
+    expect(r.price).toBe(1200);
+    expect(r.topPrices[0]).toEqual({ rank: 1, price: 1200, count: 12 });
   });
 
   it('aynı tradeId tekrarları tekilleştirilir (tek arama sayfası)', () => {
