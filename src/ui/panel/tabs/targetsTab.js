@@ -1188,6 +1188,7 @@ export function renderTargetContent(content) {
           : 'En Düşük Hemen Al fiyatını bul (fiyat yalnızca butonda gösterilir, SATIN AL kutusuna yazılmaz)';
       };
       if (control.key === 'buyNow') {
+        counter.classList.add('fr-target-counter-has-lowest');
         lowestBtn = document.createElement('button');
         lowestBtn.type = 'button';
         lowestBtn.className = 'fr-target-lowest-btn';

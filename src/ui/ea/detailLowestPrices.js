@@ -37,7 +37,8 @@ const formatPrice = (value) => Number(value || 0).toLocaleString('tr-TR');
 function isItemLike(entity) {
   if (!entity || typeof entity !== 'object') return false;
   if (typeof entity.getSearchType === 'function' && typeof entity.getAuctionData === 'function') return true;
-  return Boolean(entity._auction && entity.definitionId);
+  return ['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId']
+    .some((key) => Number(entity[key]) > 0) || Boolean(entity._auction && getDefIdLoose(entity));
 }
 
 // Kart tanimi icin genis alan listesi (EA surumlerine gore degisken adlar).
@@ -77,30 +78,31 @@ function getDefIdLoose(entity) {
 function readCardIdsFromDom(group) {
   const result = { definitionId: 0, tradeId: 0 };
   if (!group || !group.closest) return result;
-  const scopes = [];
-  const panel = group.closest('.ut-detail-panel, .ut-panel, .ut-quick-list-panel-view, [class*="detail"]');
-  if (panel) scopes.push(panel);
-  if (group.parentElement) scopes.push(group.parentElement);
   const attrNames = [
     'data-definition-id', 'data-definitionid', 'data-defid', 'data-item-id', 'data-itemid',
     'data-card-id', 'data-id', 'data-trade-id', 'data-tradeid', 'data-auction-id'
   ];
-  for (const scope of scopes) {
-    if (!scope || !scope.querySelectorAll) continue;
-    const nodes = [scope, ...Array.from(scope.querySelectorAll('[data-definition-id], [data-definitionid], [data-defid], [data-item-id], [data-itemid], [data-card-id], [data-id], [data-trade-id], [data-tradeid], [data-auction-id]'))];
-    for (const node of nodes) {
-      if (!node || node === group || (group.contains && group.contains(node))) continue;
-      if (!node.getAttribute) continue;
-      for (const attr of attrNames) {
-        const raw = node.getAttribute(attr);
-        if (!raw) continue;
-        const n = Number(String(raw).replace(/[^0-9]/g, ''));
-        if (!Number.isFinite(n) || n <= 0) continue;
-        if (/trade|auction/.test(attr)) { if (!result.tradeId) result.tradeId = n; }
-        else if (!result.definitionId) result.definitionId = n;
-      }
+  const readNode = (node) => {
+    if (!node?.getAttribute) return;
+    for (const attr of attrNames) {
+      const raw = node.getAttribute(attr);
+      if (!raw) continue;
+      const n = Number(String(raw).replace(/[^0-9]/g, ''));
+      if (!Number.isFinite(n) || n <= 0) continue;
+      if (/trade|auction/.test(attr)) { if (!result.tradeId) result.tradeId = n; }
+      else if (!result.definitionId) result.definitionId = n;
     }
-    if (result.definitionId || result.tradeId) break;
+  };
+  // EA detail wrappers do not use a consistent class name. Walk the button
+  // group's ancestors so IDs on the active panel are found without relying on
+  // a particular tab's markup.
+  let node = group;
+  let depth = 0;
+  while (node && depth < 10) {
+    readNode(node);
+    if (result.definitionId || result.tradeId) return result;
+    node = node.parentElement;
+    depth += 1;
   }
   return result;
 }
@@ -110,9 +112,20 @@ function findItemEntityInObject(obj, seen, depth) {
   if (!obj || typeof obj !== 'object' || seen.has(obj) || depth > 6) return null;
   seen.add(obj);
   if (isItemLike(obj)) return obj;
-  const keys = ['item', 'itemEntity', '_item', 'selectedItem', 'currentItem', 'displayedItem',
-    'auctionItem', '_auctionItem', 'data', '_data', 'model', '_viewmodel', 'viewModel',
-    'controller', '_controller', 'presentedViewController', 'detailPanel'];
+  if (Array.isArray(obj)) {
+    for (const child of obj.slice(0, 30)) {
+      const found = findItemEntityInObject(child, seen, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  const keys = [
+    'item', 'itemEntity', '_item', 'selectedItem', '_selectedItem', 'currentItem',
+    '_currentItem', 'displayedItem', 'selectedCard', 'activeItem', 'focusedItem',
+    'auctionItem', '_auctionItem', 'itemData', 'data', '_data', 'props', 'children',
+    'state', 'model', '_viewmodel', 'viewModel', 'controller', '_controller',
+    'presentedViewController', 'detailPanel'
+  ];
   for (const key of keys) {
     try {
       const found = findItemEntityInObject(obj[key], seen, depth + 1);
@@ -140,23 +153,22 @@ function resolveSelectedCard() {
       if (found) return found;
     }
   } catch (e) {}
-  // 3) services.Item uzerindeki son arama/secim verisi — TUM olasi alanlarda ara.
+  // 3) Yalnizca servis uzerindeki acik secim referanslari. Arama sonucundaki
+  // ilk kart secili kart degildir; onu kullanmak yanlis fiyati aratabilir.
   try {
     const service = win.services && win.services.Item;
     if (service) {
-      const preferredKeys = ['_lastSearchResult', 'lastSearchResult', '_searchResult', 'searchResult',
-        'items', '_items', 'selectedItems', '_selectedItems', 'currentItem', '_currentItem'];
+      const preferredKeys = [
+        'selectedItem', '_selectedItem', 'currentItem', '_currentItem',
+        'selectedItems', '_selectedItems', 'focusedItem', 'highlightedItem'
+      ];
       for (const key of preferredKeys) {
         try {
           const val = service[key];
-          const list = Array.isArray(val) ? val : (val && Array.isArray(val.items) ? val.items : null);
-          if (list && list.length && isItemLike(list[0])) return list[0];
           const found = findItemEntityInObject(val, new WeakSet(), 0);
           if (found) return found;
         } catch (e) {}
       }
-      const found = findItemEntityInObject(service, new WeakSet(), 0);
-      if (found) return found;
     }
   } catch (e) {}
   // 4) Genis tarama: controller agacinda itemEntity benzeri ilk nesne.
@@ -392,7 +404,7 @@ function resolveDefIdByName(group) {
 // referansi en taze halindedir; hemen kopyalanip saklanir. Boylece butona tiklandiginda
 // ("Kart Seçili Değil" hatasinin onune gecmek icin) secim referansi hâlâ hazirdir.
 
-let lastSelectedCard = null; // { itemEntity, defId } | null
+let lastSelectedCard = null; // { itemEntity, defId, at } | null
 
 function captureSelectedCard() {
   try {
@@ -400,7 +412,7 @@ function captureSelectedCard() {
     if (!itemEntity) return;
     const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
     if (!(defId > 0)) return;
-    lastSelectedCard = { itemEntity, defId };
+    lastSelectedCard = { itemEntity, defId, at: Date.now() };
   } catch (e) {}
 }
 
@@ -421,26 +433,28 @@ function resolveTargetForGroup(group) {
 }
 
 function computeTargetForGroup(group) {
-  // 1) Taze secim yakalama kaydi (card tiklandiginda alindi).
-  if (lastSelectedCard && lastSelectedCard.defId > 0) return lastSelectedCard;
-  // 2) EA controller/service agaci.
-  const itemEntity = resolveSelectedCard();
-  if (itemEntity) {
-    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
-    if (defId > 0) return { itemEntity, defId };
-  }
-  // 3) React fiber agaci (detay paneli bilesenlerinin props'larindaki kart).
+  // 1) Bu detay paneline ait kart verisi.
   const fiberItem = findItemViaReactFiber(group);
   if (fiberItem) {
     const defId = getItemDefId(fiberItem) || getDefIdLoose(fiberItem);
     if (defId > 0) return { itemEntity: fiberItem, defId };
   }
-  // 4) Panel DOM'undaki data-* kart kimlik nitelikleri.
+  // 2) Aktif panel wrapper'indaki data-* kart kimlik nitelikleri.
   const domIds = readCardIdsFromDom(group);
   if (domIds.definitionId > 0) return { itemEntity: null, defId: domIds.definitionId };
-  // 5) Panel basligindaki kart adini pazar cache'indeki kartlarla eslestir.
+  // 3) Panel basligindaki kart adini pazar cache'indeki kartlarla eslestir.
   const byName = resolveDefIdByName(group);
   if (byName > 0) return { itemEntity: null, defId: byName };
+  // 4) App/service selection state, then a recent selection captured while
+  // the panel was opening. Never let an old global selection override context.
+  const itemEntity = resolveSelectedCard();
+  if (itemEntity) {
+    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
+    if (defId > 0) return { itemEntity, defId };
+  }
+  if (lastSelectedCard && lastSelectedCard.defId > 0 && Date.now() - lastSelectedCard.at < 5000) {
+    return lastSelectedCard;
+  }
   return null;
 }
 
@@ -588,6 +602,9 @@ export function destroyDetailLowestPrices() {
 // Test / elle tetikleme icin disa actigimiz saf yardimcilar.
 export const __internals__ = {
   isItemLike,
+  findItemEntityInObject,
+  readCardIdsFromDom,
+  computeTargetForGroup,
   resolveSelectedCard,
   findQuickListInputs,
   setSpinnerValue,

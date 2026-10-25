@@ -94,6 +94,19 @@ describe('player target controls', () => {
     expect(value.value).toBe('950');
   });
 
+  it('renders the lowest-price button on its own full-width row', () => {
+    state.targets = [
+      { id: 'lowest', name: 'Lowest', rating: 90, price: 1000, searches: 1, buyNow: 900, eaId: 123 }
+    ];
+    const content = document.createElement('div');
+    renderTargetContent(content);
+
+    const lowestButton = content.querySelector('.fr-target-lowest-btn');
+    expect(lowestButton).not.toBeNull();
+    expect(lowestButton.parentElement.classList.contains('fr-target-counter-has-lowest')).toBe(true);
+    expect(lowestButton.parentElement.querySelectorAll('button')).toHaveLength(3);
+  });
+
   it('rounds manually entered prices down to the EA tier and allows exact search counts', () => {
     state.targets = [
       { id: 'manual', name: 'Manual', rating: 90, price: 100000, searches: 3, buyNow: 1000 }

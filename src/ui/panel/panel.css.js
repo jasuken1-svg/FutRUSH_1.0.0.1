@@ -1186,6 +1186,14 @@ export const panelCss = `
     }
     #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 5px; }
     #${P.id} .fr-target-counter-editable { gap: 5px; }
+    #${P.id} .fr-target-counter-has-lowest {
+      display: grid; grid-template-columns: 22px minmax(0, 1fr) 22px;
+      align-items: center; gap: 5px;
+    }
+    #${P.id} .fr-target-counter-has-lowest .fr-target-lowest-btn {
+      grid-column: 1 / -1; justify-self: stretch; width: 100% !important;
+      min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    }
     #${P.id} .fr-target-counter button {
       flex: 0 0 22px; width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2);
       border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08);
