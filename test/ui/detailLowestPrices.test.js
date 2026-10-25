@@ -80,4 +80,13 @@ describe('detail lowest-price selected card resolution', () => {
 
     expect(internals.captureSelectedCardFromElement(card)).toBe(true);
   });
+
+  it('resolves the clicked EA card from React DOM props when no fiber is exposed', () => {
+    const card = document.createElement('div');
+    const item = { definitionId: 567890, rating: 90 };
+    card['__reactProps$test'] = { cardViewModel: { item } };
+
+    expect(internals.findItemInReactProps(card)).toBe(item);
+    expect(internals.captureSelectedCardFromElement(card)).toBe(true);
+  });
 });

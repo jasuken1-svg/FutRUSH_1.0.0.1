@@ -138,7 +138,7 @@ function findItemEntityInObject(obj, seen, depth) {
   ];
   const extraKeys = Object.keys(obj).filter((key) =>
     !keys.includes(key) && !['return', 'alternate', 'ownerDocument', 'parentNode', 'childNodes'].includes(key) &&
-    !key.startsWith('__reactFiber$') && !key.startsWith('__reactProps$')
+    !key.startsWith('__reactFiber$')
   ).slice(0, 40);
   for (const key of [...keys, ...extraKeys]) {
     try {
@@ -370,10 +370,24 @@ function findFiberForElement(el) {
   }
 }
 
+function findItemInReactProps(el) {
+  if (!el) return null;
+  try {
+    for (const key of Object.keys(el)) {
+      if (!key.startsWith('__reactProps$')) continue;
+      const found = findItemEntityInObject(el[key], new WeakSet(), 0);
+      if (found) return found;
+    }
+  } catch (e) {}
+  return null;
+}
+
 function findItemViaReactFiberElement(element) {
   let node = element;
   let ancestors = 0;
   while (node && ancestors < 12) {
+    const reactPropItem = findItemInReactProps(node);
+    if (reactPropItem) return reactPropItem;
     let fiber = findFiberForElement(node);
     let hops = 0;
     while (fiber && hops < 40) {
@@ -662,6 +676,7 @@ export function destroyDetailLowestPrices() {
 export const __internals__ = {
   isItemLike,
   findItemEntityInObject,
+  findItemInReactProps,
   findItemViaReactFiberElement,
   captureSelectedCardFromElement,
   captureCardFromClick,
