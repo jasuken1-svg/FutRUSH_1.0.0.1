@@ -1,0 +1,115 @@
+FutRUSH - Squads secili kart cozumleme duzeltmesi
+==================================================
+
+Amac
+----
+Bu not, 25 Ekim 2026 tarihinde EA FC Ultimate Team Web App'in Squads
+ekraninda canli olarak yeniden uretilen "Kart secili degil" hatasini,
+kok nedenini ve uygulanan duzeltmeyi kaydeder.
+
+
+Sorun neydi?
+------------
+Detay panelindeki "En Dusuk Fiyatlar" butonuna basildiginda uygulamanin
+kart secimini bulmasi gerekiyordu. Ancak buton "Kart secili degil" mesaji
+veriyor ve Transfer Market arama istegi baslatmiyordu.
+
+Ilk resolver, secili karti EA controller nesnelerinde bilinen bazi
+_rightController, _currentController, _item ve _selectedItem gibi alt
+cizgili alanlardan ariyordu. Ayrica DOM'daki React Fiber/props ve
+data-resource-id/data-asset-id gibi niteliklerden yararlanmaya calisiyordu.
+Canli EA Web App'te ise:
+
+- Secili kart DOM elementinde data-resource-id veya data-asset-id yoktu.
+- EA sayfasi React Fiber/Props yapisini kullanmiyordu.
+- EA, kart/secim durumunu UTViewController ve kendi viewmodel nesnelerinde
+  tutuyordu.
+- EA'in aktif controller zincirindeki isimler ve nesne konumlari, onceki
+  resolver'in bekledigi yollardan farkliydi.
+
+Bu nedenle testlerde React/DOM fallback senaryolari gecse bile, gercek
+Squads secimindeki UTItemEntity bulunamiyor; fiyat arama fonksiyonuna hic
+gecilemiyordu.
+
+
+Canli incelemede tespit edilen gercek EA yapisi
+-----------------------------------------------
+Chrome, kullanicinin verdigi 9222 remote-debugging ayariyla ayri bir profil
+uzerinden acildi. EA Web App'e kullanici giris yaptiktan sonra Squads
+ekrani incelendi. Controller zinciri canli sayfada su sekilde goruldu:
+
+getAppMain()
+  -> getRootViewController()
+  -> root.currentController                         UTGameTabBarController
+  -> tab.currentController                          UTGameFlowNavigationController
+  -> navigation.currentController                   UTSquadSplitViewController
+  -> split._itemDetailController.currentController  UTSlotDetailsViewController
+  -> detail.viewmodel.current()                     UTSquadSlotEntity
+  -> slot._item                                    UTItemEntity
+
+UTSquadSlotEntity uzerinden alinan UTItemEntity'de definitionId ve type
+bilgileri mevcuttu. Ornegin canli testte definitionId 271446 olan kart
+cozuldu ve fiyat aramasi gercek EA Transfer Market endpoint'ine gitti.
+
+
+Nasil cozuldu?
+--------------
+src/ui/ea/detailLowestPrices.js icinde:
+
+1. Aktif controller zinciri derinlestirildi.
+   getCurrentViewController artik once sayfanin presented/root controller
+   noktasini buluyor, sonra currentController, getCurrentViewController()
+   veya _currentController yollarini izleyerek en fazla sekiz seviye
+   ilerliyor. Bu sayede SquadSplitViewController gibi ic ice EA navigation
+   controller'larina ulasiliyor.
+
+2. EA viewmodel secim API'si eklendi.
+   Aktif controller uzerindeki viewmodel, _viewmodel, _viewModel veya
+   viewModel nesnelerinde current(), getSelectedItem(), getCurrentItem()
+   ve get() metodlari deneniyor. Donen nesne recursive item-cozumleyiciye
+   aktarilarak UTItemEntity elde ediliyor.
+
+3. Squads detay navigasyonu desteklendi.
+   _itemDetailController ve rightController.currentController gibi
+   controller referanslarindan aktif detay controller'i aliniyor. EA'in
+   viewmodel.current() cagrisinin UTSquadSlotEntity dondurmesi, bu nesnenin
+   _item alanindaki UTItemEntity'ye kadar cozumlenecek sekilde ele aliniyor.
+   Mevcut EA/React/DOM/list-index/Squad-slot fallback'leri korunuyor.
+
+4. Tespit edilen davranis canli olarak tekrar sinandi.
+   Duzeltme build edildikten sonra EA sayfasi yenilendi. Squads detayindaki
+   butona basinca onceki "Kart secili degil" durumu gorulmedi. Transfer
+   Market istekleri gonderildi ve arama tamamlandiginda fiyat secenekleri
+   goruntulendi:
+     1) 3.500 (x21)
+     2) 3.600 (x21)
+     3) 3.700 (x4)
+
+Bu canli test secili kartin artik cozuldugunu ve fiyat arama akisini
+tamamladigini dogruladi. Yukaridaki fiyatlar test sirasinda EA'in dondurdugu
+canli sonuc ornegidir; kalici veya baska bir kart icin gecerli fiyat
+garantisi degildir.
+
+
+Test ve build
+-------------
+- test/ui/detailLowestPrices.test.js dosyasina, oyun tab/navigation,
+  UTSquadSplitViewController, detay navigation ve viewmodel.current()
+  yapisini temsil eden regresyon testi eklendi.
+- Odakli testler: 2 dosya, 32 test basarili.
+- Tam test paketi: 44 test dosyasi, 468 test basarili.
+- npm run lint: basarili.
+- npm run build: basarili.
+- Guncel dagitim dosyasi: proje icindeki
+  FutRUSH_1.0.0.1-6d04336e7cfe80cf421b979b2130949cfaf61788/dist/futrush.user.js
+
+
+Degisiklik kapsami ve sinirlar
+------------------------------
+- Ana kaynak degisikligi: src/ui/ea/detailLowestPrices.js
+- Yeni regresyon testi: test/ui/detailLowestPrices.test.js
+- Build ciktisi yeniden uretildi: dist/futrush.user.js
+- Bu calismada Club, Transfers, Unlisted veya Unassigned ekranlari canli
+  olarak ayri ayri test edilmedi. Bu ekranlarin da ayni resolver'i kullanan
+  controller yapilariyla calisip calismadigi ayrica dogrulanmalidir.
+- Degisiklik commit edilmedi ve uzak GitHub branch'ine push edilmedi.

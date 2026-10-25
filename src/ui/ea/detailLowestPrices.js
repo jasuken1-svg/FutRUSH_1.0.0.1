@@ -14,16 +14,27 @@
 //     UTNumberInputSpinnerControl ile uyum icin hem kontrolun kendi API'si hem
 //     native value setter kullanilir ve input/change/blur eventleri tetiklenir.
 
-import { pageWindow, visibleElement } from '../../utils/dom.js';
-import { findLowestMarketPrice, getItemDefId, makeLowestMarketCriteria } from '../../ea/lowestMarketPrice.js';
+import { visibleElement } from '../../utils/dom.js';
+import { findLowestMarketPrice, getItemDefId } from '../../ea/lowestMarketPrice.js';
 import { getNextLowerPrice } from '../../ea/priceSteps.js';
 import { addMarketLog } from '../marketLogBox.js';
 
+const pageWindow = (typeof unsafeWindow !== 'undefined' && unsafeWindow)
+  ? unsafeWindow
+  : (typeof window !== 'undefined' ? window : globalThis);
 const BTN_CLASS = 'fr-detail-lowest-btn';
 const RESULTS_CLASS = 'fr-detail-lowest-results';
 const ITEM_CLASS = 'fr-detail-price-option';
-const GROUP_SELECTOR = '.ut-button-group';
-const QUICK_LIST_SCOPE_SELECTOR = '.ut-quick-list-panel-view';
+const GROUP_SELECTOR = [
+  '.ut-button-group', '.DetailView .ut-button-group', '.ut-item-details-view .ut-button-group',
+  '.QuickListPanel .ut-button-group', '.ut-squad-slot-pedestal-view .ut-button-group',
+  '.DetailPanel .ut-button-group', '.ut-quick-list-panel-view .ut-button-group',
+  '.itemDetail .ut-button-group'
+].join(', ');
+const QUICK_LIST_SCOPE_SELECTOR = [
+  '.ut-quick-list-panel-view', '.QuickListPanel', '.DetailPanel', '.DetailView',
+  '.ut-item-details-view', '.ut-squad-slot-pedestal-view', '.itemDetail'
+].join(', ');
 const INJECT_DEBOUNCE_MS = 250;
 const DEFAULT_BTN_TEXT = '🔎 En Düşük Fiyatlar';
 
@@ -37,8 +48,10 @@ const formatPrice = (value) => Number(value || 0).toLocaleString('tr-TR');
 function isItemLike(entity) {
   if (!entity || typeof entity !== 'object') return false;
   if (typeof entity.getSearchType === 'function' && typeof entity.getAuctionData === 'function') return true;
-  if (['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId', 'resourceId']
+  if (['definitionId', '_definitionId', 'defId', 'resourceId']
     .some((key) => Number(entity[key]) > 0)) return true;
+  if (['assetId', 'baseId', 'itemId', 'cardId', 'maskedDefId']
+    .some((key) => Number(entity[key]) > 0) && (entity._auction || entity.auctionItem || entity.type)) return true;
   const hasItemApi = entity._auction || entity.auctionItem ||
     typeof entity.getItemDefinition === 'function' ||
     typeof entity.getDefinition === 'function' ||
@@ -49,33 +62,49 @@ function isItemLike(entity) {
 
 // Kart tanimi icin genis alan listesi (EA surumlerine gore degisken adlar).
 const DEF_ID_FIELDS = [
-  'definitionId', '_definitionId', 'defId', 'id', '_id', 'itemId', 'assetId',
-  'baseId', 'cardId', 'resourceId'
+  'definitionId', 'resourceId', '_definitionId', 'defId'
 ];
 
 function getDefIdLoose(entity) {
   if (!entity || typeof entity !== 'object') return 0;
-  // 1) Bilinen dogrudan alanlar.
+  // Only full definition/resource identifiers belong in the exact defId filter.
   for (const key of DEF_ID_FIELDS) {
     try {
       const n = Number(entity[key]);
       if (Number.isFinite(n) && n > 0) return n;
     } catch (e) {}
   }
-  // 2) getItemDefinition / getDefinition gibi API'ler.
+  // getItemDefinition / getDefinition may expose the full version identifier.
   try {
     const def = typeof entity.getItemDefinition === 'function' ? entity.getItemDefinition()
       : typeof entity.getDefinition === 'function' ? entity.getDefinition() : null;
-    const n = Number(def && (def.definitionId ?? def.id));
+    const n = Number(def && (def.definitionId ?? def.resourceId ?? def.id));
     if (Number.isFinite(n) && n > 0) return n;
   } catch (e) {}
+  for (const nested of [entity.data, entity._data, entity.item, entity._item, entity._entity]) {
+    const n = Number(nested && (nested.definitionId ?? nested.resourceId));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
   // 3) auction/item alt nesneleri.
   try {
     const inner = (typeof entity.getAuctionData === 'function' && entity.getAuctionData())
       || entity._auction || entity.item || entity.auctionItem || null;
-    const n = Number(inner && (inner.item?.definitionId ?? inner.definitionId ?? inner.tradeId));
+    const n = Number(inner && (inner.item?.definitionId ?? inner.item?.resourceId ?? inner.definitionId ?? inner.resourceId));
     if (Number.isFinite(n) && n > 0) return n;
   } catch (e) {}
+  return 0;
+}
+
+function getBaseIdLoose(entity) {
+  if (!entity || typeof entity !== 'object') return 0;
+  for (const key of ['baseId', 'assetId', 'maskedDefId']) {
+    const value = Number(entity[key]);
+    if (Number.isFinite(value) && value > 0) return value & 0xffffff;
+  }
+  for (const nested of [entity.data, entity._data, entity.item, entity._item, entity._entity]) {
+    const value = Number(nested && (nested.baseId ?? nested.assetId ?? nested.maskedDefId));
+    if (Number.isFinite(value) && value > 0) return value & 0xffffff;
+  }
   return 0;
 }
 
@@ -83,8 +112,8 @@ function getDefIdLoose(entity) {
 // Yalnizca panel kapsayicisi ve dogrudan ebeveyni taranir; buton grubunun kendi
 // alt agaci tum kart listelerini icerdiginden yanlis defId üretebilir (atlanır).
 function readCardIdsFromDom(group) {
-  const result = { definitionId: 0, tradeId: 0 };
-  if (!group || !group.closest) return result;
+  const result = { definitionId: 0, baseId: 0, tradeId: 0 };
+  if (!group) return result;
   const attrNames = [
     'data-definition-id', 'data-definitionid', 'data-defid', 'data-item-id', 'data-itemid',
     'data-card-id', 'data-id', 'data-resource-id', 'data-asset-id',
@@ -98,8 +127,10 @@ function readCardIdsFromDom(group) {
       const n = Number(String(raw).replace(/[^0-9]/g, ''));
       if (!Number.isFinite(n) || n <= 0) continue;
       if (/trade|auction/.test(attr)) { if (!result.tradeId) result.tradeId = n; }
-      else if (!result.definitionId) {
-        result.definitionId = attr === 'data-resource-id' ? n & 0xffffff : n;
+      else if (/asset-id/.test(attr)) {
+        if (!result.baseId) result.baseId = n & 0xffffff;
+      } else if (!result.definitionId) {
+        result.definitionId = n;
       }
     }
   };
@@ -119,6 +150,222 @@ function readCardIdsFromDom(group) {
 
 function getItemEntityDefId(item) {
   return getItemDefId(item) || getDefIdLoose(item);
+}
+
+function getItemEntityBaseId(item) {
+  return getBaseIdLoose(item) || (getItemEntityDefId(item) & 0xffffff);
+}
+
+function readItemReferenceFromElement(element) {
+  let node = element;
+  let depth = 0;
+  while (node && depth < 12) {
+    for (const candidate of [
+      node._item, node.item, node.__item, node._entity,
+      node._controller?._item, node._view?._item
+    ]) {
+      const item = findItemEntityInObject(candidate, new WeakSet(), 0);
+      if (item) return item;
+    }
+    try {
+      const jqueryData = typeof pageWindow.$ === 'function' ? pageWindow.$(node)?.data?.() : null;
+      const item = findItemEntityInObject(jqueryData, new WeakSet(), 0);
+      if (item) return item;
+    } catch (e) {}
+    node = node.parentElement;
+    depth += 1;
+  }
+  return null;
+}
+
+function getCurrentViewController() {
+  try {
+    const app = pageWindow.getAppMain?.();
+    const root = app?.getRootViewController?.();
+    const presented = root?.getPresentedViewController?.();
+    let current = presented?.getCurrentViewController?.()
+      || root?.getCurrentViewController?.()
+      || root?.currentController
+      || null;
+    for (let depth = 0; current && depth < 8; depth += 1) {
+      const next = current.getCurrentViewController?.()
+        || current.currentController
+        || current._currentController;
+      if (!next || next === current) break;
+      current = next;
+    }
+    return current;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getCurrentViewModelItem(controller) {
+  const viewModels = [
+    controller?.viewmodel,
+    controller?._viewmodel,
+    controller?._viewModel,
+    controller?.viewModel
+  ];
+  for (const viewModel of viewModels) {
+    if (!viewModel) continue;
+    for (const method of ['current', 'getSelectedItem', 'getCurrentItem', 'get']) {
+      try {
+        if (typeof viewModel[method] !== 'function') continue;
+        const item = findItemEntityInObject(viewModel[method](), new WeakSet(), 0);
+        if (item) return item;
+      } catch (e) {}
+    }
+  }
+  return null;
+}
+
+function getControllerItem(controller, paths) {
+  for (const getValue of paths) {
+    try {
+      const item = findItemEntityInObject(getValue(controller), new WeakSet(), 0);
+      if (item) return item;
+    } catch (e) {}
+  }
+  return null;
+}
+
+function getCollectionItems(source) {
+  if (!source) return null;
+  if (Array.isArray(source)) return source;
+  for (const value of [source.items, source._items, source.models, source._models, source._collection]) {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.items)) return value.items;
+    if (Array.isArray(value?.models)) return value.models;
+  }
+  try {
+    const items = source.getItems?.();
+    if (Array.isArray(items)) return items;
+  } catch (e) {}
+  return null;
+}
+
+function getListItemIndex(element) {
+  const listItem = element?.closest?.('li.listFUTItem, .ut-item-row');
+  if (!listItem?.parentElement) return null;
+  const siblings = Array.from(listItem.parentElement.children).filter((sibling) =>
+    sibling.matches('li.listFUTItem, .ut-item-row')
+  );
+  const index = siblings.indexOf(listItem);
+  return index >= 0 ? { listItem, index } : null;
+}
+
+function resolveItemFromListIndex(element, currentController = getCurrentViewController()) {
+  const indexed = getListItemIndex(element);
+  if (!indexed) return null;
+  const listControllerPaths = [
+    (controller) => controller?._leftController,
+    (controller) => controller?._listController,
+    (controller) => controller?.leftController,
+    (controller) => controller?.listController,
+    (controller) => controller?._Controller?._leftController,
+    (controller) => controller?._Controller?._listController,
+    (controller) => controller?._rightController?._currentController,
+    (controller) => controller?.rightController?.currentController,
+    (controller) => controller?._listViewController
+  ];
+  for (const getController of listControllerPaths) {
+    let controller;
+    try { controller = getController(currentController); } catch (e) {}
+    if (!controller) continue;
+    const sources = [
+      controller._viewmodel, controller._viewModel, controller._collection,
+      controller.items, controller._items, controller._listViewController?._viewmodel,
+      controller._listViewController?._collection
+    ];
+    for (const source of sources) {
+      const items = getCollectionItems(source);
+      const item = items?.[indexed.index];
+      const entity = findItemEntityInObject(item, new WeakSet(), 0);
+      if (entity) return entity;
+    }
+  }
+  return null;
+}
+
+function getSquadSlotIndex(slot) {
+  const slotId = Number(slot?.getAttribute?.('data-slot-id'));
+  if (Number.isInteger(slotId) && slotId >= 0) return slotId;
+  const index = Number(slot?.getAttribute?.('index'));
+  if (Number.isInteger(index) && index >= 0) return index;
+  const slots = Array.from(document.querySelectorAll('.ut-squad-slot-view'));
+  const slotIndex = slots.indexOf(slot);
+  return slotIndex >= 0 ? slotIndex : null;
+}
+
+function resolveSquadSlotItem(element, currentController) {
+  const slot = element?.closest?.('.ut-squad-slot-view');
+  if (!slot) return null;
+  const slotIndex = getSquadSlotIndex(slot);
+  if (slotIndex == null) return null;
+  const squad = currentController?._squadController?._squad
+    || currentController?._squad
+    || currentController?._Controller?._squadController?._squad;
+  let players = squad?._players;
+  try {
+    if (!Array.isArray(players)) players = squad?.getPlayers?.();
+  } catch (e) {}
+  return findItemEntityInObject(players?.[slotIndex], new WeakSet(), 0);
+}
+
+function resolveItemFromEaViewController(element = null) {
+  const currentController = getCurrentViewController();
+  if (!currentController) return null;
+  const detailController = currentController._itemDetailController
+    || currentController.itemDetailController
+    || currentController.rightController?.currentController
+    || currentController._rightController?._currentController;
+  const itemDetailController = detailController?.currentController
+    || detailController?._currentController;
+  const controllerItem = getControllerItem(currentController, [
+    (c) => c?._Controller?._rightController?._currentController?._quickListPanel?._item,
+    (c) => c?._Controller?._rightController?._currentController?._itemDetailController?._item,
+    (c) => c?._rightController?._currentController?._quickListPanel?._item,
+    (c) => c?._rightController?._currentController?._itemDetailController?._item,
+    (c) => c?._rightController?._currentController?._item,
+    (c) => c?.rightController?.currentController?._quickListPanel?._item,
+    (c) => c?.rightController?.currentController?._itemDetailController?._item,
+    (c) => c?.rightController?.currentController?._item,
+    (c) => c?._itemDetailController?.currentController?.viewmodel?.current?.(),
+    (c) => c?.itemDetailController?.currentController?.viewmodel?.current?.(),
+    (c) => c?.rightController?.currentController?.viewmodel?.current?.(),
+    (c) => c?._squad?._players?.[c?._itemDetailController?.currentController?.viewmodel?.getIndex?.()]?._item,
+    (c) => c?._detailController?._item,
+    (c) => c?._itemDetailController?._item,
+    (c) => c?._squadController?._selectedSlot?._item,
+    (c) => c?._selectedItem,
+    (c) => c?._leftController?._selectedItem,
+    (c) => c?.leftController?._selectedItem
+  ]);
+  if (controllerItem) return controllerItem;
+
+  const listItem = resolveItemFromListIndex(element, currentController);
+  if (listItem) return listItem;
+  const squadItem = resolveSquadSlotItem(element, currentController);
+  if (squadItem) return squadItem;
+
+  const activeViewModelItem = getCurrentViewModelItem(itemDetailController)
+    || getCurrentViewModelItem(detailController);
+  if (activeViewModelItem) return activeViewModelItem;
+
+  const listController = currentController._leftController
+    || currentController.leftController
+    || currentController._listController
+    || currentController.listController
+    || currentController._listViewController;
+  return getControllerItem(listController, [
+    (c) => c?._viewmodel?.selected,
+    (c) => c?._viewmodel?._selectedItem,
+    (c) => c?._viewmodel?.selectedItem,
+    (c) => c?._listViewController?._viewmodel?.selected,
+    (c) => c?.viewmodel?.selected,
+    (c) => c?.viewmodel?.current?.()
+  ]) || getCurrentViewModelItem(listController);
 }
 
 // services.Item aramalarindan kalan son sonuc dizisi / secim referanslari.
@@ -155,6 +402,9 @@ function findItemEntityInObject(obj, seen, depth) {
 
 function resolveSelectedCard() {
   const win = pageWindow;
+  // EA UTViewController state is the primary source for the active detail item.
+  const activeItem = resolveItemFromEaViewController();
+  if (activeItem) return activeItem;
   // 1) Global secim degiskenleri (EA surumlerine gore farkli adlandirilir).
   const globals = [win.__FUTRUSH_SELECTED_ITEM__, win.selectedItem, win.currentItem];
   for (const candidate of globals) {
@@ -224,7 +474,7 @@ function setSpinnerValue(spin, rawValue) {
   const value = String(Math.max(0, Math.round(Number(rawValue) || 0)));
   let handledByApi = false;
   const control = spin._utControl || spin.control ||
-    (spin.closest && spin.closest('.ut-number-input-spinner'));
+    (spin.closest && spin.closest('.ut-number-input-spinner, .ut-numeric-input-spinner-control, .numericInput'));
   if (control) {
     // Kontrolun kendi API'si varsa once onu kullan (EA internal state'i de gunceller).
     try {
@@ -259,7 +509,18 @@ function setSpinnerValue(spin, rawValue) {
 function findQuickListInputs(group) {
   const scope = group && group.closest ? group.closest(QUICK_LIST_SCOPE_SELECTOR) : null;
   const root = scope || document;
-  const spins = Array.from(root.querySelectorAll('.ut-number-input-spinner')).filter(visibleElement);
+  const controls = Array.from(root.querySelectorAll(
+    '.ut-number-input-spinner, .ut-numeric-input-spinner-control, .numericInput'
+  )).filter(visibleElement);
+  const inputs = [];
+  for (const control of controls) {
+    const input = control.matches('input') ? control : control.querySelector('input');
+    if (input && visibleElement(input) && !inputs.includes(input)) inputs.push(input);
+  }
+  for (const input of Array.from(root.querySelectorAll('input.numericInput, .numericInput input')).filter(visibleElement)) {
+    if (!inputs.includes(input)) inputs.push(input);
+  }
+  const spins = inputs;
   if (!spins.length) return { start: null, buyNow: null };
 
   const classify = (el) => {
@@ -310,11 +571,66 @@ function applyToQuickList(group, selectedPrice) {
   const startValue = getNextLowerPrice(binValue) || binValue;
   if (buyNow) setSpinnerValue(buyNow, binValue);
   if (start) setSpinnerValue(start, startValue);
+  updateQuickListControllerValues(group, startValue, binValue);
   addMarketLog({
     text: `💰 [En Düşük Fiyatlar] Seçilen: ${formatPrice(binValue)} → Hemen Al: ${formatPrice(binValue)}, Başlangıç: ${formatPrice(startValue)} inputlarına yazıldı.`,
     type: 'info'
   });
   return true;
+}
+
+function getQuickListController(group) {
+  const currentController = getCurrentViewController();
+  const candidates = [
+    currentController?._Controller?._rightController?._currentController?._quickListPanel,
+    currentController?._rightController?._currentController?._quickListPanel,
+    currentController?._quickListPanel
+  ];
+  if (group?.closest) {
+    const panel = group.closest(QUICK_LIST_SCOPE_SELECTOR);
+    for (let node = panel; node; node = node.parentElement) {
+      for (const candidate of [node._quickListPanel, node._controller?._quickListPanel]) {
+        if (candidate) candidates.push(candidate);
+      }
+    }
+  }
+  return candidates.find(Boolean) || null;
+}
+
+function updateQuickListControllerValues(group, startValue, buyNowValue) {
+  const controller = getQuickListController(group);
+  if (!controller) return;
+  const update = (methodNames, propertyNames, value) => {
+    let handled = false;
+    for (const name of methodNames) {
+      try {
+        if (typeof controller[name] === 'function') {
+          controller[name](value);
+          handled = true;
+          break;
+        }
+      } catch (e) {}
+    }
+    for (const name of propertyNames) {
+      try {
+        if (name in controller) {
+          controller[name] = value;
+          handled = true;
+        }
+      } catch (e) {}
+    }
+    return handled;
+  };
+  update(
+    ['setStartPrice', 'setMinBid', 'updateStartPrice'],
+    ['_startPrice', 'startPrice', '_minBid', 'minBid'],
+    startValue
+  );
+  update(
+    ['setBuyNowPrice', 'setBuyNow', 'updateBuyNowPrice'],
+    ['_buyNowPrice', 'buyNowPrice', '_buyNow', 'buyNow'],
+    buyNowValue
+  );
 }
 
 // ---- Buton grubu enjeksiyonu ----
@@ -386,10 +702,10 @@ function findItemInReactProps(el) {
   return null;
 }
 
-function findItemViaReactFiberElement(element) {
+function findItemViaReactFiberElement(element, boundary = null) {
   let node = element;
   let ancestors = 0;
-  while (node && ancestors < 12) {
+  while (node && ancestors < 12 && (!boundary || boundary.contains(node))) {
     const reactPropItem = findItemInReactProps(node);
     if (reactPropItem) return reactPropItem;
     let fiber = findFiberForElement(node);
@@ -411,13 +727,12 @@ function findItemViaReactFiberElement(element) {
 function findItemViaReactFiber(group) {
   try {
     const panel = group.closest
-      ? (group.closest('.ut-detail-panel, .ut-panel, .ut-quick-list-panel-view, [class*="detail"]') || group.parentElement)
-      : group.parentElement;
+      ? (group.closest('.ut-detail-panel, .ut-panel, .ut-quick-list-panel-view, [class*="detail"]') || group)
+      : group;
     if (!panel) return null;
-    const roots = [group, ...Array.from(group.querySelectorAll('*')).slice(0, 80),
-      ...Array.from(panel.querySelectorAll('*')).slice(0, 300)];
+    const roots = [panel, ...Array.from(panel.querySelectorAll('*')).slice(0, 300)];
     for (const el of roots) {
-      const item = findItemViaReactFiberElement(el);
+      const item = findItemViaReactFiberElement(el, panel);
       if (item) return item;
     }
   } catch (e) {}
@@ -425,12 +740,20 @@ function findItemViaReactFiber(group) {
 }
 
 function captureSelectedCardFromElement(element) {
-  const itemEntity = findItemViaReactFiberElement(element);
+  const itemEntity = readItemReferenceFromElement(element)
+    || resolveItemFromEaViewController(element)
+    || findItemViaReactFiberElement(element);
   const itemDefId = itemEntity ? getItemEntityDefId(itemEntity) : 0;
   const domIds = readCardIdsFromDom(element);
-  const defId = itemDefId || domIds.definitionId;
+  const baseId = itemEntity ? getItemEntityBaseId(itemEntity) : 0;
+  const defId = itemDefId || domIds.definitionId || baseId || domIds.baseId;
   if (!(defId > 0)) return false;
-  lastSelectedCard = { itemEntity: itemDefId ? itemEntity : null, defId, at: Date.now() };
+  lastSelectedCard = {
+    itemEntity: itemDefId ? itemEntity : null,
+    defId,
+    baseId: itemDefId ? baseId : (domIds.baseId || (domIds.definitionId & 0xffffff)),
+    at: Date.now()
+  };
   cachedTarget = null;
   return true;
 }
@@ -439,6 +762,11 @@ function captureCardFromClick(event) {
   const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
   const elements = path.filter((node) => node && node.nodeType === 1);
   if (elements.some((node) => node.matches?.(`.${BTN_CLASS}, .${RESULTS_CLASS}, .${ITEM_CLASS}`))) return;
+  const cardSelectors = [
+    '.listFUTItem', '.ut-item-row', '.ut-squad-slot-view', '.small.player.item',
+    '.entityContainer', '.ut-item', '.ut-item-view'
+  ];
+  if (!elements.some((node) => cardSelectors.some((selector) => node.matches?.(selector)))) return;
 
   let captured = false;
   for (const element of elements) {
@@ -518,22 +846,35 @@ function resolveTargetForGroup(group) {
 }
 
 function resolveDetailTarget(group) {
-  cachedTarget = null;
-  captureSelectedCardFromElement(group);
-  captureSelectedCard();
-  return resolveTargetForGroup(group);
+  const currentTarget = resolveTargetForGroup(group);
+  if (currentTarget) {
+    cachedTarget = { group, target: currentTarget, at: Date.now() };
+    return currentTarget;
+  }
+  return lastSelectedCard && lastSelectedCard.defId > 0 ? lastSelectedCard : null;
 }
 
 function computeTargetForGroup(group) {
-  // 1) Bu detay paneline ait kart verisi.
+  // The active EA controller is authoritative on the live OOP-based app.
+  const controllerItem = resolveItemFromEaViewController(group);
+  if (controllerItem) {
+    const defId = getItemEntityDefId(controllerItem);
+    if (defId > 0) return { itemEntity: controllerItem, defId };
+    const baseId = getItemEntityBaseId(controllerItem);
+    if (baseId > 0) return { itemEntity: null, defId: baseId, baseId };
+  }
+  // Keep React/Fiber support for older markup and test fixtures.
   const fiberItem = findItemViaReactFiber(group);
   if (fiberItem) {
-    const defId = getItemDefId(fiberItem) || getDefIdLoose(fiberItem);
+    const defId = getItemEntityDefId(fiberItem);
     if (defId > 0) return { itemEntity: fiberItem, defId };
+    const baseId = getItemEntityBaseId(fiberItem);
+    if (baseId > 0) return { itemEntity: null, defId: baseId, baseId };
   }
   // 2) Aktif panel wrapper'indaki data-* kart kimlik nitelikleri.
   const domIds = readCardIdsFromDom(group);
   if (domIds.definitionId > 0) return { itemEntity: null, defId: domIds.definitionId };
+  if (domIds.baseId > 0) return { itemEntity: null, defId: domIds.baseId, baseId: domIds.baseId };
   // 3) Panel basligindaki kart adini pazar cache'indeki kartlarla eslestir.
   const byName = resolveDefIdByName(group);
   if (byName > 0) return { itemEntity: null, defId: byName };
@@ -543,6 +884,8 @@ function computeTargetForGroup(group) {
   if (itemEntity) {
     const defId = getItemEntityDefId(itemEntity);
     if (defId > 0) return { itemEntity, defId };
+    const baseId = getItemEntityBaseId(itemEntity);
+    if (baseId > 0) return { itemEntity: null, defId: baseId, baseId };
   }
   if (lastSelectedCard && lastSelectedCard.defId > 0) {
     return lastSelectedCard;
@@ -556,13 +899,12 @@ async function runLowestSearch(btn, results, group, target) {
   btn.textContent = 'Aranıyor...';
   results.innerHTML = '';
   try {
-    // findLowestMarketPrice ilk arguman olarak itemEntity bekler; yalnizca defId
-    // cozulebildiyse (DOM niteligi / cache eslestirmesi) minimal bir sahte entity
-    // uretilir — makeLowestMarketCriteria bu nesneyi standart akista kullanilir
-    // hale getirir.
+    // Preserve whether the resolved identifier is exact or only a base ID.
     const searchTarget = target.itemEntity && getItemDefId(target.itemEntity) > 0
       ? target.itemEntity
-      : makeLowestMarketCriteria({ definitionId: target.defId });
+      : (target.baseId
+        ? { baseId: target.baseId, type: 'player' }
+        : { definitionId: target.defId, type: 'player' });
     const result = await findLowestMarketPrice(searchTarget, { gapMs: [150, 400] });
     if (!result || !result.ok || !(result.price > 0)) {
       if (result && result.extinct) {
@@ -699,11 +1041,16 @@ export function destroyDetailLowestPrices() {
 export const __internals__ = {
   isItemLike,
   findItemEntityInObject,
+  getItemEntityDefId,
+  getItemEntityBaseId,
   findItemInReactProps,
   findItemViaReactFiberElement,
   captureSelectedCardFromElement,
   captureCardFromClick,
   resolveDetailTarget,
+  resolveItemFromEaViewController,
+  resolveItemFromListIndex,
+  resolveSquadSlotItem,
   readCardIdsFromDom,
   computeTargetForGroup,
   resolveSelectedCard,

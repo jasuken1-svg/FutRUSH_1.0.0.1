@@ -1,7 +1,9 @@
 // Sayfa penceresi, localStorage, boyut ve gorunur DOM elemani adaptorlari saglar.
 // Bagimlilik: tarayici DOM'u ve userscript unsafeWindow varsa.
 
-export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : (typeof window !== 'undefined' ? window : {});
+export const pageWindow = (typeof unsafeWindow !== 'undefined' && unsafeWindow)
+  ? unsafeWindow
+  : (typeof window !== 'undefined' ? window : globalThis);
 export const pageStorage = () => pageWindow.localStorage;
 export const vw = () => document.documentElement.clientWidth;
 export const vh = () => pageWindow.innerHeight;

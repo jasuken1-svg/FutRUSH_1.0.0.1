@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   findLowestMarketPrice, getBandDrop, roundToTier, getBuyNow,
-  groupMatchedByPrice, createTopPriceAccumulator, recordStepBuckets, buildTopPrices
+  groupMatchedByPrice, createTopPriceAccumulator, recordStepBuckets, buildTopPrices,
+  makeLowestMarketCriteria
 } from '../../src/ea/lowestMarketPrice.js';
 
 const TIERS = [
@@ -87,6 +88,42 @@ describe('findLowestMarketPrice', () => {
     expect(getBuyNow({ _auction: { buyNowPrice: 6200 } })).toBe(6200);
     expect(getBuyNow({ getAuctionData: () => ({ buyNowPrice: 8500 }) })).toBe(8500);
     expect(getBuyNow(null)).toBe(0);
+  });
+
+  it('keeps the full special-card definition ID separate from its masked base ID', () => {
+    const fullId = 0x01012345;
+    const criteria = makeLowestMarketCriteria({ resourceId: fullId, type: 'player' }, {
+      createCriteria: () => ({})
+    });
+    expect(criteria.defId).toEqual([fullId]);
+    expect(criteria.maskedDefId).toBe(fullId & 0xffffff);
+  });
+
+  it('does not count base-card listings as matches for a special-card definition ID', () => {
+    const fullId = 0x01012345;
+    const tiers = groupMatchedByPrice([
+      tradeCard(1, 1000, fullId),
+      tradeCard(2, 1200, fullId & 0xffffff)
+    ], fullId);
+    expect(Array.from(tiers.keys())).toEqual([1000]);
+  });
+
+  it('matches a known base definition exactly instead of including special versions', () => {
+    const baseId = 0x012345;
+    const tiers = groupMatchedByPrice([
+      tradeCard(1, 1000, baseId),
+      tradeCard(2, 1200, 0x01012345)
+    ], baseId);
+    expect(Array.from(tiers.keys())).toEqual([1000]);
+  });
+
+  it('uses a masked base ID only when the exact definition ID is unavailable', () => {
+    const baseId = 0x012345;
+    const criteria = makeLowestMarketCriteria({ baseId, type: 'player' }, {
+      createCriteria: () => ({})
+    });
+    expect(criteria.defId).toEqual([baseId]);
+    expect(criteria.maskedDefId).toBe(baseId);
   });
 
   it('topPrices küçükten büyüğe en düşük 1./2./3. fiyatı adetlerle döndürür', async () => {

@@ -35,11 +35,22 @@ export function getItemDefId(item) {
   if (!item) return 0;
   return Number(
     item.definitionId ||
+    item.resourceId ||
+    item._definitionId ||
+    item.defId ||
+    item._auction?.item?._definitionId ||
     item._auction?.item?.definitionId ||
+    item._auction?.item?.resourceId ||
     item.auctionItem?.item?.definitionId ||
+    item.auctionItem?.item?.resourceId ||
     item.data?.definitionId ||
+    item.data?.resourceId ||
+    item.data?._definitionId ||
     item._data?.definitionId ||
+    item._data?.resourceId ||
+    item._data?._definitionId ||
     item.item?.definitionId ||
+    item.item?.resourceId ||
     0
   );
 }
@@ -112,11 +123,14 @@ export function makeLowestMarketCriteria(itemEntity, { maxBuy, createCriteria } 
     : (typeof Criteria === 'function' ? new Criteria() : { count: DEFAULT_MARKET_PAGE_SIZE });
 
   const defId = getItemDefId(itemEntity);
-  criteria.defId = [defId];
+  const baseId = Number(itemEntity?.baseId ?? itemEntity?.assetId ?? itemEntity?.maskedDefId) & 0xffffff;
+  const searchDefId = defId > 0 ? defId : baseId;
+  criteria.defId = searchDefId > 0 ? [searchDefId] : [];
   const type = resolveItemSearchType(itemEntity);
   criteria.type = type;
-  if (type === 'player' && defId > 0) {
-    criteria.maskedDefId = Number(defId) & 0xffffff;
+  if (type === 'player') {
+    const maskedDefId = defId > 0 ? (defId & 0xffffff) : baseId;
+    if (maskedDefId > 0) criteria.maskedDefId = maskedDefId;
   }
   const category = resolveItemCategory(itemEntity);
   if (category && category !== 'any') {
@@ -154,22 +168,23 @@ function emitSearchPin(criteria) {
   } catch (e) {}
 }
 
-function matchingBuyNowItems(items, definitionId) {
+function matchingBuyNowItems(items, definitionId, exactDefinitionId = true) {
   const wanted = Number(definitionId);
   const wantedBase = wanted > 0 ? (wanted & 0xffffff) : 0;
   return (Array.isArray(items) ? items : []).filter((item) => {
     const itDefId = getItemDefId(item);
-    if (itDefId > 0 && wanted > 0) {
-      const itBase = itDefId & 0xffffff;
-      if (itDefId !== wanted && itBase !== wantedBase) return false;
+    if (wanted > 0 && (!itDefId || (exactDefinitionId
+      ? itDefId !== wanted
+      : (itDefId & 0xffffff) !== wantedBase))) {
+      return false;
     }
     const price = getBuyNow(item);
     return price > 0;
   });
 }
 
-function sliceFromItems(items, definitionId) {
-  const matched = matchingBuyNowItems(items, definitionId);
+function sliceFromItems(items, definitionId, exactDefinitionId = true) {
+  const matched = matchingBuyNowItems(items, definitionId, exactDefinitionId);
   let lowestPrice = 0;
   for (const item of matched) {
     const price = getBuyNow(item);
@@ -198,9 +213,9 @@ export function getItemUniqueKey(item) {
 // matchingBuyNowItems ile eslesen kartlari buyNowPrice degerine gore gruplar.
 // Her kademe icin: benzersiz tradeId'li kartlarin kumesi + ID alinamayan kartlarin
 // adi sayisi (fallback). Sonuc: Map<price, { ids:Set<string>, unknown:number }>.
-export function groupMatchedByPrice(items, definitionId) {
+export function groupMatchedByPrice(items, definitionId, exactDefinitionId = true) {
   const buckets = new Map();
-  for (const item of matchingBuyNowItems(items, definitionId)) {
+  for (const item of matchingBuyNowItems(items, definitionId, exactDefinitionId)) {
     const price = getBuyNow(item);
     if (!(price > 0)) continue;
     let bucket = buckets.get(price);
@@ -351,7 +366,8 @@ export async function searchLowestMarketPage(criteria, { timeoutMs = 18000, serv
 
 export async function findLowestMarketPrice(itemEntity, options = {}) {
   const definitionId = getItemDefId(itemEntity);
-  if (!definitionId) {
+  const matchId = definitionId || (Number(itemEntity?.baseId ?? itemEntity?.assetId ?? itemEntity?.maskedDefId) & 0xffffff);
+  if (!matchId) {
     return { ok: false, status: 'ERROR', extinct: false, error: { message: 'Kart kimliği yok' }, reason: 'invalid-input' };
   }
 
@@ -414,7 +430,7 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
       sawFullPage = true;
     }
 
-    const slice = sliceFromItems(items, definitionId);
+    const slice = sliceFromItems(items, matchId, definitionId > 0);
     if (slice) {
       slices.push({ ...slice, step });
     } else {
@@ -425,7 +441,7 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
     // Kayit slice'tan SONRA yapilir: ID alinamayan (tradeId'siz) sahte/eski veri sadece
     // en dusuk kademeyle gorunurce accumulator kirlenmesin; asagidaki slices fallback'i
     // bu durumda devreye girer.
-    const stepBuckets = groupMatchedByPrice(items, definitionId);
+    const stepBuckets = groupMatchedByPrice(items, matchId, definitionId > 0);
     // Tavan kesintisi sinyali (B): onceki adimda kaydedilen ama bu adimda YINLENMEYEN
     // kademeler - bir sonraki aramanin maxBuy'u bunlarin ALTINA inmisti ve ilanlari
     // artik listede gorunmuyor. `lastStepSeen === step - 1` ile yalnizca BIR ONCEKI
@@ -452,7 +468,7 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
         if (price < lowestSeen) lowestSeen = price;
         if (price > highestSeen) highestSeen = price;
       }
-      const listedAtLowest = matchingBuyNowItems(items, definitionId)
+      const listedAtLowest = matchingBuyNowItems(items, matchId, definitionId > 0)
         .filter((item) => getBuyNow(item) === lowestSeen).length;
       markTruncatedLowestTier(topAccumulator, lowestSeen, highestSeen, listedAtLowest, pageSize, items.length);
     }
