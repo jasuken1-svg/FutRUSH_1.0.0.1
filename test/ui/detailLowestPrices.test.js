@@ -55,4 +55,29 @@ describe('detail lowest-price selected card resolution', () => {
     expect(internals.readCardIdsFromDom(group)).toEqual({ definitionId: 987654, tradeId: 0 });
     expect(internals.computeTargetForGroup(group)).toEqual({ itemEntity: null, defId: 987654 });
   });
+
+  it('captures the clicked card and uses it when the detail panel has no card metadata', () => {
+    const card = document.createElement('div');
+    card.setAttribute('data-definition-id', '765432');
+    const image = document.createElement('img');
+    card.appendChild(image);
+    document.body.appendChild(card);
+
+    expect(internals.captureSelectedCardFromElement(image)).toBe(true);
+    const group = document.createElement('div');
+    group.className = 'ut-button-group';
+    document.body.appendChild(group);
+    expect(internals.computeTargetForGroup(group)).toMatchObject({ itemEntity: null, defId: 765432 });
+  });
+
+  it('captures the selected EA item from a clicked React card component', () => {
+    const card = document.createElement('div');
+    const item = { definitionId: 345678, rating: 91 };
+    card['__reactFiber$test'] = {
+      memoizedProps: { cardViewModel: { item } },
+      return: null
+    };
+
+    expect(internals.captureSelectedCardFromElement(card)).toBe(true);
+  });
 });

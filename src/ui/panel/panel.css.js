@@ -1237,22 +1237,23 @@ export const panelCss = `
     }
     #${P.id} .fr-target-card-bottom .fr-target-lowest-btn {
       display: inline-flex !important; flex: 0 1 auto !important; align-items: center; justify-content: center;
-      min-width: 0; max-width: 100%; height: auto !important; margin: 0;
-      padding: 1px 4px !important; overflow: hidden; text-overflow: ellipsis;
-      border: 1px solid rgba(0,229,255,.45) !important; border-radius: 4px;
-      color: #00e5ff !important; background: rgba(0,229,255,.1) !important;
-      box-shadow: 0 0 5px rgba(0,229,255,.18) !important;
-      font-family: inherit; font-size: 10px !important; font-weight: 700; line-height: 1.2;
-      font-variant-numeric: tabular-nums; text-align: center; text-shadow: none !important;
-      white-space: nowrap; letter-spacing: .02em; cursor: pointer !important;
-      pointer-events: auto !important; transition: none !important; transform: none !important;
+      min-width: max-content !important; max-width: 100%; min-height: 22px !important;
+      height: 22px !important; margin: 0; padding: 2px 8px !important; overflow: visible;
+      border: 1px solid #00b9d6 !important; border-radius: 4px;
+      color: #e5fbff !important; background: #12303b !important;
+      box-shadow: none !important;
+      font: 700 10px/1.2 Arial, sans-serif !important; font-variant-numeric: tabular-nums;
+      text-align: center; text-indent: 0 !important; text-shadow: none !important;
+      white-space: nowrap; letter-spacing: normal; visibility: visible !important;
+      cursor: pointer !important; pointer-events: auto !important;
+      transition: none !important; transform: none !important;
     }
     #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:hover,
     #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:focus,
     #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:focus-visible,
     #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:active {
-      color: #00e5ff !important; background: rgba(0,229,255,.1) !important;
-      border-color: rgba(0,229,255,.45) !important; box-shadow: 0 0 5px rgba(0,229,255,.18) !important;
+      color: #e5fbff !important; background: #12303b !important;
+      border-color: #00b9d6 !important; box-shadow: none !important;
       outline: none !important; transform: none !important;
     }
     #${P.id} .fr-target-futbin-price {

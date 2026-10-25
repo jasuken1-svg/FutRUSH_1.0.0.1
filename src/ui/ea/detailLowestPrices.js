@@ -37,8 +37,14 @@ const formatPrice = (value) => Number(value || 0).toLocaleString('tr-TR');
 function isItemLike(entity) {
   if (!entity || typeof entity !== 'object') return false;
   if (typeof entity.getSearchType === 'function' && typeof entity.getAuctionData === 'function') return true;
-  return ['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId']
-    .some((key) => Number(entity[key]) > 0) || Boolean(entity._auction && getDefIdLoose(entity));
+  if (['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId']
+    .some((key) => Number(entity[key]) > 0)) return true;
+  const hasItemApi = entity._auction || entity.auctionItem ||
+    typeof entity.getItemDefinition === 'function' ||
+    typeof entity.getDefinition === 'function' ||
+    typeof entity.getAuctionData === 'function' ||
+    typeof entity.isPlayer === 'function';
+  return Boolean(hasItemApi && getDefIdLoose(entity));
 }
 
 // Kart tanimi icin genis alan listesi (EA surumlerine gore degisken adlar).
@@ -107,6 +113,10 @@ function readCardIdsFromDom(group) {
   return result;
 }
 
+function getItemEntityDefId(item) {
+  return getItemDefId(item) || getDefIdLoose(item);
+}
+
 // services.Item aramalarindan kalan son sonuc dizisi / secim referanslari.
 function findItemEntityInObject(obj, seen, depth) {
   if (!obj || typeof obj !== 'object' || seen.has(obj) || depth > 6) return null;
@@ -124,9 +134,13 @@ function findItemEntityInObject(obj, seen, depth) {
     '_currentItem', 'displayedItem', 'selectedCard', 'activeItem', 'focusedItem',
     'auctionItem', '_auctionItem', 'itemData', 'data', '_data', 'props', 'children',
     'state', 'model', '_viewmodel', 'viewModel', 'controller', '_controller',
-    'presentedViewController', 'detailPanel'
+    'presentedViewController', 'detailPanel', 'value', 'entity', 'card', 'player'
   ];
-  for (const key of keys) {
+  const extraKeys = Object.keys(obj).filter((key) =>
+    !keys.includes(key) && !['return', 'alternate', 'ownerDocument', 'parentNode', 'childNodes'].includes(key) &&
+    !key.startsWith('__reactFiber$') && !key.startsWith('__reactProps$')
+  ).slice(0, 40);
+  for (const key of [...keys, ...extraKeys]) {
     try {
       const found = findItemEntityInObject(obj[key], seen, depth + 1);
       if (found) return found;
@@ -341,32 +355,72 @@ function readPanelCardName(group) {
 
 // Panel DOM'unun yanina EA'in kendi React/Fiber verisini gomulü olabilir; fiber
 // dugumlerini tarayarak itemEntity benzeri bir nesne bulmayi dene.
+function findFiberForElement(el) {
+  if (!el) return null;
+  try {
+    if (el.__reactInternalInstance$ || el._reactInternalFiber) {
+      return el.__reactInternalInstance$ || el._reactInternalFiber;
+    }
+    const key = Object.keys(el).find((name) =>
+      name.startsWith('__reactFiber$') || name.startsWith('__reactInternalInstance$')
+    );
+    return key ? el[key] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function findItemViaReactFiberElement(element) {
+  let node = element;
+  let ancestors = 0;
+  while (node && ancestors < 12) {
+    let fiber = findFiberForElement(node);
+    let hops = 0;
+    while (fiber && hops < 40) {
+      for (const value of [fiber.memoizedProps, fiber.pendingProps, fiber.memoizedState, fiber.stateNode]) {
+        const found = findItemEntityInObject(value, new WeakSet(), 0);
+        if (found) return found;
+      }
+      fiber = fiber.return;
+      hops += 1;
+    }
+    node = node.parentElement;
+    ancestors += 1;
+  }
+  return null;
+}
+
 function findItemViaReactFiber(group) {
   try {
-    const panel = group.closest ? (group.closest('.ut-detail-panel, .ut-panel, [class*="detail"]') || group.parentElement) : null;
+    const panel = group.closest
+      ? (group.closest('.ut-detail-panel, .ut-panel, .ut-quick-list-panel-view, [class*="detail"]') || group.parentElement)
+      : group.parentElement;
     if (!panel) return null;
-    const roots = [panel, ...Array.from(panel.querySelectorAll('*')).slice(0, 300)];
+    const roots = [group, ...Array.from(group.querySelectorAll('*')).slice(0, 80),
+      ...Array.from(panel.querySelectorAll('*')).slice(0, 300)];
     for (const el of roots) {
-      if (!el) continue;
-      let fiber = el.__reactInternalInstance$ || el._reactInternalFiber || null;
-      if (!fiber) {
-        for (const key of Object.keys(el)) {
-          if (key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')) { fiber = el[key]; break; }
-        }
-      }
-      let hops = 0;
-      while (fiber && hops < 40) {
-        const props = fiber.memoizedProps || fiber.pendingProps;
-        if (props) {
-          const found = findItemEntityInObject(props, new WeakSet(), 0);
-          if (found) return found;
-        }
-        fiber = fiber.return;
-        hops += 1;
-      }
+      const item = findItemViaReactFiberElement(el);
+      if (item) return item;
     }
   } catch (e) {}
   return null;
+}
+
+function captureSelectedCardFromElement(element) {
+  const itemEntity = findItemViaReactFiberElement(element);
+  const itemDefId = itemEntity ? getItemEntityDefId(itemEntity) : 0;
+  const domIds = readCardIdsFromDom(element);
+  const defId = itemDefId || domIds.definitionId;
+  if (!(defId > 0)) return false;
+  lastSelectedCard = { itemEntity: itemDefId ? itemEntity : null, defId, at: Date.now() };
+  cachedTarget = null;
+  return true;
+}
+
+function captureCardFromClick(event) {
+  const target = event.target;
+  if (!target || target.nodeType !== 1 || target.closest?.(`.${BTN_CLASS}, .${RESULTS_CLASS}`)) return;
+  captureSelectedCardFromElement(target);
 }
 
 // Secili kartin definitionId'sini cozumlemede son care: pazar arama sonucu
@@ -408,9 +462,10 @@ let lastSelectedCard = null; // { itemEntity, defId, at } | null
 
 function captureSelectedCard() {
   try {
+    if (lastSelectedCard && Date.now() - lastSelectedCard.at < 5000) return;
     const itemEntity = resolveSelectedCard();
     if (!itemEntity) return;
-    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
+    const defId = getItemEntityDefId(itemEntity);
     if (!(defId > 0)) return;
     lastSelectedCard = { itemEntity, defId, at: Date.now() };
   } catch (e) {}
@@ -449,7 +504,7 @@ function computeTargetForGroup(group) {
   // the panel was opening. Never let an old global selection override context.
   const itemEntity = resolveSelectedCard();
   if (itemEntity) {
-    const defId = getItemDefId(itemEntity) || getDefIdLoose(itemEntity);
+    const defId = getItemEntityDefId(itemEntity);
     if (defId > 0) return { itemEntity, defId };
   }
   if (lastSelectedCard && lastSelectedCard.defId > 0 && Date.now() - lastSelectedCard.at < 5000) {
@@ -468,7 +523,9 @@ async function runLowestSearch(btn, results, group, target) {
     // cozulebildiyse (DOM niteligi / cache eslestirmesi) minimal bir sahte entity
     // uretilir — makeLowestMarketCriteria bu nesneyi standart akista kullanilir
     // hale getirir.
-    const searchTarget = target.itemEntity || makeLowestMarketCriteria({ definitionId: target.defId });
+    const searchTarget = target.itemEntity && getItemDefId(target.itemEntity) > 0
+      ? target.itemEntity
+      : makeLowestMarketCriteria({ definitionId: target.defId });
     const result = await findLowestMarketPrice(searchTarget, { gapMs: [150, 400] });
     if (!result || !result.ok || !(result.price > 0)) {
       if (result && result.extinct) {
@@ -582,12 +639,14 @@ function scheduleInject() {
 
 export function initDetailLowestPrices() {
   if (observer || typeof MutationObserver === 'undefined' || !document.body) return;
+  document.addEventListener('click', captureCardFromClick, true);
   observer = new MutationObserver(scheduleInject);
   observer.observe(document.body, { childList: true, subtree: true });
   scheduleInject();
 }
 
 export function destroyDetailLowestPrices() {
+  document.removeEventListener('click', captureCardFromClick, true);
   if (observer) {
     try { observer.disconnect(); } catch (e) {}
     observer = null;
@@ -603,6 +662,9 @@ export function destroyDetailLowestPrices() {
 export const __internals__ = {
   isItemLike,
   findItemEntityInObject,
+  findItemViaReactFiberElement,
+  captureSelectedCardFromElement,
+  captureCardFromClick,
   readCardIdsFromDom,
   computeTargetForGroup,
   resolveSelectedCard,
