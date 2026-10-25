@@ -8,10 +8,15 @@ import { safetyGovernor } from '../bot/safetyGovernor.js';
 import { pageWindow } from '../utils/dom.js';
 import { buyNowStep, getJsPriceTiers, roundPriceToTier } from '../utils/format.js';
 import { randomBetween, sleep } from '../utils/cancelToken.js';
+import { getNextLowerPrice } from './priceSteps.js';
+import { SPECIAL_OR_HIGH_MIN_BIDS, STANDARD_LOW_MIN_BIDS } from './market.js';
 
 export const LOWEST_MARKET_STEPS = 9;
 export const DEFAULT_MARKET_PAGE_SIZE = 20;
 const MAX_TIER_PRICE = 15000000;
+// Cache-busting havuzlari (ea/market.js ile ayni kaynak): her adimda minBid degistirerek
+// EA'nin aynı maxBuy sorgusuna onbellekten taze yanit vermesi engellenir.
+const CHEAP_CACHE_BUST_MAX_BID = 600;
 
 export const auctionOf = (item) => {
   try {
@@ -75,6 +80,24 @@ export function nextMaxBuyFromLowest(lowestPrice, priceTiers) {
     if (next >= lowest) next = lowest - 50;
   }
   return Math.max(0, Math.min(MAX_TIER_PRICE, next));
+}
+
+// Cache-busting: her adimda minBidi havuz icinde degistirerek EA onbelleginin ayni
+// maxBuy sorgusuna bayat veri dondurmesi engellenir (ea/market.js ile ayni mantik).
+// maxBuy altindaki minBidler elenir; havuz bosalirsa 0 (filtresiz) kullanilir.
+export function applyCacheBustMinBid(criteria, stepIndex) {
+  const maxBuy = Number(criteria.maxBuy) || 0;
+  const isSpecial = criteria.level === 'SP' ||
+    (Array.isArray(criteria.rarities) && criteria.rarities.length > 0);
+  const basePool = (maxBuy >= 1500 || isSpecial) ? SPECIAL_OR_HIGH_MIN_BIDS : STANDARD_LOW_MIN_BIDS;
+  const pool = basePool.filter((bid) => bid === 0 || (bid < maxBuy && bid <= CHEAP_CACHE_BUST_MAX_BID));
+  const minBid = pool.length ? pool[Math.abs(stepIndex) % pool.length] : 0;
+  if (minBid > 0) {
+    criteria.minBid = minBid;
+  } else {
+    delete criteria.minBid;
+  }
+  return minBid;
 }
 
 export function makeLowestMarketCriteria(itemEntity, { maxBuy, createCriteria } = {}) {
@@ -195,7 +218,8 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
     onStep = null,
     onProgress = null,
     priceTiers = (options.priceTiers || getJsPriceTiers(pageWindow)),
-    fullPage = DEFAULT_MARKET_PAGE_SIZE
+    fullPage = DEFAULT_MARKET_PAGE_SIZE,
+    cacheBust = true
   } = options;
 
   const actualSleep = sleepFn || optSleep || sleep;
@@ -213,16 +237,19 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
 
     const page = await actualSearchPage(criteria);
     if (!page || !page.ok) {
+      const errorMsg = String((page && page.error && (page.error.message || page.error)) || 'EA araması başarısız');
+      const rateLimited = /429|rate.?limit|too many/i.test(errorMsg);
       if (slices.length === 0) {
         return {
           ok: false,
           status: 'ERROR',
           extinct: false,
-          error: (page && page.error) || { message: 'EA araması başarısız' },
-          reason: 'service-failed',
+          error: (page && page.error) || { message: errorMsg },
+          reason: rateLimited ? 'rate-limited' : 'service-failed',
           slices
         };
       }
+      // Kismi sonuc varsa bulunan en dusuk fiyat yine gecerlidir; sadece arama erken biter.
       break;
     }
     const items = Array.isArray(page.items) ? page.items : [];
@@ -247,6 +274,8 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
     if (!(nextMaxBuy > 0) || (assignedMaxBuy != null && nextMaxBuy >= assignedMaxBuy)) break;
     criteria.maxBuy = nextMaxBuy;
     assignedMaxBuy = nextMaxBuy;
+    // Cache-busting: yeni maxBuy ile birlikte minBid kademelerini de kaydir.
+    if (cacheBust) applyCacheBustMinBid(criteria, step);
 
     if (step < maxSteps) {
       const [minGap, maxGap] = gapMs;
@@ -266,6 +295,7 @@ export async function findLowestMarketPrice(itemEntity, options = {}) {
     extinct: false,
     price: best.price,
     count: best.count,
-    slices
+    slices,
+    lowerTierPrice: getNextLowerPrice(best.price) || null
   };
 }

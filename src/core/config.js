@@ -13,8 +13,7 @@ export const CONFIG = {
     fitContent: true,       // alt sayfalarda içeriği panelin soluna sığdır
     settingsButton: true,   // sol menüdeki FutRUSH (Ayarlar) butonu
     searchButton: true,     // Reset / Search yanındaki FutRUSH butonu
-    logoButton: false,      // Consumables yanındaki logo kaldırıldı
-    rushButton: true        // Yan eylem paneli RUSHbuttonv1 fiyat arama butonu
+    logoButton: false       // Consumables yanındaki logo kaldırıldı
   },
 
   // SNIPE paneli
@@ -55,12 +54,6 @@ export const CONFIG = {
     gap: 10,                          // Consumables ile logo arası (px)
     anchorPattern: /consumables/i,    // sekmeyi yazısından tanır (dil değişirse buraya ekle)
     title: 'FutRUSH Snipe'
-  },
-
-  // Kadro, Transfer Listesi ve Kulüp kartlarındaki tek-kart piyasa butonu
-  rushButton: {
-    className: 'fr-rush-btn',
-    label: 'RUSHbuttonv1'
   },
 
   // Reset / Search yanındaki FutRUSH butonu
