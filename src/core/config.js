@@ -13,7 +13,8 @@ export const CONFIG = {
     fitContent: true,       // alt sayfalarda içeriği panelin soluna sığdır
     settingsButton: true,   // sol menüdeki FutRUSH (Ayarlar) butonu
     searchButton: true,     // Reset / Search yanındaki FutRUSH butonu
-    logoButton: false       // Consumables yanındaki logo kaldırıldı
+    logoButton: false,      // Consumables yanındaki logo kaldırıldı
+    detailLowestPrices: true // EA kart detay panelinde (.ut-button-group) en düşük fiyatlar
   },
 
   // SNIPE paneli

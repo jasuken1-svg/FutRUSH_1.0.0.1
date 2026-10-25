@@ -1147,20 +1147,35 @@ export function renderTargetContent(content) {
       const counter = document.createElement('div');
       counter.className = 'fr-target-counter fr-target-counter-editable';
 
-      // "En Düşük Fiyatı Bul" (Check Lowest BIN): EA Transfer Market'te maxBuy tavanini
-      // kademeli dusurerek kartin kesin en dusuk Hemen Al fiyatini arar; bulunan deger
-      // SATIN AL kutusuna tek tikla aktarilir. Bot calisiyorken veya CAPTCHA kilidi
-      // varken baslatilamaz (ayni guvenlik kapisi).
+      // "En Düşük Fiyatı Bul" (.fr-target-lowest-btn): EA Transfer Market'te en dusuk
+      // BIN fiyatini arar; bulunan TEK fiyati SADECE butonun kendi metninde gosterir.
+      // SATIN AL (hedef fiyat) input'una HICBIR DEGER YAZILMAZ. 10 saniye sonra buton
+      // metni otomatik olarak "🔎 En Düşük" varsayilanina doner.
+      const LOWEST_BTN_DEFAULT_TEXT = '🔎 En Düşük';
+      const LOWEST_BTN_RESET_MS = 10000;
       let lowestBtn = null;
       let lowestSearching = false;
+      let lowestResetTimer = null;
+      const clearLowestResetTimer = () => {
+        if (lowestResetTimer !== null) {
+          clearTimeout(lowestResetTimer);
+          lowestResetTimer = null;
+        }
+      };
+      const resetLowestBtnText = () => {
+        clearLowestResetTimer();
+        if (!lowestBtn || lowestSearching) return;
+        lowestBtn.textContent = LOWEST_BTN_DEFAULT_TEXT;
+      };
       const setLowestBusy = (busy) => {
         lowestSearching = busy;
         if (!lowestBtn) return;
+        if (busy) clearLowestResetTimer();
         lowestBtn.disabled = busy;
-        lowestBtn.textContent = busy ? 'Aranıyor...' : '🔎 En Düşük';
+        lowestBtn.textContent = busy ? 'Aranıyor...' : LOWEST_BTN_DEFAULT_TEXT;
         lowestBtn.title = busy
           ? 'EA Transfer Market taranıyor...'
-          : 'En Düşük Hemen Al fiyatını bul ve SATIN AL kutusuna aktar';
+          : 'En Düşük Hemen Al fiyatını bul (fiyat yalnızca butonda gösterilir, SATIN AL kutusuna yazılmaz)';
       };
       if (control.key === 'buyNow') {
         lowestBtn = document.createElement('button');
@@ -1210,21 +1225,20 @@ export function renderTargetContent(content) {
               setTargetStatus({ type: 'error', message: `Markette kart bulunamadı (Extinct): ${player.name}` });
               return;
             }
-            const applied = clampPrice(roundToPriceStep(found, 'nearest'));
-            player.buyNow = applied;
-            value.value = formatVal('buyNow', applied);
-            saveTargets();
-            updateProfit(applied);
-            escalationControl?.refresh();
-            const priceExceeded = isExceedingFutbin(applied, player.price);
-            card.classList.toggle('is-price-exceeded', priceExceeded);
-            const active = !player.searchDisabled && !player.insufficientBalance && (!state.snipeSettings?.strictMarketCap || !priceExceeded);
-            card.classList.toggle('is-search-inactive', !active);
-            updateSummaryBar();
-            const exactLbl = result.exact ? 'kesin' : 'tahmini';
-            setTargetStatus({ type: 'success', message: `${player.name} en düşük BIN: ${applied.toLocaleString('tr-TR')} (${exactLbl}) → SATIN AL güncellendi.` });
+            // SADECE GÖSTERİM: bulunan en dusuk 1 fiyat yalnizca buton metnine yazilir;
+            // player.buyNow ve SATIN AL input'u bilincli olarak DEGISTIRILMEZ.
+            const shown = found.toLocaleString('tr-TR');
+            lowestBtn.textContent = `🔎 ${shown}`;
+            lowestBtn.title = `En düşük BIN: ${shown} coin — 10 sn içinde buton eski metnine döner (SATIN AL kutusu değiştirilmedi).`;
+            clearLowestResetTimer();
+            lowestResetTimer = setTimeout(() => {
+              lowestResetTimer = null;
+              // 10 sn dolunca buton varsayilan metne doner (arama hâlâ sürüyorsa dokunma).
+              resetLowestBtnText();
+            }, LOWEST_BTN_RESET_MS);
+            setTargetStatus({ type: 'success', message: `${player.name} en düşük BIN: ${shown} — yalnızca gösterildi, SATIN AL kutusuna yazılmadı.` });
             addMarketLog({
-              text: `🔎 [En Düşük Fiyat] ${player.name}: ${applied.toLocaleString('tr-TR')} coin (${exactLbl}, ${result.searches || 0} arama) SATIN AL kutusuna aktarıldı.`,
+              text: `🔎 [En Düşük Fiyat] ${player.name}: ${shown} coin (kesin: ${Boolean(result.exact)}, ${result.searches || 0} arama) — sadece butonda gösterildi, input değişmedi.`,
               type: 'info'
             });
           } catch (err) {

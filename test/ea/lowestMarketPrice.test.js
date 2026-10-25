@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { findLowestMarketPrice, getBandDrop, roundToTier, getBuyNow } from '../../src/ea/lowestMarketPrice.js';
+import {
+  findLowestMarketPrice, getBandDrop, roundToTier, getBuyNow,
+  groupMatchedByPrice, createTopPriceAccumulator, recordStepBuckets, buildTopPrices
+} from '../../src/ea/lowestMarketPrice.js';
 
 const TIERS = [
   { min: 0, inc: 50 },
@@ -15,12 +18,14 @@ function fakeServices(market, { fail = false } = {}) {
       clearTransferMarketCache() {},
       searchTransferMarket(criteria) {
         const limit = criteria.maxBuy ?? Infinity;
+        // Fiyat okumasi getBuyNow ile ayni: düz buyNowPrice VEYA _auction.buyNowPrice.
+        const priceOf = (c) => (typeof c.buyNowPrice === 'number' ? c.buyNowPrice : (c._auction?.buyNowPrice ?? 0));
         const items = fail
           ? null
           : market
               .filter((c) => criteria.defId.includes(c.definitionId) || c.definitionId !== criteria.defId[0])
-              .filter((c) => c.buyNowPrice <= limit)
-              .slice(0, 20);
+              .filter((c) => priceOf(c) <= limit)
+              .slice(0, 21);
         return {
           observe(_o, cb) {
             cb({ unobserve() {} }, fail ? { success: false } : { success: true, data: { items } });
@@ -32,13 +37,16 @@ function fakeServices(market, { fail = false } = {}) {
 }
 
 const card = (price, definitionId = 111) => ({ definitionId, buyNowPrice: price });
+const tradeCard = (tradeId, price, definitionId = 111) => ({
+  definitionId,
+  _auction: { tradeId, buyNowPrice: price },
+});
 const deps = (market, extra) => ({
   createCriteria: () => ({ count: 30 }),
   priceTiers: TIERS,
   services: fakeServices(market, extra),
   sleep: async () => {},
 });
-
 describe('findLowestMarketPrice', () => {
   it('1. adımdaki pahalı dilimi değil, son adımdaki en ucuzu döndürür', async () => {
     const market = [card(380000), ...Array.from({ length: 25 }, () => card(9000)), card(5500), card(5500)];
@@ -77,5 +85,73 @@ describe('findLowestMarketPrice', () => {
     expect(getBuyNow({ _auction: { buyNowPrice: 6200 } })).toBe(6200);
     expect(getBuyNow({ getAuctionData: () => ({ buyNowPrice: 8500 }) })).toBe(8500);
     expect(getBuyNow(null)).toBe(0);
+  });
+
+  it('topPrices küçükten büyüğe en düşük 1./2./3. fiyatı adetlerle döndürür', async () => {
+    const market = [
+      ...Array.from({ length: 4 }, (_, i) => tradeCard(900 + i, 1200)),
+      ...Array.from({ length: 12 }, (_, i) => tradeCard(1900 + i, 1300)),
+      ...Array.from({ length: 25 }, (_, i) => tradeCard(2900 + i, 1400)),
+    ];
+    const r = await findLowestMarketPrice({ definitionId: 111 }, deps(market));
+    expect(r.status).toBe('OK');
+    expect(r.price).toBe(1200);
+    expect(r.count).toBe(4);
+    expect(r.topPrices).toEqual([
+      { rank: 1, price: 1200, count: 4 },
+      { rank: 2, price: 1300, count: 12 },
+      { rank: 3, price: 1400, count: 21 }, // x21 siniri
+    ]);
+  });
+
+  it('aynı tradeId tekrarları tekilleştirilir (tek arama sayfası)', () => {
+    const acc = createTopPriceAccumulator();
+    recordStepBuckets(acc, groupMatchedByPrice([tradeCard(1, 1000), tradeCard(1, 1000), tradeCard(2, 1000)], 111));
+    expect(buildTopPrices(acc)).toEqual([{ rank: 1, price: 1000, count: 2 }]);
+  });
+
+  it('ID alınamayan kartlar için tek adımdaki en yüksek adet baz alınır', () => {
+    const acc = createTopPriceAccumulator();
+    recordStepBuckets(acc, groupMatchedByPrice([card(1000), card(1000)], 111));
+    recordStepBuckets(acc, groupMatchedByPrice([card(1000)], 111));
+    expect(buildTopPrices(acc)).toEqual([{ rank: 1, price: 1000, count: 2 }]);
+  });
+
+  it('erken çıkışta (sayfa dolmadı) tavan yüzünden elenen 2./3. fiyatlar önceki adımlardan tamamlanır', async () => {
+    let calls = 0;
+    const searchPage = () => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.resolve({
+          ok: true,
+          items: [
+            tradeCard(1, 1000),
+            tradeCard(2, 1200),
+            ...Array.from({ length: 19 }, (_, i) => tradeCard(100 + i, 1500)),
+          ],
+        });
+      }
+      // maxBuy=950 sonrasi yalnizca en ucuz kademe doner; sayfa dolmaz -> erken kirilma.
+      return Promise.resolve({ ok: true, items: [tradeCard(1, 1000)] });
+    };
+    const r = await findLowestMarketPrice({ definitionId: 111 }, {
+      createCriteria: () => ({ count: 30 }),
+      priceTiers: TIERS,
+      searchPage,
+      sleep: async () => {},
+    });
+    expect(calls).toBe(2);
+    expect(r.price).toBe(1000);
+    expect(r.topPrices).toEqual([
+      { rank: 1, price: 1000, count: 1 },
+      { rank: 2, price: 1200, count: 1 },
+      { rank: 3, price: 1500, count: 19 },
+    ]);
+  });
+
+  it('EXTINCT durumunda topPrices bos dizi doner', async () => {
+    const r = await findLowestMarketPrice({ definitionId: 111 }, deps([]));
+    expect(r.status).toBe('EXTINCT');
+    expect(r.topPrices).toEqual([]);
   });
 });

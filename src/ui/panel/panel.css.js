@@ -1195,8 +1195,32 @@ export const panelCss = `
     #${P.id} .fr-target-lowest-btn {
       flex: 0 0 auto !important; width: auto !important; height: 22px !important; padding: 0 6px !important;
       font-size: 10px !important; white-space: nowrap; letter-spacing: .02em;
+      /* Varsayilan gorunum sabit: hover/focus/active hicbir gorsel degisiklik YAPMAZ. */
+      color: inherit !important; background: transparent !important; border: none !important;
+      box-shadow: none !important; text-shadow: none !important; filter: none !important;
+      transform: none !important; transition: none !important; animation: none !important;
+      outline: none !important; cursor: pointer !important; pointer-events: auto !important;
+      -webkit-tap-highlight-color: transparent !important;
     }
-    #${P.id} .fr-target-lowest-btn[disabled] { opacity: .55; cursor: wait; }
+    /* Hover efektleri TAMAMEN kaldirildi: uzerine gelindiginde renk, arka plan, parlama,
+       buyume/transform, border degisimi gibi hicbir gorsel reaksiyon olmamali.
+       pointer-events acik kalir (tiklanabilirlik korunur). */
+    #${P.id} .fr-target-lowest-btn:hover,
+    #${P.id} .fr-target-lowest-btn:focus,
+    #${P.id} .fr-target-lowest-btn:focus-visible,
+    #${P.id} .fr-target-lowest-btn:active,
+    #${P.id} .fr-target-counter button.fr-target-lowest-btn:hover,
+    #${P.id} .fr-target-counter button.fr-target-lowest-btn:active,
+    #${P.id} .fr-target-counter-editable .fr-target-lowest-btn:hover {
+      color: inherit !important; background: transparent !important; border: none !important;
+      box-shadow: none !important; text-shadow: none !important; filter: none !important;
+      transform: none !important; scale: none !important; translate: none !important;
+      transition: none !important; animation: none !important; outline: none !important;
+      cursor: pointer !important; opacity: 1 !important; pointer-events: auto !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+    #${P.id} .fr-target-lowest-btn[disabled],
+    #${P.id} .fr-target-lowest-btn[disabled]:hover { opacity: .55; cursor: wait; }
     #${P.id} .fr-target-counter-input {
       box-sizing: border-box; flex: 1 1 auto; width: 100%; max-width: 9ch; min-width: 44px; height: 22px;
       padding: 2px 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 4px;
@@ -1591,11 +1615,45 @@ export const panelCss = `
     }
   `;
 
+// EA kart detay paneli (.ut-button-group) icine enjekte edilen bilesenler.
+// Panel CSS'i (#P.id kapsayicisi) disinda, sayfa genelinde gecerli kurallar.
+export const detailPanelCss = `
+  .fr-detail-lowest-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; margin: 0; border-radius: 3px;
+    font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2;
+    color: #dfe9ee; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.22);
+    cursor: pointer; user-select: none; white-space: nowrap;
+    transition: background .12s ease;
+  }
+  .fr-detail-lowest-btn:hover { background: rgba(0,229,255,.16); }
+  .fr-detail-lowest-btn[disabled] { opacity: .55; cursor: wait; }
+  .fr-detail-lowest-results {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    vertical-align: middle;
+  }
+  .fr-detail-price-option {
+    display: inline-flex; align-items: center;
+    padding: 3px 8px; border-radius: 3px;
+    font-family: inherit; font-size: 11px; font-weight: 700;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    color: #bfeaff; background: rgba(0,229,255,.10);
+    border: 1px solid rgba(0,229,255,.35);
+    cursor: pointer; user-select: none;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .fr-detail-price-option:hover { background: rgba(0,229,255,.22); border-color: rgba(0,229,255,.7); }
+  .fr-detail-price-option.is-selected {
+    color: #062a33; background: #00e5ff; border-color: #00e5ff;
+  }
+`;
+
 export function initPanelCss() {
   const existing = document.getElementById(P.styleId);
   if (existing) return;
   const style = document.createElement('style');
   style.id = P.styleId;
-  style.textContent = panelCss;
+  style.textContent = panelCss + detailPanelCss;
   document.head.appendChild(style);
 }
