@@ -56,6 +56,18 @@ describe('detail lowest-price selected card resolution', () => {
     expect(internals.computeTargetForGroup(group)).toEqual({ itemEntity: null, defId: 987654 });
   });
 
+  it('resolves resource IDs like the target lowest-price button and refreshes the cached target', () => {
+    const group = document.createElement('div');
+    group.className = 'ut-button-group';
+    group.setAttribute('data-resource-id', String(0x12012345));
+    document.body.appendChild(group);
+
+    expect(internals.resolveDetailTarget(group)).toEqual({
+      itemEntity: null,
+      defId: 0x12012345 & 0xffffff
+    });
+  });
+
   it('captures the clicked card and uses it when the detail panel has no card metadata', () => {
     const card = document.createElement('div');
     card.setAttribute('data-definition-id', '765432');

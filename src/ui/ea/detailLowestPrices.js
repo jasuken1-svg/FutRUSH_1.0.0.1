@@ -37,7 +37,7 @@ const formatPrice = (value) => Number(value || 0).toLocaleString('tr-TR');
 function isItemLike(entity) {
   if (!entity || typeof entity !== 'object') return false;
   if (typeof entity.getSearchType === 'function' && typeof entity.getAuctionData === 'function') return true;
-  if (['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId']
+  if (['definitionId', '_definitionId', 'defId', 'assetId', 'itemId', 'cardId', 'resourceId']
     .some((key) => Number(entity[key]) > 0)) return true;
   const hasItemApi = entity._auction || entity.auctionItem ||
     typeof entity.getItemDefinition === 'function' ||
@@ -49,7 +49,8 @@ function isItemLike(entity) {
 
 // Kart tanimi icin genis alan listesi (EA surumlerine gore degisken adlar).
 const DEF_ID_FIELDS = [
-  'definitionId', '_definitionId', 'defId', 'id', '_id', 'itemId', 'assetId', 'baseId', 'cardId'
+  'definitionId', '_definitionId', 'defId', 'id', '_id', 'itemId', 'assetId',
+  'baseId', 'cardId', 'resourceId'
 ];
 
 function getDefIdLoose(entity) {
@@ -86,7 +87,8 @@ function readCardIdsFromDom(group) {
   if (!group || !group.closest) return result;
   const attrNames = [
     'data-definition-id', 'data-definitionid', 'data-defid', 'data-item-id', 'data-itemid',
-    'data-card-id', 'data-id', 'data-trade-id', 'data-tradeid', 'data-auction-id'
+    'data-card-id', 'data-id', 'data-resource-id', 'data-asset-id',
+    'data-trade-id', 'data-tradeid', 'data-auction-id'
   ];
   const readNode = (node) => {
     if (!node?.getAttribute) return;
@@ -96,7 +98,9 @@ function readCardIdsFromDom(group) {
       const n = Number(String(raw).replace(/[^0-9]/g, ''));
       if (!Number.isFinite(n) || n <= 0) continue;
       if (/trade|auction/.test(attr)) { if (!result.tradeId) result.tradeId = n; }
-      else if (!result.definitionId) result.definitionId = n;
+      else if (!result.definitionId) {
+        result.definitionId = attr === 'data-resource-id' ? n & 0xffffff : n;
+      }
     }
   };
   // EA detail wrappers do not use a consistent class name. Walk the button
@@ -513,6 +517,13 @@ function resolveTargetForGroup(group) {
   return target;
 }
 
+function resolveDetailTarget(group) {
+  cachedTarget = null;
+  captureSelectedCardFromElement(group);
+  captureSelectedCard();
+  return resolveTargetForGroup(group);
+}
+
 function computeTargetForGroup(group) {
   // 1) Bu detay paneline ait kart verisi.
   const fiberItem = findItemViaReactFiber(group);
@@ -605,7 +616,7 @@ function ensureControls(group) {
     if (searchingStates.get(btn)) return;
 
     // Secili kati cok asamali cozumle (yukarida aciklanan siralamayla).
-    const target = resolveTargetForGroup(group);
+    const target = resolveDetailTarget(group);
     if (!target) {
       btn.textContent = 'Kart seçili değil';
       restoreBtnText(group, btn, 2500);
@@ -692,6 +703,7 @@ export const __internals__ = {
   findItemViaReactFiberElement,
   captureSelectedCardFromElement,
   captureCardFromClick,
+  resolveDetailTarget,
   readCardIdsFromDom,
   computeTargetForGroup,
   resolveSelectedCard,
