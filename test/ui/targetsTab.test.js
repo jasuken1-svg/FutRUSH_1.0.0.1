@@ -94,7 +94,7 @@ describe('player target controls', () => {
     expect(value.value).toBe('950');
   });
 
-  it('renders the lowest-price button on its own full-width row', () => {
+  it('renders the lowest-price button beside the FutBIN price', () => {
     state.targets = [
       { id: 'lowest', name: 'Lowest', rating: 90, price: 1000, searches: 1, buyNow: 900, eaId: 123 }
     ];
@@ -103,8 +103,9 @@ describe('player target controls', () => {
 
     const lowestButton = content.querySelector('.fr-target-lowest-btn');
     expect(lowestButton).not.toBeNull();
-    expect(lowestButton.parentElement.classList.contains('fr-target-counter-has-lowest')).toBe(true);
-    expect(lowestButton.parentElement.querySelectorAll('button')).toHaveLength(3);
+    expect(lowestButton.parentElement.classList.contains('fr-target-card-bottom')).toBe(true);
+    expect(lowestButton.nextElementSibling.classList.contains('fr-target-futbin-price')).toBe(true);
+    expect(content.querySelector('.fr-target-counter-has-lowest')).toBeNull();
   });
 
   it('rounds manually entered prices down to the EA tier and allows exact search counts', () => {

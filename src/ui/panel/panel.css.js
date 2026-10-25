@@ -1186,14 +1186,6 @@ export const panelCss = `
     }
     #${P.id} .fr-target-counter { display: flex; align-items: center; justify-content: center; gap: 5px; }
     #${P.id} .fr-target-counter-editable { gap: 5px; }
-    #${P.id} .fr-target-counter-has-lowest {
-      display: grid; grid-template-columns: 22px minmax(0, 1fr) 22px;
-      align-items: center; gap: 5px;
-    }
-    #${P.id} .fr-target-counter-has-lowest .fr-target-lowest-btn {
-      grid-column: 1 / -1; justify-self: stretch; width: 100% !important;
-      min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-    }
     #${P.id} .fr-target-counter button {
       flex: 0 0 22px; width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,.2);
       border-radius: 5px; color: #e8f4f6; background: rgba(255,255,255,.08);
@@ -1213,10 +1205,10 @@ export const panelCss = `
     /* Hover efektleri TAMAMEN kaldirildi: uzerine gelindiginde renk, arka plan, parlama,
        buyume/transform, border degisimi gibi hicbir gorsel reaksiyon olmamali.
        pointer-events acik kalir (tiklanabilirlik korunur). */
-    #${P.id} .fr-target-lowest-btn:hover,
-    #${P.id} .fr-target-lowest-btn:focus,
-    #${P.id} .fr-target-lowest-btn:focus-visible,
-    #${P.id} .fr-target-lowest-btn:active,
+    #${P.id} .fr-target-counter .fr-target-lowest-btn:hover,
+    #${P.id} .fr-target-counter .fr-target-lowest-btn:focus,
+    #${P.id} .fr-target-counter .fr-target-lowest-btn:focus-visible,
+    #${P.id} .fr-target-counter .fr-target-lowest-btn:active,
     #${P.id} .fr-target-counter button.fr-target-lowest-btn:hover,
     #${P.id} .fr-target-counter button.fr-target-lowest-btn:active,
     #${P.id} .fr-target-counter-editable .fr-target-lowest-btn:hover {
@@ -1240,7 +1232,28 @@ export const panelCss = `
     #${P.id} .fr-target-counter-input:focus { outline: 1px solid rgba(0,229,255,.7); }
 
     #${P.id} .fr-target-card-bottom {
-      display: flex; justify-content: flex-end; width: 100%; margin-top: 2px;
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      width: 100%; min-width: 0; margin-top: 2px;
+    }
+    #${P.id} .fr-target-card-bottom .fr-target-lowest-btn {
+      display: inline-flex !important; flex: 0 1 auto !important; align-items: center; justify-content: center;
+      min-width: 0; max-width: 100%; height: auto !important; margin: 0;
+      padding: 1px 4px !important; overflow: hidden; text-overflow: ellipsis;
+      border: 1px solid rgba(0,229,255,.45) !important; border-radius: 4px;
+      color: #00e5ff !important; background: rgba(0,229,255,.1) !important;
+      box-shadow: 0 0 5px rgba(0,229,255,.18) !important;
+      font-family: inherit; font-size: 10px !important; font-weight: 700; line-height: 1.2;
+      font-variant-numeric: tabular-nums; text-align: center; text-shadow: none !important;
+      white-space: nowrap; letter-spacing: .02em; cursor: pointer !important;
+      pointer-events: auto !important; transition: none !important; transform: none !important;
+    }
+    #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:hover,
+    #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:focus,
+    #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:focus-visible,
+    #${P.id} .fr-target-card-bottom .fr-target-lowest-btn:active {
+      color: #00e5ff !important; background: rgba(0,229,255,.1) !important;
+      border-color: rgba(0,229,255,.45) !important; box-shadow: 0 0 5px rgba(0,229,255,.18) !important;
+      outline: none !important; transform: none !important;
     }
     #${P.id} .fr-target-futbin-price {
       display: inline-flex; align-items: center; gap: 4px;

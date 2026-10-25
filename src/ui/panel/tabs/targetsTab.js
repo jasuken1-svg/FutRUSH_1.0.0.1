@@ -1188,7 +1188,6 @@ export function renderTargetContent(content) {
           : 'En Düşük Hemen Al fiyatını bul (fiyat yalnızca butonda gösterilir, SATIN AL kutusuna yazılmaz)';
       };
       if (control.key === 'buyNow') {
-        counter.classList.add('fr-target-counter-has-lowest');
         lowestBtn = document.createElement('button');
         lowestBtn.type = 'button';
         lowestBtn.className = 'fr-target-lowest-btn';
@@ -1425,6 +1424,7 @@ export function renderTargetContent(content) {
     // 4. Alt Bilgi: Sol tarafta rozetler, sağda FutBIN fiyatı
     const bottomBar = document.createElement('div');
     bottomBar.className = 'fr-target-card-bottom';
+    const lowestPriceButton = controls.querySelector('.fr-target-lowest-btn');
 
     const futbinPriceEl = document.createElement('span');
     futbinPriceEl.className = 'fr-target-futbin-price';
@@ -1440,7 +1440,9 @@ export function renderTargetContent(content) {
     }
     const iconHtml = `<img src="${FUTBIN_ICON_DATA}" class="fr-target-futbin-icon" width="12" height="12" alt="FutBIN" />`;
     futbinPriceEl.innerHTML = fbVal > 0 ? `${iconHtml} <span>${fbVal.toLocaleString('tr-TR')}</span>${trendHtml}` : `${iconHtml} <span>—</span>`;
-    bottomBar.append(escalationControl.badgesWrap, futbinPriceEl);
+    bottomBar.append(escalationControl.badgesWrap);
+    if (lowestPriceButton) bottomBar.appendChild(lowestPriceButton);
+    bottomBar.appendChild(futbinPriceEl);
     body.appendChild(bottomBar);
 
     card.appendChild(escalationControl.popover);
