@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 
 let dom;
@@ -79,6 +79,26 @@ describe('detail lowest-price selected card resolution', () => {
     };
 
     expect(internals.captureSelectedCardFromElement(card)).toBe(true);
+  });
+
+  it('keeps the clicked card available to the detail button after the panel settles', () => {
+    vi.useFakeTimers();
+    const card = document.createElement('div');
+    card.setAttribute('data-definition-id', '876543');
+    const image = document.createElement('img');
+    card.appendChild(image);
+    document.body.appendChild(card);
+    internals.captureCardFromClick({
+      target: image,
+      composedPath: () => [image, card, document.body, document, window]
+    });
+    vi.advanceTimersByTime(10000);
+
+    const group = document.createElement('div');
+    group.className = 'ut-button-group';
+    document.body.appendChild(group);
+    expect(internals.computeTargetForGroup(group)).toMatchObject({ itemEntity: null, defId: 876543 });
+    vi.useRealTimers();
   });
 
   it('resolves the clicked EA card from React DOM props when no fiber is exposed', () => {

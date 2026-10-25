@@ -432,9 +432,22 @@ function captureSelectedCardFromElement(element) {
 }
 
 function captureCardFromClick(event) {
-  const target = event.target;
-  if (!target || target.nodeType !== 1 || target.closest?.(`.${BTN_CLASS}, .${RESULTS_CLASS}`)) return;
-  captureSelectedCardFromElement(target);
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+  const elements = path.filter((node) => node && node.nodeType === 1);
+  if (elements.some((node) => node.matches?.(`.${BTN_CLASS}, .${RESULTS_CLASS}, .${ITEM_CLASS}`))) return;
+
+  let captured = false;
+  for (const element of elements) {
+    if (captureSelectedCardFromElement(element)) {
+      captured = true;
+      break;
+    }
+  }
+  if (!captured && elements.some((node) => node.matches?.(
+    '.ut-item, .ut-item-view, [class*="ut-item"], [class*="item-view"], [data-resource-id], [data-trade-id]'
+  ))) {
+    setTimeout(captureSelectedCard, 0);
+  }
 }
 
 // Secili kartin definitionId'sini cozumlemede son care: pazar arama sonucu
@@ -476,7 +489,6 @@ let lastSelectedCard = null; // { itemEntity, defId, at } | null
 
 function captureSelectedCard() {
   try {
-    if (lastSelectedCard && Date.now() - lastSelectedCard.at < 5000) return;
     const itemEntity = resolveSelectedCard();
     if (!itemEntity) return;
     const defId = getItemEntityDefId(itemEntity);
@@ -521,7 +533,7 @@ function computeTargetForGroup(group) {
     const defId = getItemEntityDefId(itemEntity);
     if (defId > 0) return { itemEntity, defId };
   }
-  if (lastSelectedCard && lastSelectedCard.defId > 0 && Date.now() - lastSelectedCard.at < 5000) {
+  if (lastSelectedCard && lastSelectedCard.defId > 0) {
     return lastSelectedCard;
   }
   return null;
